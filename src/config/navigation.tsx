@@ -64,9 +64,19 @@ export const navigation = [
   //   href: "/dashboard/agentic-rag",
   //   enabled: true,
   // },
+  // {
+  //   name: "AI School Agent",
+  //   href: "/dashboard/ai-school-agent",
+  //   enabled: false,
+  // },
   {
-    name: "AI School Agent",
-    href: "/dashboard/ai-school-agent",
+    name: "Remotely Hosted Agent",
+    href: "/dashboard/remote-agent",
+    enabled: true,
+  },
+  {
+    name: "Locally Hosted Agent",
+    href: "/dashboard/local-agent",
     enabled: true,
   },
   // {

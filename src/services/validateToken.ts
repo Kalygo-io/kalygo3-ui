@@ -11,6 +11,8 @@ export async function validateToken(token: string) {
     }
   );
 
+  console.log("resp.ok: ", resp.ok);
+
   if (!resp.ok) {
     throw new Error("Failed to validate token");
   }

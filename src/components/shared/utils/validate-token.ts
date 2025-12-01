@@ -9,12 +9,18 @@ export async function protectedPageGuard() {
     console.log("! protectedPageGuard !");
 
     const cookieStore = cookies();
+
+    console.log("cookieStore: ", cookieStore);
+
     const jwtCookie = cookieStore.get("jwt");
+
+    console.log("jwtCookie: ", jwtCookie?.value);
 
     if (!jwtCookie?.value) return redirect("/auth");
 
     await validateToken(jwtCookie?.value);
   } catch (error) {
+    console.log("!!! error !!!: ", error);
     return redirect("/auth");
   }
 }
