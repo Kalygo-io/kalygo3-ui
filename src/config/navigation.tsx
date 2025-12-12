@@ -12,7 +12,7 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
-    name: "Apps",
+    name: "Playground",
     enabled: true,
     children: [
       {

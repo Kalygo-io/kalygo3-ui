@@ -15,7 +15,7 @@ export interface KbStats {
 export async function callGetAiSchoolKbStats(): Promise<KbStats> {
   try {
     const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/ai-school-agent/kb-stats`,
+      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/kalygo-agent/kb-stats`,
       {
         method: "GET",
         headers: {
