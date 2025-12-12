@@ -23,7 +23,8 @@ function AppCard({
 }: AppCardProps) {
   const router = useRouter();
 
-  const handleClick = () => {
+  const handleOpen = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (onClick) {
       onClick();
     } else if (href) {
@@ -33,12 +34,12 @@ function AppCard({
 
   return (
     <div
-      onClick={handleClick}
       className={`
         bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6
-        transition-all duration-200 cursor-pointer
-        hover:shadow-lg hover:scale-[1.02] hover:border-blue-500/50
-        ${isComingSoon ? "opacity-60 cursor-not-allowed" : ""}
+        transition-all duration-200
+        hover:shadow-lg hover:border-gray-600/50
+        flex flex-col
+        ${isComingSoon ? "opacity-60" : ""}
       `}
     >
       <div className="flex items-start justify-between mb-4">
@@ -49,7 +50,17 @@ function AppCard({
           </span>
         )}
       </div>
-      {description && <p className="text-sm text-gray-400">{description}</p>}
+      {description && (
+        <p className="text-sm text-gray-400 mb-4 flex-1">{description}</p>
+      )}
+      {!isComingSoon && (href || onClick) && (
+        <button
+          onClick={handleOpen}
+          className="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+        >
+          Open
+        </button>
+      )}
     </div>
   );
 }
@@ -65,7 +76,7 @@ export default function Page() {
             {/* Kalygo Agent Card */}
             <AppCard
               title="Kalygo Agent"
-              description="Intelligent AI agent for conversational interactions and task automation."
+              description="ReAct LLM agent for conversational interactions with a configurable set of tools."
               href="/dashboard/kalygo-agent"
             />
 
