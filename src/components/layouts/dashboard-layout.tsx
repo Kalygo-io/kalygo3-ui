@@ -133,6 +133,56 @@ export function DashboardLayout({
     deleteSession(sessionId);
   };
 
+  // Sub-menu section type definitions
+  type SubMenuSection = {
+    title: string;
+    type: "sessions";
+    sessions: ChatAppSession[];
+  };
+
+  // Determine which sub-menu sections to show based on current pathname
+  // Returns an array to support multiple sections separated by dividers
+  const getSubMenuSections = (): SubMenuSection[] => {
+    const sections: SubMenuSection[] = [];
+
+    // Kalygo Agent page - show past sessions
+    if (pathname.startsWith("/dashboard/kalygo-agent")) {
+      const kalygoSessions = sessions.filter(
+        (session) => session.chatAppId === KALYGO_AGENT_CHAT_APP_ID
+      );
+      sections.push({
+        title: "Past Sessions",
+        type: "sessions",
+        sessions: kalygoSessions,
+      });
+      // Future: Add more sections here, e.g.:
+      // sections.push({
+      //   title: "Templates",
+      //   type: "templates",
+      //   templates: [...]
+      // });
+    }
+
+    // Add more conditions for other apps/pages as needed
+    // Example for Credentials:
+    // if (pathname === "/dashboard/credentials") {
+    //   sections.push({
+    //     title: "API Keys",
+    //     type: "apiKeys",
+    //     apiKeys: [...]
+    //   });
+    //   sections.push({
+    //     title: "OAuth Tokens",
+    //     type: "oauthTokens",
+    //     oauthTokens: [...]
+    //   });
+    // }
+
+    return sections;
+  };
+
+  const subMenuSections = getSubMenuSections();
+
   // debugger;
 
   const SidebarContent = () => (
@@ -245,63 +295,80 @@ export function DashboardLayout({
             </ul>
           </li>
 
-          {/* Divider between Levels and Recent Sessions */}
-          <div className="border-t border-gray-700 mb-6"></div>
+          {/* Divider between Menu and Sub Menu */}
+          {subMenuSections.length > 0 && (
+            <div className="border-t border-gray-700 mb-6"></div>
+          )}
 
-          {/* Recent Sessions Section */}
-          <li className="mb-6">
-            <div className="text-xs font-semibold leading-6 text-gray-400 mb-3 uppercase tracking-wider">
-              Recent Sessions
-            </div>
-            <ul role="list" className="-mx-2 space-y-1">
-              {loading ? (
-                <li className="text-gray-500 text-sm px-2 py-1">Loading...</li>
-              ) : sessions.length === 0 ? (
-                <li className="text-gray-500 text-sm px-2 py-1">
-                  No recent sessions
-                </li>
-              ) : (
-                sessions.map((session, idx) => (
-                  <li key={session.id}>
-                    <div
-                      onClick={() => handleSessionClick(session)}
-                      className="group flex items-center justify-between gap-x-3 rounded-md p-2 text-sm leading-6 text-blue-200 hover:text-white hover:bg-blue-700 cursor-pointer transition-colors duration-150"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">
-                          {session.chatAppId}
-                        </div>
-                        <div className="text-xs text-gray-400 truncate">
-                          {new Date(session.createdAt).toLocaleString(
-                            undefined,
-                            {
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            }
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-400 truncate">
-                          {session.sessionId}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) =>
-                          handleDeleteSession(e, session.sessionId)
-                        }
-                        className="opacity-0 group-hover:opacity-100 transition-all duration-150 p-1 hover:bg-red-600 rounded"
-                      >
-                        <TrashIcon className="h-4 w-4 text-red-400 hover:text-red-200" />
-                      </button>
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
-          </li>
+          {/* Sub Menu Sections - Context-aware based on selected menu option */}
+          {subMenuSections.length > 0 &&
+            subMenuSections.map((section, sectionIndex) => (
+              <li key={`submenu-${sectionIndex}`} className="mb-6">
+                {/* Divider between sub-menu sections (not before first section) */}
+                {sectionIndex > 0 && (
+                  <div className="border-t border-gray-700 mb-6"></div>
+                )}
+
+                {/* Sub-menu section title - dynamic based on menu option */}
+                <div className="text-xs font-semibold leading-6 text-gray-400 mb-3 uppercase tracking-wider">
+                  {section.title}
+                </div>
+
+                {/* Sub-menu section content */}
+                {section.type === "sessions" && (
+                  <ul role="list" className="-mx-2 space-y-1">
+                    {loading ? (
+                      <li className="text-gray-500 text-sm px-2 py-1">
+                        Loading...
+                      </li>
+                    ) : section.sessions.length === 0 ? (
+                      <li className="text-gray-500 text-sm px-2 py-1">
+                        No sessions
+                      </li>
+                    ) : (
+                      section.sessions.map((session) => (
+                        <li key={session.id}>
+                          <div
+                            onClick={() => handleSessionClick(session)}
+                            className="group flex items-center justify-between gap-x-3 rounded-md p-2 text-sm leading-6 text-blue-200 hover:text-white hover:bg-blue-700 cursor-pointer transition-colors duration-150"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">
+                                {session.chatAppId}
+                              </div>
+                              <div className="text-xs text-gray-400 truncate">
+                                {new Date(session.createdAt).toLocaleString(
+                                  undefined,
+                                  {
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                  }
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-400 truncate">
+                                {session.sessionId}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) =>
+                                handleDeleteSession(e, session.sessionId)
+                              }
+                              className="opacity-0 group-hover:opacity-100 transition-all duration-150 p-1 hover:bg-red-600 rounded"
+                            >
+                              <TrashIcon className="h-4 w-4 text-red-400 hover:text-red-200" />
+                            </button>
+                          </div>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </li>
+            ))}
         </ul>
 
         {/* Divider before bottom actions */}
