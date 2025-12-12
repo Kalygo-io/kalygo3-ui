@@ -127,7 +127,7 @@ export function DashboardLayout({
           {/* Levels Section */}
           <li className="mb-6">
             <div className="text-xs font-semibold leading-6 text-gray-400 mb-3 uppercase tracking-wider">
-              Apps
+              Menu
             </div>
             <ul role="list" className="-mx-2 space-y-1">
               {navigation.map((item, navItemIndex) => (

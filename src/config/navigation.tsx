@@ -74,11 +74,16 @@ export const navigation = [
     href: "/dashboard/kalygo-agent",
     enabled: true,
   },
-  // {
-  //   name: "Locally Hosted Agent",
-  //   href: "/dashboard/local-agent",
-  //   enabled: true,
-  // },
+  {
+    name: "Credentials",
+    href: "/dashboard/credentials",
+    enabled: true,
+  },
+  {
+    name: "Settings",
+    href: "/dashboard/settings",
+    enabled: true,
+  },
   // {
   //   name: "JWT Agent",
   //   href: "/dashboard/jwt-agent",
