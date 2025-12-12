@@ -1,5 +1,5 @@
-import { ChatMessage } from "@/components/remote-agent-chat/chat-message";
-import { ToolStatus } from "@/components/remote-agent-chat/tool-status";
+import { ChatMessage } from "@/components/local-agent-chat/chat-message";
+import { ToolStatus } from "@/components/local-agent-chat/tool-status";
 import { Message } from "@/ts/types/Message";
 
 export interface P {
