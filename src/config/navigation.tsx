@@ -70,15 +70,15 @@ export const navigation = [
   //   enabled: false,
   // },
   {
-    name: "Remotely Hosted Agent",
-    href: "/dashboard/remote-agent",
+    name: "Kalygo Agent",
+    href: "/dashboard/kalygo-agent",
     enabled: true,
   },
-  {
-    name: "Locally Hosted Agent",
-    href: "/dashboard/local-agent",
-    enabled: true,
-  },
+  // {
+  //   name: "Locally Hosted Agent",
+  //   href: "/dashboard/local-agent",
+  //   enabled: true,
+  // },
   // {
   //   name: "JWT Agent",
   //   href: "/dashboard/jwt-agent",

@@ -3,11 +3,11 @@
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/remote-agent/chat-session-context";
-import { ChatList } from "@/components/remote-agent-chat/chat-list";
+} from "@/app/dashboard/kalygo-agent/chat-session-context";
+import { ChatList } from "@/components/kalygo-agent-chat/chat-list";
 import { ChatPanel } from "@/components/shared/chat/chat-panel";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
-import { PromptForm } from "@/components/remote-agent-chat/prompt-form";
+import { PromptForm } from "@/components/kalygo-agent-chat/prompt-form";
 import { useScrollAnchor } from "@/shared/hooks/use-scroll-anchor";
 import { cn } from "@/shared/utils";
 import { useContext, useEffect, useState } from "react";
@@ -183,7 +183,7 @@ export function Chat({ id, className }: ChatProps) {
                 content={
                   <>
                     <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
-                      Remotely Hosted Agent 🧿
+                      Kalygo Agent 🧿
                     </h1>
                   </>
                 }

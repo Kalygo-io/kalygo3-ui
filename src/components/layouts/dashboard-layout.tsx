@@ -32,6 +32,7 @@ import {
   PERSISTENT_MEMORY_CHAT_APP_ID,
   REACT_CHAT_APP_ID,
   JWT_AGENT_CHAT_APP_ID,
+  KALYGO_AGENT_CHAT_APP_ID,
 } from "@/ts/types/ChatAppIds";
 
 function classNames(...classes: string[]) {
@@ -88,6 +89,9 @@ export function DashboardLayout({
     } else if (session.chatAppId === JWT_AGENT_CHAT_APP_ID) {
       router.push(`/dashboard/jwt-agent?session=${session.sessionId}`);
       setSidebarOpen(false);
+    } else if (session.chatAppId === KALYGO_AGENT_CHAT_APP_ID) {
+      router.push(`/dashboard/kalygo-agent?session=${session.sessionId}`);
+      setSidebarOpen(false);
     } else {
       errorToast(`Session ${session.chatAppId} is not supported yet`);
     }
@@ -123,7 +127,7 @@ export function DashboardLayout({
           {/* Levels Section */}
           <li className="mb-6">
             <div className="text-xs font-semibold leading-6 text-gray-400 mb-3 uppercase tracking-wider">
-              Agents
+              Apps
             </div>
             <ul role="list" className="-mx-2 space-y-1">
               {navigation.map((item, navItemIndex) => (

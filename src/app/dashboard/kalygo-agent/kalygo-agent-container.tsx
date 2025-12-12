@@ -3,18 +3,18 @@
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/remote-agent/chat-session-context";
+} from "@/app/dashboard/kalygo-agent/chat-session-context";
 import {
   chatReducer,
   initialState,
-} from "@/app/dashboard/remote-agent/chat-session-reducer";
-import { Chat as RemoteAgentChat } from "@/components/remote-agent-chat/chat";
+} from "@/app/dashboard/kalygo-agent/chat-session-reducer";
+import { Chat as KalygoAgentChat } from "@/components/kalygo-agent-chat/chat";
 import { useReducer, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useChatSessions } from "@/shared/hooks/use-chat-sessions";
-import { REMOTE_AGENT_CHAT_APP_ID } from "@/ts/types/ChatAppIds";
+import { KALYGO_AGENT_CHAT_APP_ID } from "@/ts/types/ChatAppIds";
 
-export function RemoteAgentContainer() {
+export function KalygoAgentContainer() {
   const [chat, dispatch] = useReducer(chatReducer, initialState);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -54,14 +54,14 @@ export function RemoteAgentContainer() {
         } else if (session) {
           // Session exists but has no messages, this is fine
         } else {
-          const newSession = await createSession(REMOTE_AGENT_CHAT_APP_ID);
+          const newSession = await createSession(KALYGO_AGENT_CHAT_APP_ID);
           const url = new URL(window.location.href);
           url.searchParams.set("session", newSession.sessionId);
           window.history.replaceState({}, "", url.toString());
         }
       } else if (!sessionCreatedRef.current) {
         sessionCreatedRef.current = true;
-        const newSession = await createSession(REMOTE_AGENT_CHAT_APP_ID);
+        const newSession = await createSession(KALYGO_AGENT_CHAT_APP_ID);
         const url = new URL(window.location.href);
         url.searchParams.set("session", newSession.sessionId);
         window.history.replaceState({}, "", url.toString());
@@ -74,7 +74,7 @@ export function RemoteAgentContainer() {
   return (
     <ChatContext.Provider value={chat}>
       <ChatDispatchContext.Provider value={dispatch}>
-        <RemoteAgentChat />
+        <KalygoAgentChat />
       </ChatDispatchContext.Provider>
     </ChatContext.Provider>
   );
