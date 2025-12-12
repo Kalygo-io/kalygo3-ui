@@ -83,7 +83,7 @@ export default function Page() {
             {/* Cliff Notes Generator Card */}
             <AppCard
               title="Cliff Notes Generator"
-              description="Generate concise summaries and key insights from long-form content."
+              description="Generate customizable summaries and key insights from vast amounts of data."
               isComingSoon={true}
             />
 
