@@ -8,7 +8,7 @@ import {
 } from "@/app/dashboard/kalygo-agent/chat-session-context";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { nanoid } from "@/shared/utils";
-import { callRemoteAgent } from "@/services/callRemoteAgent";
+import { callKalygoAgent } from "@/services/callKalygoAgent";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { StopIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
 
@@ -76,7 +76,7 @@ export function PromptForm({
             payload: true,
           });
 
-          await callRemoteAgent(sessionId, prompt, dispatch, abortController);
+          await callKalygoAgent(sessionId, prompt, dispatch, abortController);
 
           dispatch({
             type: "SET_COMPLETION_LOADING",

@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import React, { Suspense } from "react";
+import { CredentialsContainer } from "./credentials-container";
 
 export const dynamic = "force-dynamic";
 
@@ -7,11 +8,9 @@ export default function Page() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <DashboardLayout>
-        <>
-          <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
-            Credentials
-          </h1>
-        </>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <CredentialsContainer />
+        </div>
       </DashboardLayout>
     </Suspense>
   );
