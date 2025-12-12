@@ -106,8 +106,8 @@ export function LandingPage() {
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Interact with real-world applications with our battle-tested
-            platform. Learn by doing.
+            Interact with real-world applications through our battle-tested
+            platform. Experience not theory.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-16">
