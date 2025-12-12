@@ -10,12 +10,15 @@ import {
   ChartBarIcon,
   CodeBracketIcon,
   RocketLaunchIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
+
+import { TbPlayFootball } from "react-icons/tb";
 
 // Social Media Icons
 const InstagramIcon = () => (
   <svg
-    className="w-6 h-6"
+    className="w-6 h-6 text-pink-400"
     fill="currentColor"
     viewBox="0 0 24 24"
     aria-hidden="true"
@@ -30,7 +33,7 @@ const InstagramIcon = () => (
 
 const YouTubeIcon = () => (
   <svg
-    className="w-6 h-6"
+    className="w-6 h-6 text-red-400"
     fill="currentColor"
     viewBox="0 0 24 24"
     aria-hidden="true"
@@ -45,7 +48,7 @@ const YouTubeIcon = () => (
 
 const LinkedInIcon = () => (
   <svg
-    className="w-6 h-6"
+    className="w-6 h-6 text-blue-400"
     fill="currentColor"
     viewBox="0 0 24 24"
     aria-hidden="true"
@@ -89,7 +92,7 @@ export function LandingPage() {
       <div className="container mx-auto px-6 py-20">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full mb-8">
-            <AcademicCapIcon className="w-5 h-5 text-blue-400" />
+            <TbPlayFootball className="w-5 h-5" style={{ stroke: "#60a5fa" }} />
             <span className="text-blue-400 text-sm font-medium">
               Welcome to the playground
             </span>
@@ -127,7 +130,7 @@ export function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8 mt-20">
             <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105">
               <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
-                <BoltIcon className="w-6 h-6 text-blue-400" />
+                <BoltIcon className="w-6 h-6" style={{ stroke: "#60a5fa" }} />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Learn</h3>
               <p className="text-gray-400">Accelerate your journey.</p>
@@ -135,7 +138,10 @@ export function LandingPage() {
 
             <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-purple-500/50 transition-all hover:scale-105">
               <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <AcademicCapIcon className="w-6 h-6 text-purple-400" />
+                <AcademicCapIcon
+                  className="w-6 h-6"
+                  style={{ stroke: "#a78bfa" }}
+                />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
                 Progress
@@ -145,7 +151,10 @@ export function LandingPage() {
 
             <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105">
               <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-4">
-                <ShieldCheckIcon className="w-6 h-6 text-green-400" />
+                <ShieldCheckIcon
+                  className="w-6 h-6"
+                  style={{ stroke: "#4ade80" }}
+                />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
                 Production Ready
@@ -164,40 +173,51 @@ export function LandingPage() {
               How It Works
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              A simple, powerful platform designed for hands-on learning
+              Kalygo is an experiential platform designed for do-ers where you
+              learn advanced open source software skills and techniques by
+              implementing real-world applications.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center p-8 bg-gray-800/30 rounded-xl border border-gray-700/30">
               <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CodeBracketIcon className="w-8 h-8 text-blue-400" />
+                <CodeBracketIcon
+                  className="w-8 h-8"
+                  style={{ stroke: "#60a5fa" }}
+                />
               </div>
               <h3 className="text-2xl font-semibold text-white mb-4">
                 1. Explore
               </h3>
               <p className="text-gray-400">
-                Browse through our collection of interactive demos and tutorials
-                covering the latest open source technologies.
+                Browse the Kalygo playground to see what you can build and how
+                to build it.
               </p>
             </div>
 
             <div className="text-center p-8 bg-gray-800/30 rounded-xl border border-gray-700/30">
               <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <SparklesIcon className="w-8 h-8 text-purple-400" />
+                <SparklesIcon
+                  className="w-8 h-8"
+                  style={{ stroke: "#a78bfa" }}
+                />
               </div>
               <h3 className="text-2xl font-semibold text-white mb-4">
                 2. Experiment
               </h3>
               <p className="text-gray-400">
-                Hands-on experimentation with real-world tools and frameworks
-                in a safe, controlled environment.
+                Hands-on experimentation with real-world tools and frameworks in
+                a safe, controlled environment.
               </p>
             </div>
 
             <div className="text-center p-8 bg-gray-800/30 rounded-xl border border-gray-700/30">
               <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <RocketLaunchIcon className="w-8 h-8 text-green-400" />
+                <RocketLaunchIcon
+                  className="w-8 h-8"
+                  style={{ stroke: "#4ade80" }}
+                />
               </div>
               <h3 className="text-2xl font-semibold text-white mb-4">
                 3. Master
@@ -227,7 +247,10 @@ export function LandingPage() {
             <div className="p-8 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl border border-blue-700/30 hover:border-blue-500/50 transition-all">
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <SparklesIcon className="w-6 h-6 text-blue-400" />
+                  <SparklesIcon
+                    className="w-6 h-6"
+                    style={{ stroke: "#60a5fa" }}
+                  />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
@@ -244,7 +267,10 @@ export function LandingPage() {
             <div className="p-8 bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-xl border border-purple-700/30 hover:border-purple-500/50 transition-all">
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <ChartBarIcon className="w-6 h-6 text-purple-400" />
+                  <MagnifyingGlassIcon
+                    className="w-6 h-6"
+                    style={{ stroke: "#a78bfa" }}
+                  />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
@@ -261,7 +287,10 @@ export function LandingPage() {
             <div className="p-8 bg-gradient-to-br from-green-900/20 to-blue-900/20 rounded-xl border border-green-700/30 hover:border-green-500/50 transition-all">
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <CodeBracketIcon className="w-6 h-6 text-green-400" />
+                  <CodeBracketIcon
+                    className="w-6 h-6"
+                    style={{ stroke: "#4ade80" }}
+                  />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
@@ -278,7 +307,10 @@ export function LandingPage() {
             <div className="p-8 bg-gradient-to-br from-pink-900/20 to-orange-900/20 rounded-xl border border-pink-700/30 hover:border-pink-500/50 transition-all">
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 bg-pink-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <ShieldCheckIcon className="w-6 h-6 text-pink-400" />
+                  <ShieldCheckIcon
+                    className="w-6 h-6"
+                    style={{ stroke: "#f472b6" }}
+                  />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
@@ -311,28 +343,34 @@ export function LandingPage() {
               href="https://www.instagram.com/kalygo.io"
               target="_blank"
               rel="noopener noreferrer"
-              className="group p-4 bg-gray-800/50 hover:bg-gradient-to-br hover:from-pink-500/20 hover:to-purple-500/20 rounded-xl border border-gray-700/50 hover:border-pink-500/50 transition-all hover:scale-110"
+              className="group p-4 bg-gray-800/50 hover:bg-gradient-to-br hover:from-pink-500/20 hover:to-purple-500/20 rounded-xl border border-gray-700/50 hover:border-pink-500/50 transition-all hover:scale-110 flex items-center justify-center"
               aria-label="Instagram"
             >
-              <InstagramIcon />
+              <div className="w-12 h-12 bg-pink-500/20 rounded-lg border border-pink-500/30 flex items-center justify-center">
+                <InstagramIcon />
+              </div>
             </a>
             <a
               href="https://www.youtube.com/@kalygo"
               target="_blank"
               rel="noopener noreferrer"
-              className="group p-4 bg-gray-800/50 hover:bg-gradient-to-br hover:from-red-500/20 hover:to-pink-500/20 rounded-xl border border-gray-700/50 hover:border-red-500/50 transition-all hover:scale-110"
+              className="group p-4 bg-gray-800/50 hover:bg-gradient-to-br hover:from-red-500/20 hover:to-pink-500/20 rounded-xl border border-gray-700/50 hover:border-red-500/50 transition-all hover:scale-110 flex items-center justify-center"
               aria-label="YouTube"
             >
-              <YouTubeIcon />
+              <div className="w-12 h-12 bg-red-500/20 rounded-lg border border-red-500/30 flex items-center justify-center">
+                <YouTubeIcon />
+              </div>
             </a>
             <a
               href="https://www.linkedin.com/company/93095976"
               target="_blank"
               rel="noopener noreferrer"
-              className="group p-4 bg-gray-800/50 hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-cyan-500/20 rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-110"
+              className="group p-4 bg-gray-800/50 hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-cyan-500/20 rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-110 flex items-center justify-center"
               aria-label="LinkedIn"
             >
-              <LinkedInIcon />
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg border border-blue-500/30 flex items-center justify-center">
+                <LinkedInIcon />
+              </div>
             </a>
           </div>
         </div>
@@ -346,13 +384,13 @@ export function LandingPage() {
               Ready to Get Started?
             </h2>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join thousands of developers learning and building with Kalygo
+              Join the Kalygo community to get started.
             </p>
             <Link
               href="/signup"
               className="inline-flex items-center space-x-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-lg transition-all hover:scale-105 shadow-xl hover:shadow-blue-500/50"
             >
-              <span>Start Learning Today</span>
+              <span>Start Living Today</span>
               <ArrowRightIcon className="w-5 h-5" />
             </Link>
           </div>
@@ -371,8 +409,7 @@ export function LandingPage() {
                 <span className="text-2xl font-bold text-white">Kalygo</span>
               </div>
               <p className="text-gray-400 text-sm">
-                Master open source software through hands-on learning and
-                experimentation.
+                Master open source software through hands-on implementation.
               </p>
             </div>
 
@@ -401,28 +438,34 @@ export function LandingPage() {
                   href="https://www.instagram.com/kalygo.io"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-pink-400 transition-colors"
+                  className="hover:opacity-80 transition-opacity"
                   aria-label="Instagram"
                 >
-                  <InstagramIcon />
+                  <div className="w-10 h-10 bg-pink-500/20 rounded-lg border border-pink-500/30 flex items-center justify-center">
+                    <InstagramIcon />
+                  </div>
                 </a>
                 <a
                   href="https://www.youtube.com/@kalygo"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-red-400 transition-colors"
+                  className="hover:opacity-80 transition-opacity"
                   aria-label="YouTube"
                 >
-                  <YouTubeIcon />
+                  <div className="w-10 h-10 bg-red-500/20 rounded-lg border border-red-500/30 flex items-center justify-center">
+                    <YouTubeIcon />
+                  </div>
                 </a>
                 <a
                   href="https://www.linkedin.com/company/93095976"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-blue-400 transition-colors"
+                  className="hover:opacity-80 transition-opacity"
                   aria-label="LinkedIn"
                 >
-                  <LinkedInIcon />
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg border border-blue-500/30 flex items-center justify-center">
+                    <LinkedInIcon />
+                  </div>
                 </a>
               </div>
             </div>

@@ -21,6 +21,8 @@ const config: Config = {
       green: colors.green,
       red: colors.red,
       orange: colors.orange,
+      pink: colors.pink,
+      purple: colors.purple,
       // Kathryn Grayson Nanz
       text_default_color: "#fff",
       default_background_color: "#000",

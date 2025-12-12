@@ -10,17 +10,17 @@ export async function protectedPageGuard() {
 
     const cookieStore = cookies();
 
-    console.log("cookieStore: ", cookieStore);
+    // console.log("cookieStore: ", cookieStore);
 
     const jwtCookie = cookieStore.get("jwt");
 
-    console.log("jwtCookie: ", jwtCookie?.value);
+    // console.log("jwtCookie: ", jwtCookie?.value);
 
-    if (!jwtCookie?.value) return redirect("/auth");
+    if (!jwtCookie?.value) return redirect("/");
 
     await validateToken(jwtCookie?.value);
   } catch (error) {
     console.log("!!! error !!!: ", error);
-    return redirect("/auth");
+    return redirect("/");
   }
 }
