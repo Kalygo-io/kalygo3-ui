@@ -16,7 +16,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   TrashIcon,
-  Cog6ToothIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
@@ -48,6 +48,9 @@ export function DashboardLayout({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set()
+  );
   // Handle current session deletion
   const currentSessionId = searchParams.get("session");
   const handleCurrentSessionDeleted = useCallback(() => {
@@ -72,6 +75,34 @@ export function DashboardLayout({
 
   const segments = pathname.split("/");
   const current = segments[segments.length - 1];
+
+  // Initialize expanded sections based on current path
+  useEffect(() => {
+    const newExpanded = new Set<string>();
+    navigation.forEach((item) => {
+      if (item.children) {
+        const isActive = item.children.some(
+          (child) => child.href && pathname.startsWith(child.href)
+        );
+        if (isActive) {
+          newExpanded.add(item.name);
+        }
+      }
+    });
+    setExpandedSections(newExpanded);
+  }, [pathname]);
+
+  const toggleSection = (sectionName: string) => {
+    setExpandedSections((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionName)) {
+        newSet.delete(sectionName);
+      } else {
+        newSet.add(sectionName);
+      }
+      return newSet;
+    });
+  };
 
   const handleSessionClick = (session: ChatAppSession) => {
     if (session.chatAppId === PERSISTENT_MEMORY_CHAT_APP_ID) {
@@ -124,24 +155,79 @@ export function DashboardLayout({
       {/* Navigation Sections */}
       <nav className="flex flex-1 flex-col">
         <ul role="list" className="flex flex-1 flex-col">
-          {/* Levels Section */}
+          {/* Navigation Section */}
           <li className="mb-6">
             <div className="text-xs font-semibold leading-6 text-gray-400 mb-3 uppercase tracking-wider">
               Menu
             </div>
             <ul role="list" className="-mx-2 space-y-1">
-              {navigation.map((item, navItemIndex) => (
+              {navigation.map((item) => (
                 <li key={item.name}>
-                  {item.enabled ? (
+                  {item.children ? (
+                    // Parent item with children (expandable)
+                    <div>
+                      <button
+                        onClick={() => toggleSection(item.name)}
+                        className={classNames(
+                          "w-full group flex items-center justify-between gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold cursor-pointer transition-colors duration-150",
+                          expandedSections.has(item.name)
+                            ? "text-white bg-blue-700"
+                            : "text-blue-200 hover:text-white hover:bg-blue-700"
+                        )}
+                      >
+                        <span>{item.name}</span>
+                        <ChevronRightIcon
+                          className={classNames(
+                            "h-4 w-4 transition-transform duration-200",
+                            expandedSections.has(item.name) ? "rotate-90" : ""
+                          )}
+                        />
+                      </button>
+                      {expandedSections.has(item.name) && (
+                        <ul className="ml-4 mt-1 space-y-1">
+                          {item.children.map((child) => (
+                            <li key={child.name}>
+                              {child.enabled ? (
+                                <span
+                                  onClick={() => {
+                                    if (child.href) {
+                                      router.push(child.href);
+                                      setSidebarOpen(false);
+                                    }
+                                  }}
+                                  className={classNames(
+                                    child.href && pathname === child.href
+                                      ? "bg-blue-700 text-white"
+                                      : "text-blue-200 hover:text-white hover:bg-blue-700",
+                                    "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-medium cursor-pointer transition-colors duration-150"
+                                  )}
+                                >
+                                  {child.name}
+                                </span>
+                              ) : (
+                                <span className="text-gray-500 cursor-default group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-medium">
+                                  {child.name}
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : // Single item without children
+                  item.enabled ? (
                     <span
                       onClick={() => {
-                        router.push(item.href);
-                        setSidebarOpen(false);
+                        if (item.href) {
+                          router.push(item.href);
+                          setSidebarOpen(false);
+                        }
                       }}
                       className={classNames(
-                        item.href.split("/")[
-                          item.href.split("/").length - 1
-                        ] === current
+                        item.href &&
+                          item.href.split("/")[
+                            item.href.split("/").length - 1
+                          ] === current
                           ? "bg-blue-700 text-white"
                           : "text-blue-200 hover:text-white hover:bg-blue-700",
                         "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold cursor-pointer transition-colors duration-150"
@@ -221,27 +307,9 @@ export function DashboardLayout({
         {/* Divider before bottom actions */}
         <div className="border-t border-gray-700 mb-6"></div>
 
-        {/* Settings and Sign Out Section */}
+        {/* Sign Out Section */}
         <div className="pb-6">
           <ul className="space-y-1">
-            <li>
-              <span
-                onClick={() => {
-                  router.push("/dashboard/settings");
-                  setSidebarOpen(false);
-                }}
-                className={classNames(
-                  "cursor-pointer text-blue-200 hover:text-white hover:bg-blue-700",
-                  "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors duration-150"
-                )}
-              >
-                <Cog6ToothIcon
-                  aria-hidden="true"
-                  className="h-6 w-6 shrink-0 text-blue-200 group-hover:text-white"
-                />
-                Settings
-              </span>
-            </li>
             <li>
               <span
                 onClick={async () => {
