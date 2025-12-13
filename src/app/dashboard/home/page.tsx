@@ -18,10 +18,8 @@ export default function Page() {
               to arrive at the current form you see before you.
             </p>
             <p className="text-lg md:text-xl text-gray-300 leading-relaxed mb-6">
-              Kalygo is extremely feedback-driven, so feel free to send us your
-              ideas with feature requests or directions you&apos;d like the
-              platform to take. We look forward to getting to know you through
-              all of the tracking features currently in place.
+              Feel free to send us your ideas with feature requests. We look
+              forward to getting to know you.
             </p>
           </div>
         </div>

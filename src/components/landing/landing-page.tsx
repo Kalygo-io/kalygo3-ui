@@ -144,7 +144,7 @@ export function LandingPage() {
           {/* Features Grid */}
           <div className="grid md:grid-cols-3 gap-8 mt-20">
             <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
                 <BoltIcon className="w-6 h-6" style={{ stroke: "#60a5fa" }} />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Learn</h3>
@@ -152,7 +152,7 @@ export function LandingPage() {
             </div>
 
             <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-purple-500/50 transition-all hover:scale-105">
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
                 <AcademicCapIcon
                   className="w-6 h-6"
                   style={{ stroke: "#a78bfa" }}
@@ -165,7 +165,7 @@ export function LandingPage() {
             </div>
 
             <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105">
-              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
                 <ShieldCheckIcon
                   className="w-6 h-6"
                   style={{ stroke: "#4ade80" }}
@@ -189,8 +189,7 @@ export function LandingPage() {
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
               Kalygo is an experiential platform designed for do-ers where you
-              learn advanced open source software skills and techniques by
-              implementing real-world applications.
+              apply advanced open source software skills and techniques.
             </p>
           </div>
 
@@ -206,8 +205,8 @@ export function LandingPage() {
                 1. Explore
               </h3>
               <p className="text-gray-400">
-                Browse the Kalygo playground to see what you can build and how
-                to build it.
+                Browse the Kalygo playground to experience a variety of novel
+                applications.
               </p>
             </div>
 
@@ -222,8 +221,8 @@ export function LandingPage() {
                 2. Experiment
               </h3>
               <p className="text-gray-400">
-                Hands-on experimentation with real-world tools and frameworks in
-                a safe, controlled environment.
+                Hands-on experimentation with real-world tools in a beautifully
+                crafted environment.
               </p>
             </div>
 
@@ -238,7 +237,7 @@ export function LandingPage() {
                 3. Master
               </h3>
               <p className="text-gray-400">
-                Build confidence and expertise through practical experience with
+                Build confidence and expertise by using and analyzing
                 production-ready applications.
               </p>
             </div>
@@ -251,10 +250,10 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              What You Can Build
+              What&apos;s inside?
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Explore powerful capabilities and build amazing applications
+              Explore powerful capabilities and applications
             </p>
           </div>
 
@@ -269,11 +268,10 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    AI & Machine Learning
+                    AI Agents
                   </h3>
                   <p className="text-gray-400">
-                    Build intelligent applications with embeddings, RAG systems,
-                    and agentic workflows.
+                    Interact with customizable LLM-based ReAct agents
                   </p>
                 </div>
               </div>
@@ -292,7 +290,7 @@ export function LandingPage() {
                     Vector Search & Retrieval
                   </h3>
                   <p className="text-gray-400">
-                    Implement semantic search, hybrid search, and advanced
+                    Leverage semantic search, hybrid search, and advanced
                     reranking techniques.
                   </p>
                 </div>
@@ -329,11 +327,10 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    Production-Ready Systems
+                    Production-Grade Systems
                   </h3>
                   <p className="text-gray-400">
-                    Deploy scalable, secure applications with authentication,
-                    payment processing, and more.
+                    State of the Art UIUX across the board.
                   </p>
                 </div>
               </div>
@@ -353,7 +350,7 @@ export function LandingPage() {
             highlights
           </p>
 
-          <div className="flex items-center justify-center space-x-8">
+          <div className="grid grid-cols-2 gap-4 md:flex md:items-center md:justify-center md:space-x-8">
             <a
               href="https://www.instagram.com/kalygo.io"
               target="_blank"

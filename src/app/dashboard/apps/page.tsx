@@ -93,6 +93,13 @@ export default function Page() {
               description="Use an LLM to settle a dispute between two or more parties."
               isComingSoon={true}
             />
+
+            {/* Vector Stores Card */}
+            <AppCard
+              title="Vector Stores"
+              description="Manage and explore vector embeddings for semantic search and retrieval."
+              href="/dashboard/vector-stores"
+            />
           </div>
         </div>
       </DashboardLayout>
