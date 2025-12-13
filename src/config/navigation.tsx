@@ -25,6 +25,11 @@ export const navigation: NavigationItem[] = [
         href: "/dashboard/kalygo-agent",
         enabled: true,
       },
+      {
+        name: "Vector Stores",
+        href: "/dashboard/vector-stores",
+        enabled: true,
+      },
     ],
   },
   {

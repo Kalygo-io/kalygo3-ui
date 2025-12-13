@@ -9,13 +9,19 @@ import {
 } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
-import { TrashIcon, PencilIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import {
+  TrashIcon,
+  PencilIcon,
+  EyeIcon,
+  EyeSlashIcon,
+} from "@heroicons/react/24/outline";
 
 // Helper function to format service names for display
 function formatServiceName(serviceName: ServiceName): string {
   const displayNames: Record<ServiceName, string> = {
     [ServiceName.OPENAI_API_KEY]: "OpenAI API Key",
     [ServiceName.ANTHROPIC_API_KEY]: "Anthropic API Key",
+    [ServiceName.PINECONE_API_KEY]: "Pinecone API Key",
   };
   return displayNames[serviceName] || serviceName;
 }
@@ -99,7 +105,7 @@ export function CredentialsContainer() {
     try {
       const detail = await credentialService.getCredential(credentialId);
       setEditingCredential(detail);
-      setShowApiKey((prev) => ({ ...prev, [credentialId]: true }));
+      setShowApiKey((prev) => ({ ...prev, [credentialId]: false }));
     } catch (error: any) {
       errorToast(error.message || "Failed to load API key");
     }
@@ -164,9 +170,7 @@ export function CredentialsContainer() {
       {/* Credentials List */}
       {credentials.length === 0 ? (
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
-          <p className="text-gray-400 text-lg mb-4">
-            No credentials found
-          </p>
+          <p className="text-gray-400 text-lg mb-4">No credentials found</p>
           <p className="text-gray-500 text-sm mb-6">
             Get started by adding your first API credential
           </p>
@@ -206,9 +210,9 @@ function CredentialCard({
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-gray-600/50 transition-all duration-200">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-            <h3 className="text-xl font-semibold text-white mb-2">
-              {formatServiceName(credential.service_name)}
-            </h3>
+          <h3 className="text-xl font-semibold text-white mb-2">
+            {formatServiceName(credential.service_name)}
+          </h3>
           <div className="text-xs text-gray-400 space-y-1">
             <div>
               Created: {new Date(credential.created_at).toLocaleDateString()}
@@ -480,4 +484,3 @@ function EditCredentialModal({
     </div>
   );
 }
-

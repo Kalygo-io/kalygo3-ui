@@ -1,6 +1,7 @@
 export enum ServiceName {
   OPENAI_API_KEY = "OPENAI_API_KEY",
   ANTHROPIC_API_KEY = "ANTHROPIC_API_KEY",
+  PINECONE_API_KEY = "PINECONE_API_KEY",
 }
 
 export interface Credential {
