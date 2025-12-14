@@ -270,7 +270,7 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    Custom Tools & Integrations
+                    3rd Party Integrations
                   </h3>
                   <p className="text-gray-400">
                     Extend functionality with custom tools and integrate with
@@ -468,36 +468,10 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row items-center justify-between">
+          <div className="pt-8 border-t border-gray-800 flex items-center justify-center">
             <p className="text-gray-400 text-sm">
               © 2025 Kalygo. All rights reserved.
             </p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <a
-                href="https://www.instagram.com/kalygo.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-pink-400 text-sm transition-colors"
-              >
-                Instagram
-              </a>
-              <a
-                href="https://www.youtube.com/@kalygo"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-red-400 text-sm transition-colors"
-              >
-                YouTube
-              </a>
-              <a
-                href="https://www.linkedin.com/company/93095976"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
-              >
-                LinkedIn
-              </a>
-            </div>
           </div>
         </div>
       </footer>
