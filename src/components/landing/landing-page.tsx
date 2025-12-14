@@ -140,43 +140,6 @@ export function LandingPage() {
               Sign In
             </Link>
           </div>
-
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-3 gap-8 mt-20">
-            <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all hover:scale-105">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <BoltIcon className="w-6 h-6" style={{ stroke: "#60a5fa" }} />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Learn</h3>
-              <p className="text-gray-400">Accelerate your journey.</p>
-            </div>
-
-            <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-purple-500/50 transition-all hover:scale-105">
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <AcademicCapIcon
-                  className="w-6 h-6"
-                  style={{ stroke: "#a78bfa" }}
-                />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                Progress
-              </h3>
-              <p className="text-gray-400">From basics to Advanced.</p>
-            </div>
-
-            <div className="p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 hover:border-green-500/50 transition-all hover:scale-105">
-              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                <ShieldCheckIcon
-                  className="w-6 h-6"
-                  style={{ stroke: "#4ade80" }}
-                />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                Production Ready
-              </h3>
-              <p className="text-gray-400">Solve real-world problems.</p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -330,7 +293,7 @@ export function LandingPage() {
                     Production-Grade Systems
                   </h3>
                   <p className="text-gray-400">
-                    State of the Art UIUX across the board.
+                    State of the Art UI/UX across the board.
                   </p>
                 </div>
               </div>
