@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   vectorStoresService,
   Index,
@@ -15,9 +16,11 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   TrashIcon,
+  ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 
 export function VectorStoresContainer() {
+  const router = useRouter();
   const [indexes, setIndexes] = useState<Index[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIndexes, setExpandedIndexes] = useState<Set<string>>(
@@ -73,9 +76,7 @@ export function VectorStoresContainer() {
       const data = await vectorStoresService.listNamespaces(indexName);
       setIndexNamespaces((prev) => ({ ...prev, [indexName]: data }));
     } catch (error: any) {
-      errorToast(
-        error.message || `Failed to load namespaces for ${indexName}`
-      );
+      errorToast(error.message || `Failed to load namespaces for ${indexName}`);
     } finally {
       setLoadingNamespaces((prev) => ({ ...prev, [indexName]: false }));
     }
@@ -175,6 +176,11 @@ export function VectorStoresContainer() {
               loadingNamespaces={loadingNamespaces[index.name] || false}
               onToggleExpansion={() => toggleIndexExpansion(index.name)}
               onCreateNamespace={() => setShowCreateNamespaceForm(index.name)}
+              onViewDetails={() =>
+                router.push(
+                  `/dashboard/vector-stores/${encodeURIComponent(index.name)}`
+                )
+              }
             />
           ))}
         </div>
@@ -190,6 +196,7 @@ function IndexCard({
   loadingNamespaces,
   onToggleExpansion,
   onCreateNamespace,
+  onViewDetails,
 }: {
   index: Index;
   isExpanded: boolean;
@@ -197,57 +204,52 @@ function IndexCard({
   loadingNamespaces: boolean;
   onToggleExpansion: () => void;
   onCreateNamespace: () => void;
+  onViewDetails: () => void;
 }) {
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
       {/* Index Header */}
-      <div
-        className="p-6 cursor-pointer hover:bg-gray-800/70 transition-colors"
-        onClick={onToggleExpansion}
-      >
+      <div className="p-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 flex-1">
+          <div
+            className="flex items-center gap-3 flex-1 cursor-pointer hover:bg-gray-800/70 transition-colors -m-2 p-2 rounded-lg"
+            onClick={onToggleExpansion}
+          >
             {isExpanded ? (
               <ChevronDownIcon className="h-5 w-5 text-gray-400" />
             ) : (
               <ChevronRightIcon className="h-5 w-5 text-gray-400" />
             )}
             <div className="flex-1">
-              <h3 className="text-xl font-semibold text-white">
-                {index.name}
-              </h3>
+              <h3 className="text-xl font-semibold text-white">{index.name}</h3>
               <div className="flex gap-4 mt-2 text-sm text-gray-400">
-                {index.dimension && (
-                  <span>Dimension: {index.dimension}</span>
-                )}
+                {index.dimension && <span>Dimension: {index.dimension}</span>}
                 {index.metric && <span>Metric: {index.metric}</span>}
                 {index.pods && <span>Pods: {index.pods}</span>}
                 {index.replicas && <span>Replicas: {index.replicas}</span>}
               </div>
             </div>
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewDetails();
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2 ml-4"
+          >
+            View Details
+            <ArrowRightIcon className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
       {/* Namespaces Section */}
       {isExpanded && (
         <div className="border-t border-gray-700/50 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-semibold text-white">Namespaces</h4>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateNamespace();
-              }}
-              className="bg-green-600 hover:bg-green-700 text-white font-medium py-1.5 px-3 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Create Namespace
-            </button>
-          </div>
-
           {loadingNamespaces ? (
-            <div className="text-gray-400 text-sm py-4">Loading namespaces...</div>
+            <div className="text-gray-400 text-sm py-4">
+              Loading namespaces...
+            </div>
           ) : namespaces.length === 0 ? (
             <div className="text-gray-400 text-sm py-4">
               No namespaces found. Create one to get started.
@@ -332,9 +334,7 @@ function CreateIndexForm({
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-semibold text-white mb-4">
-          Create Index
-        </h2>
+        <h2 className="text-2xl font-semibold text-white mb-4">Create Index</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
