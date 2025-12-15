@@ -242,16 +242,20 @@ class VectorStoresService {
       params.append("end_date", options.end_date);
     }
 
-    // Pagination
-    const limit = options.limit ?? 50;
-    const offset = options.offset ?? 0;
+    // Pagination - ensure values are numbers and not NaN
+    const limit =
+      typeof options.limit === "number" && !isNaN(options.limit)
+        ? Math.max(1, Math.min(500, options.limit))
+        : 50;
+    const offset =
+      typeof options.offset === "number" && !isNaN(options.offset)
+        ? Math.max(0, options.offset)
+        : 0;
     params.append("limit", limit.toString());
     params.append("offset", offset.toString());
 
     const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
-        indexName
-      )}/ingestion-logs?${params.toString()}`,
+      `${API_BASE_URL}/api/vector-stores/ingestion-logs?${params.toString()}`,
       {
         method: "GET",
         headers: {

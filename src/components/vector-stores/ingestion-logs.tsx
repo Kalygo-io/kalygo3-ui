@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   vectorStoresService,
   IngestionLog,
@@ -28,34 +28,43 @@ export function IngestionLogs({
     has_more: boolean;
   } | null>(null);
 
-  const fetchLogs = async (offset: number = 0) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await vectorStoresService.getIngestionLogs(indexName, {
-        limit: 100,
-        offset,
-      });
-      setLogs(response.logs);
-      setPagination({
-        total: response.total,
-        limit: response.limit,
-        offset: response.offset,
-        has_more: response.has_more,
-      });
-    } catch (err: any) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load ingestion logs";
-      setError(errorMessage);
-      errorToast(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchLogs = useCallback(
+    async (offsetValue: number = 0) => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Ensure offset is always a valid number
+        const numOffset =
+          typeof offsetValue === "number" && !isNaN(offsetValue)
+            ? offsetValue
+            : 0;
+
+        const response = await vectorStoresService.getIngestionLogs(indexName, {
+          limit: 100,
+          offset: numOffset,
+        });
+        setLogs(response.logs);
+        setPagination({
+          total: response.total,
+          limit: response.limit,
+          offset: response.offset,
+          has_more: response.has_more,
+        });
+      } catch (err: any) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to load ingestion logs";
+        setError(errorMessage);
+        errorToast(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [indexName]
+  );
 
   useEffect(() => {
-    fetchLogs();
-  }, [indexName, refreshTrigger]);
+    fetchLogs(0);
+  }, [fetchLogs, refreshTrigger]);
 
   const formatDate = (dateString: string) => {
     try {
