@@ -109,9 +109,14 @@ export function ChooseCsvFile(props: Props) {
           results.push(result);
 
           if (result.success) {
-            successToast(`Successfully uploaded ${result.filename}`);
+            const filename = result.filename || file.name;
+            const message =
+              result.message || `Successfully uploaded ${filename}`;
+            successToast(message);
           } else {
-            errorToast(`Failed to upload ${result.filename}: ${result.error}`);
+            const filename = result.filename || file.name;
+            const errorMsg = result.error || "Upload failed";
+            errorToast(`Failed to upload ${filename}: ${errorMsg}`);
           }
         } catch (error) {
           let errorMessage = "Upload failed";
@@ -128,14 +133,11 @@ export function ChooseCsvFile(props: Props) {
           errorToast(`Failed to upload ${file.name}: ${errorMessage}`);
 
           results.push({
-            filename: file.name,
-            total_chunks_created: 0,
-            successful_uploads: 0,
-            failed_uploads: 1,
-            namespace: namespace,
-            file_size_bytes: file.size,
             success: false,
             error: errorMessage,
+            filename: file.name,
+            namespace: namespace,
+            file_size_bytes: file.size,
           });
         }
       }
@@ -284,9 +286,9 @@ export function ChooseCsvFile(props: Props) {
                   <div className="flex items-start justify-between gap-2">
                     <p
                       className="text-sm font-medium text-white truncate flex-1 min-w-0"
-                      title={result.filename}
+                      title={result.filename || "Upload"}
                     >
-                      {result.filename}
+                      {result.filename || "File uploaded"}
                     </p>
                     <span
                       className={`text-xs font-medium text-green-400 flex-shrink-0`}
@@ -294,13 +296,23 @@ export function ChooseCsvFile(props: Props) {
                       {"✓ Success"}
                     </span>
                   </div>
+                  {result.message && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {result.message}
+                    </p>
+                  )}
                 </>
               ) : (
                 <>
                   <div className="flex justify-between items-start">
-                    <span className={`text-xs font-medium text-red-400`}>
-                      {"✗ Error on upload"}
-                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">
+                        {result.filename || "File"}
+                      </p>
+                      <span className={`text-xs font-medium text-red-400`}>
+                        {result.error || "✗ Error on upload"}
+                      </span>
+                    </div>
                   </div>
                 </>
               )}

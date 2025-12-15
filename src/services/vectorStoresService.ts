@@ -27,14 +27,17 @@ export interface CreateNamespaceRequest {
 }
 
 export interface UploadResponse {
-  filename: string;
-  total_chunks_created: number;
-  successful_uploads: number;
-  failed_uploads: number;
-  namespace: string;
-  file_size_bytes: number;
   success: boolean;
+  message?: string;
   error?: string;
+  log_id?: string;
+  batch_number?: string;
+  filename?: string;
+  total_chunks_created?: number;
+  successful_uploads?: number;
+  failed_uploads?: number;
+  namespace?: string;
+  file_size_bytes?: number;
 }
 
 export interface IngestionLog {
@@ -166,16 +169,25 @@ class VectorStoresService {
   async uploadTextFile(
     indexName: string,
     namespace: string,
-    file: File
+    file: File,
+    comment?: string,
+    batchNumber?: string
   ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("index_name", indexName);
     formData.append("namespace", namespace);
 
+    if (comment) {
+      formData.append("comment", comment);
+    }
+
+    if (batchNumber) {
+      formData.append("batch_number", batchNumber);
+    }
+
     const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
-        indexName
-      )}/ingest/text`,
+      `${API_BASE_URL}/api/vector-stores/upload-text`,
       {
         method: "POST",
         body: formData,
@@ -189,16 +201,25 @@ class VectorStoresService {
   async uploadCsvFile(
     indexName: string,
     namespace: string,
-    file: File
+    file: File,
+    comment?: string,
+    batchNumber?: string
   ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("index_name", indexName);
     formData.append("namespace", namespace);
 
+    if (comment) {
+      formData.append("comment", comment);
+    }
+
+    if (batchNumber) {
+      formData.append("batch_number", batchNumber);
+    }
+
     const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
-        indexName
-      )}/ingest/csv`,
+      `${API_BASE_URL}/api/vector-stores/upload-csv`,
       {
         method: "POST",
         body: formData,
