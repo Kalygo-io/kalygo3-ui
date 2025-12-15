@@ -45,15 +45,36 @@ export interface IngestionLog {
   account_id: number;
   provider: string;
   index_name: string;
-  namespace: string;
+  namespace: string | null;
   filenames: string[] | null;
   comment: string | null;
-  vectors_added: number | null;
-  vectors_deleted: number | null;
-  vectors_failed: number | null;
+  vectors_added: number;
+  vectors_deleted: number;
+  vectors_failed: number;
   error_message: string | null;
   error_code: string | null;
   batch_number: string | null;
+}
+
+export interface IngestionLogsListResponse {
+  logs: IngestionLog[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+export interface IngestionLogsFilterOptions {
+  index_name?: string;
+  namespace?: string;
+  operation_type?: string; // INGEST, DELETE, UPDATE
+  status?: string; // SUCCESS, FAILED, PARTIAL, PENDING
+  provider?: string;
+  batch_number?: string;
+  start_date?: string; // ISO format datetime
+  end_date?: string; // ISO format datetime
+  limit?: number; // 1-500, default 50
+  offset?: number; // default 0
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_AI_API_URL;
@@ -190,12 +211,47 @@ class VectorStoresService {
 
   async getIngestionLogs(
     indexName: string,
-    limit: number = 50
-  ): Promise<IngestionLog[]> {
+    options: IngestionLogsFilterOptions = {}
+  ): Promise<IngestionLogsListResponse> {
+    // Build query parameters
+    const params = new URLSearchParams();
+
+    // Always filter by index_name
+    params.append("index_name", indexName);
+
+    // Add optional filters
+    if (options.namespace) {
+      params.append("namespace", options.namespace);
+    }
+    if (options.operation_type) {
+      params.append("operation_type", options.operation_type);
+    }
+    if (options.status) {
+      params.append("status", options.status);
+    }
+    if (options.provider) {
+      params.append("provider", options.provider);
+    }
+    if (options.batch_number) {
+      params.append("batch_number", options.batch_number);
+    }
+    if (options.start_date) {
+      params.append("start_date", options.start_date);
+    }
+    if (options.end_date) {
+      params.append("end_date", options.end_date);
+    }
+
+    // Pagination
+    const limit = options.limit ?? 50;
+    const offset = options.offset ?? 0;
+    params.append("limit", limit.toString());
+    params.append("offset", offset.toString());
+
     const response = await fetch(
       `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
         indexName
-      )}/ingestion-logs?limit=${limit}`,
+      )}/ingestion-logs?${params.toString()}`,
       {
         method: "GET",
         headers: {
@@ -205,7 +261,7 @@ class VectorStoresService {
       }
     );
 
-    return this.handleResponse<IngestionLog[]>(response);
+    return this.handleResponse<IngestionLogsListResponse>(response);
   }
 }
 

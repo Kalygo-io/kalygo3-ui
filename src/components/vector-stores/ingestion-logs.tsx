@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   vectorStoresService,
   IngestionLog,
+  IngestionLogsListResponse,
 } from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
@@ -20,13 +21,28 @@ export function IngestionLogs({
   const [logs, setLogs] = useState<IngestionLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<{
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  } | null>(null);
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (offset: number = 0) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await vectorStoresService.getIngestionLogs(indexName, 100);
-      setLogs(data);
+      const response = await vectorStoresService.getIngestionLogs(indexName, {
+        limit: 100,
+        offset,
+      });
+      setLogs(response.logs);
+      setPagination({
+        total: response.total,
+        limit: response.limit,
+        offset: response.offset,
+        has_more: response.has_more,
+      });
     } catch (err: any) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load ingestion logs";
@@ -119,6 +135,38 @@ export function IngestionLogs({
         </div>
       )}
 
+      {pagination && logs.length > 0 && (
+        <div className="flex items-center justify-between text-sm text-gray-400 mt-4">
+          <div>
+            Showing {pagination.offset + 1}-
+            {Math.min(pagination.offset + pagination.limit, pagination.total)}{" "}
+            of {pagination.total.toLocaleString()} logs
+          </div>
+          <div className="flex gap-2">
+            {pagination.offset > 0 && (
+              <button
+                onClick={() =>
+                  fetchLogs(Math.max(0, pagination.offset - pagination.limit))
+                }
+                disabled={loading}
+                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+            )}
+            {pagination.has_more && (
+              <button
+                onClick={() => fetchLogs(pagination.offset + pagination.limit)}
+                disabled={loading}
+                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {!loading && !error && logs.length > 0 && (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-700">
@@ -199,22 +247,13 @@ export function IngestionLogs({
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
-                    {log.vectors_added !== null &&
-                    log.vectors_added !== undefined
-                      ? log.vectors_added.toLocaleString()
-                      : "N/A"}
+                    {log.vectors_added.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
-                    {log.vectors_deleted !== null &&
-                    log.vectors_deleted !== undefined
-                      ? log.vectors_deleted.toLocaleString()
-                      : "N/A"}
+                    {log.vectors_deleted.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">
-                    {log.vectors_failed !== null &&
-                    log.vectors_failed !== undefined
-                      ? log.vectors_failed.toLocaleString()
-                      : "N/A"}
+                    {log.vectors_failed.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-sm text-red-400 max-w-xs">
                     {log.error_message ? (
