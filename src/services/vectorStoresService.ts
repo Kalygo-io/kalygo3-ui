@@ -26,6 +26,36 @@ export interface CreateNamespaceRequest {
   namespace: string;
 }
 
+export interface UploadResponse {
+  filename: string;
+  total_chunks_created: number;
+  successful_uploads: number;
+  failed_uploads: number;
+  namespace: string;
+  file_size_bytes: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface IngestionLog {
+  id: string;
+  created_at: string;
+  operation_type: string;
+  status: string;
+  account_id: number;
+  provider: string;
+  index_name: string;
+  namespace: string;
+  filenames: string[] | null;
+  comment: string | null;
+  vectors_added: number | null;
+  vectors_deleted: number | null;
+  vectors_failed: number | null;
+  error_message: string | null;
+  error_code: string | null;
+  batch_number: string | null;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_AI_API_URL;
 
 class VectorStoresService {
@@ -63,7 +93,9 @@ class VectorStoresService {
 
   async listNamespaces(indexName: string): Promise<Namespace[]> {
     const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`,
+      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
+        indexName
+      )}/namespaces`,
       {
         method: "GET",
         headers: {
@@ -94,7 +126,9 @@ class VectorStoresService {
     data: CreateNamespaceRequest
   ): Promise<Namespace> {
     const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`,
+      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
+        indexName
+      )}/namespaces`,
       {
         method: "POST",
         headers: {
@@ -107,7 +141,72 @@ class VectorStoresService {
 
     return this.handleResponse<Namespace>(response);
   }
+
+  async uploadTextFile(
+    indexName: string,
+    namespace: string,
+    file: File
+  ): Promise<UploadResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("namespace", namespace);
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
+        indexName
+      )}/ingest/text`,
+      {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      }
+    );
+
+    return this.handleResponse<UploadResponse>(response);
+  }
+
+  async uploadCsvFile(
+    indexName: string,
+    namespace: string,
+    file: File
+  ): Promise<UploadResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("namespace", namespace);
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
+        indexName
+      )}/ingest/csv`,
+      {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      }
+    );
+
+    return this.handleResponse<UploadResponse>(response);
+  }
+
+  async getIngestionLogs(
+    indexName: string,
+    limit: number = 50
+  ): Promise<IngestionLog[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
+        indexName
+      )}/ingestion-logs?limit=${limit}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      }
+    );
+
+    return this.handleResponse<IngestionLog[]>(response);
+  }
 }
 
 export const vectorStoresService = new VectorStoresService();
-

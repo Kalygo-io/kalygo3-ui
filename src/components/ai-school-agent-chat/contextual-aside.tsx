@@ -325,9 +325,8 @@ export function ContextualAside({
                     Ingest Text
                   </h3>
                   <p className="text-white text-sm leading-relaxed">
-                    Upload .txt and .md files to train and improve the AI School
-                    Agent. These files will be processed and added to the
-                    knowledge base.
+                    Upload .txt and .md files. These files will be processed and
+                    added to the knowledge base.
                   </p>
                 </div>
 
