@@ -186,16 +186,35 @@ class VectorStoresService {
       formData.append("batch_number", batchNumber);
     }
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/upload-text`,
-      {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      }
-    );
+    const url = `${API_BASE_URL}/api/vector-stores/upload-text`;
+    console.log("Uploading text to:", url);
+    console.log("Index:", indexName, "Namespace:", namespace);
 
-    return this.handleResponse<UploadResponse>(response);
+    const response = await fetch(url, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "Upload failed:",
+        response.status,
+        response.statusText,
+        errorText
+      );
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.detail || errorJson.message || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
   }
 
   async uploadCsvFile(
@@ -218,16 +237,35 @@ class VectorStoresService {
       formData.append("batch_number", batchNumber);
     }
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/upload-csv`,
-      {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      }
-    );
+    const url = `${API_BASE_URL}/api/vector-stores/upload-csv`;
+    console.log("Uploading CSV to:", url);
+    console.log("Index:", indexName, "Namespace:", namespace);
 
-    return this.handleResponse<UploadResponse>(response);
+    const response = await fetch(url, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "Upload failed:",
+        response.status,
+        response.statusText,
+        errorText
+      );
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.detail || errorJson.message || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
   }
 
   async getIngestionLogs(
