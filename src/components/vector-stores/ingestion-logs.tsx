@@ -43,18 +43,32 @@ export function IngestionLogs({
           limit: 100,
           offset: numOffset,
         });
-        setLogs(response.logs);
-        setPagination({
-          total: response.total,
-          limit: response.limit,
-          offset: response.offset,
-          has_more: response.has_more,
-        });
+
+        console.log("Ingestion logs response:", response);
+        console.log("Logs array:", response.logs);
+        console.log("Logs length:", response.logs?.length);
+
+        // Ensure we have a valid logs array
+        if (response && Array.isArray(response.logs)) {
+          setLogs(response.logs);
+          setPagination({
+            total: response.total || 0,
+            limit: response.limit || 100,
+            offset: response.offset || 0,
+            has_more: response.has_more || false,
+          });
+        } else {
+          console.error("Invalid response structure:", response);
+          setError("Invalid response format from server");
+          setLogs([]);
+        }
       } catch (err: any) {
+        console.error("Error fetching ingestion logs:", err);
         const errorMessage =
           err instanceof Error ? err.message : "Failed to load ingestion logs";
         setError(errorMessage);
         errorToast(errorMessage);
+        setLogs([]);
       } finally {
         setLoading(false);
       }
@@ -138,11 +152,27 @@ export function IngestionLogs({
         </div>
       )}
 
-      {!loading && !error && logs.length === 0 && (
-        <div className="bg-gray-800/50 border border-gray-700/30 rounded-lg p-8 text-center">
-          <p className="text-gray-400">No ingestion logs found</p>
-        </div>
-      )}
+      {!loading &&
+        !error &&
+        logs.length === 0 &&
+        pagination &&
+        pagination.total > 0 && (
+          <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-4">
+            <p className="text-yellow-300 text-sm">
+              Warning: Server reports {pagination.total} logs but none are
+              displayed. Check console for details.
+            </p>
+          </div>
+        )}
+
+      {!loading &&
+        !error &&
+        logs.length === 0 &&
+        (!pagination || pagination.total === 0) && (
+          <div className="bg-gray-800/50 border border-gray-700/30 rounded-lg p-8 text-center">
+            <p className="text-gray-400">No ingestion logs found</p>
+          </div>
+        )}
 
       {pagination && logs.length > 0 && (
         <div className="flex items-center justify-between text-sm text-gray-400 mt-4">

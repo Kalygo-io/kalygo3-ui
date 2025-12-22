@@ -313,18 +313,47 @@ class VectorStoresService {
     params.append("limit", limit.toString());
     params.append("offset", offset.toString());
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/ingestion-logs?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      }
-    );
+    const url = `${API_BASE_URL}/api/vector-stores/ingestion-logs?${params.toString()}`;
+    console.log("Fetching ingestion logs from:", url);
 
-    return this.handleResponse<IngestionLogsListResponse>(response);
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Ingestion logs fetch failed:", response.status, errorText);
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.detail || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log("Ingestion logs raw response:", data);
+    console.log("Response type:", typeof data);
+    console.log("Has logs property:", "logs" in data);
+    console.log("Logs is array:", Array.isArray(data.logs));
+
+    if (!data || typeof data !== "object") {
+      console.error("Invalid response: not an object", data);
+      throw new Error("Invalid response format: expected object");
+    }
+
+    if (!Array.isArray(data.logs)) {
+      console.error("Invalid response: logs is not an array", data);
+      throw new Error("Invalid response format: logs is not an array");
+    }
+
+    return data as IngestionLogsListResponse;
   }
 }
 
