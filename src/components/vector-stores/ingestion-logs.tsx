@@ -122,7 +122,10 @@ export function IngestionLogs({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-white">Ingestion Logs</h3>
         <button
-          onClick={fetchLogs}
+          onClick={(e) => {
+            e.preventDefault();
+            fetchLogs(0);
+          }}
           disabled={loading}
           className="p-2 hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
           title="Refresh logs"
@@ -144,7 +147,10 @@ export function IngestionLogs({
         <div className="bg-red-900/20 border border-red-700/30 rounded-lg p-4">
           <p className="text-red-300 text-sm">{error}</p>
           <button
-            onClick={fetchLogs}
+            onClick={(e) => {
+              e.preventDefault();
+              fetchLogs(0);
+            }}
             className="mt-2 text-red-300 hover:text-red-200 text-sm underline"
           >
             Try again
