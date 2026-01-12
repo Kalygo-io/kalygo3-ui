@@ -100,6 +100,41 @@ export default function Page() {
               description="Manage and explore vector embeddings for semantic search and retrieval."
               href="/dashboard/vector-stores"
             />
+
+            {/* Customer Support Card */}
+            <AppCard
+              title="Customer Support"
+              description="AI-powered customer support system for handling inquiries and resolving issues."
+              href="/dashboard/customer-support"
+            />
+
+            {/* Chatbot Concierge Card */}
+            <AppCard
+              title="Chatbot Concierge"
+              description="Intelligent chatbot assistant for providing personalized concierge services."
+              href="/dashboard/chatbot-concierge"
+            />
+
+            {/* AI Video Automation Card */}
+            <AppCard
+              title="AI Video Automation"
+              description="Automate video creation, editing, and processing with AI-powered tools."
+              href="/dashboard/ai-video-automation"
+            />
+
+            {/* Research Agents Card */}
+            <AppCard
+              title="Research Agents"
+              description="Deploy autonomous research agents to gather and analyze information."
+              href="/dashboard/research-agents"
+            />
+
+            {/* AI Newsletter Card */}
+            <AppCard
+              title="AI Newsletter"
+              description="Generate and curate personalized newsletters using AI content creation."
+              href="/dashboard/ai-newsletter"
+            />
           </div>
         </div>
       </DashboardLayout>
