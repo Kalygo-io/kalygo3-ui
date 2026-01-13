@@ -89,17 +89,17 @@ export function CreateAgentContainer() {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Description
+              System Prompt
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe what this agent does..."
+              placeholder="Enter the system prompt for this agent..."
               rows={4}
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <p className="text-gray-400 text-xs mt-2">
-              Optional: Provide a description of your agent&apos;s purpose and capabilities.
+              Optional: Define the system prompt that guides your agent&apos;s behavior and responses.
             </p>
           </div>
 

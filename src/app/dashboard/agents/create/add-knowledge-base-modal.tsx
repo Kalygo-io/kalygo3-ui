@@ -2,18 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { KnowledgeBase } from "@/services/agentsService";
-import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
+import {
+  vectorStoresService,
+  Index,
+  Namespace,
+} from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
 
-interface CreateKnowledgeBaseModalProps {
+interface AddKnowledgeBaseModalProps {
   onClose: () => void;
   onAdd: (kb: KnowledgeBase) => void;
 }
 
-export function CreateKnowledgeBaseModal({
+export function AddKnowledgeBaseModal({
   onClose,
   onAdd,
-}: CreateKnowledgeBaseModalProps) {
+}: AddKnowledgeBaseModalProps) {
   const [provider, setProvider] = useState<string>("pinecone");
   const [indexes, setIndexes] = useState<Index[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<string>("");
@@ -88,7 +92,7 @@ export function CreateKnowledgeBaseModal({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-semibold text-white mb-4">
-          Create Knowledge Base
+          Add Knowledge Base to Agent
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -122,7 +126,9 @@ export function CreateKnowledgeBaseModal({
                   Index *
                 </label>
                 {loadingIndexes ? (
-                  <div className="text-gray-400 text-sm py-2">Loading indexes...</div>
+                  <div className="text-gray-400 text-sm py-2">
+                    Loading indexes...
+                  </div>
                 ) : (
                   <select
                     value={selectedIndex}
@@ -197,7 +203,8 @@ export function CreateKnowledgeBaseModal({
             <button
               type="submit"
               disabled={
-                provider === "pinecone" && (!selectedIndex || !selectedNamespace)
+                provider === "pinecone" &&
+                (!selectedIndex || !selectedNamespace)
               }
               className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
             >
