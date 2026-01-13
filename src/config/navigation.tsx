@@ -12,6 +12,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Agents",
+    href: "/dashboard/agents",
+    enabled: true,
+  },
+  {
     name: "Playground",
     enabled: true,
     children: [
