@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { agentsService, CreateAgentRequest } from "@/services/agentsService";
+import { agentsService, CreateAgentRequest, KnowledgeBase } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
+import { CreateKnowledgeBaseModal } from "./create-knowledge-base-modal";
 
 export function CreateAgentContainer() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,6 +29,7 @@ export function CreateAgentContainer() {
       const data: CreateAgentRequest = {
         name: name.trim(),
         ...(description.trim() && { description: description.trim() }),
+        ...(knowledgeBases.length > 0 && { knowledge_bases: knowledgeBases }),
       };
       const agent = await agentsService.createAgent(data);
       successToast("Agent created successfully");
@@ -34,6 +39,15 @@ export function CreateAgentContainer() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleAddKnowledgeBase = (kb: KnowledgeBase) => {
+    setKnowledgeBases([...knowledgeBases, kb]);
+    setShowKnowledgeBaseModal(false);
+  };
+
+  const handleRemoveKnowledgeBase = (index: number) => {
+    setKnowledgeBases(knowledgeBases.filter((_, i) => i !== index));
   };
 
   const handleCancel = () => {
@@ -88,6 +102,47 @@ export function CreateAgentContainer() {
               Optional: Provide a description of your agent&apos;s purpose and capabilities.
             </p>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Knowledge Bases
+            </label>
+            <div className="space-y-3">
+              {/* Knowledge Base Tags */}
+              <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 bg-gray-900 border border-gray-700 rounded-lg">
+                {knowledgeBases.length === 0 ? (
+                  <p className="text-gray-500 text-sm py-1">No knowledge bases added</p>
+                ) : (
+                  knowledgeBases.map((kb, index) => (
+                    <KnowledgeBaseChip
+                      key={index}
+                      knowledgeBase={kb}
+                      onRemove={() => handleRemoveKnowledgeBase(index)}
+                    />
+                  ))
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKnowledgeBaseModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Create Knowledge Base
+              </button>
+              <p className="text-gray-400 text-xs">
+                Add knowledge bases that this agent can access for information retrieval.
+              </p>
+            </div>
+          </div>
+
+          {/* Create Knowledge Base Modal */}
+          {showKnowledgeBaseModal && (
+            <CreateKnowledgeBaseModal
+              onClose={() => setShowKnowledgeBaseModal(false)}
+              onAdd={handleAddKnowledgeBase}
+            />
+          )}
 
           <div className="flex gap-3 pt-4">
             <button

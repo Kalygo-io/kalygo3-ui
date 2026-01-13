@@ -9,9 +9,18 @@ export interface Agent {
   [key: string]: any; // Allow for additional properties
 }
 
+export interface KnowledgeBase {
+  id?: string;
+  provider: string;
+  index?: string;
+  namespace?: string;
+  [key: string]: any; // Allow for provider-specific properties
+}
+
 export interface CreateAgentRequest {
   name: string;
   description?: string;
+  knowledge_bases?: KnowledgeBase[];
   [key: string]: any; // Allow for additional properties
 }
 
