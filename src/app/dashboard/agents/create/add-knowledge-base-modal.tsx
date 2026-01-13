@@ -8,6 +8,7 @@ import {
   Namespace,
 } from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
+import { successToast } from "@/shared/toasts/successToast";
 
 interface AddKnowledgeBaseModalProps {
   onClose: () => void;
@@ -67,6 +68,7 @@ export function AddKnowledgeBaseModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
 
     if (provider === "pinecone") {
       if (!selectedIndex) {
@@ -78,11 +80,22 @@ export function AddKnowledgeBaseModal({
         return;
       }
 
-      onAdd({
+      const knowledgeBase: KnowledgeBase = {
         provider: "pinecone",
         index: selectedIndex,
         namespace: selectedNamespace,
-      });
+      };
+
+      console.log("Modal: About to call onAdd with:", knowledgeBase);
+
+      // Call the callback to add the knowledge base to parent state
+      onAdd(knowledgeBase);
+
+      console.log("Modal: onAdd callback called");
+
+      // Reset form state for next time
+      setSelectedIndex("");
+      setSelectedNamespace("");
     } else {
       errorToast("Unsupported provider");
     }
@@ -211,6 +224,14 @@ export function AddKnowledgeBaseModal({
               Add Knowledge Base
             </button>
           </div>
+          {/* Debug info - remove in production */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="mt-4 p-2 bg-gray-900 rounded text-xs text-gray-400">
+              <div>Provider: {provider}</div>
+              <div>Index: {selectedIndex || "none"}</div>
+              <div>Namespace: {selectedNamespace || "none"}</div>
+            </div>
+          )}
         </form>
       </div>
     </div>

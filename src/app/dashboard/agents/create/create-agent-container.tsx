@@ -19,7 +19,8 @@ import {
   Index,
   Namespace,
 } from "@/services/vectorStoresService";
-import { CreateKnowledgeBaseModal } from "./add-knowledge-base-modal";
+import { AddKnowledgeBaseModal } from "./add-knowledge-base-modal";
+import { KnowledgeBaseChip } from "./knowledge-base-chip";
 
 export function CreateAgentContainer() {
   const router = useRouter();
@@ -28,6 +29,12 @@ export function CreateAgentContainer() {
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Debug: Log when knowledgeBases state changes
+  useEffect(() => {
+    console.log("knowledgeBases state updated:", knowledgeBases);
+    console.log("Number of knowledge bases:", knowledgeBases.length);
+  }, [knowledgeBases]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +61,37 @@ export function CreateAgentContainer() {
   };
 
   const handleAddKnowledgeBase = (kb: KnowledgeBase) => {
-    setKnowledgeBases([...knowledgeBases, kb]);
+    console.log("handleAddKnowledgeBase called with:", kb);
+    console.log("Current knowledgeBases state:", knowledgeBases);
+
+    // Use functional update to ensure we have the latest state
+    setKnowledgeBases((prev) => {
+      console.log("Previous state in setKnowledgeBases:", prev);
+
+      // Check for duplicates
+      const isDuplicate = prev.some(
+        (existing) =>
+          existing.provider === kb.provider &&
+          existing.index === kb.index &&
+          existing.namespace === kb.namespace
+      );
+
+      if (isDuplicate) {
+        errorToast("This knowledge base is already added");
+        return prev;
+      }
+
+      // Success - knowledge base added to local state (not saved to API yet)
+      const displayName =
+        kb.index && kb.namespace
+          ? `${kb.index} / ${kb.namespace}`
+          : kb.provider;
+      successToast(`Knowledge base "${displayName}" added`);
+
+      const updated = [...prev, kb];
+      console.log("Updated knowledgeBases:", updated);
+      return updated;
+    });
     setShowKnowledgeBaseModal(false);
   };
 
@@ -121,20 +158,22 @@ export function CreateAgentContainer() {
               Knowledge Bases
             </label>
             <div className="space-y-3">
-              {/* Knowledge Base Tags */}
-              <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 bg-gray-900 border border-gray-700 rounded-lg">
+              {/* Knowledge Base Pills/Tags */}
+              <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-3 bg-gray-900 border border-gray-700 rounded-lg">
                 {knowledgeBases.length === 0 ? (
                   <p className="text-gray-500 text-sm py-1">
                     No knowledge bases added
                   </p>
                 ) : (
-                  knowledgeBases.map((kb, index) => (
-                    <KnowledgeBaseChip
-                      key={index}
-                      knowledgeBase={kb}
-                      onRemove={() => handleRemoveKnowledgeBase(index)}
-                    />
-                  ))
+                  <>
+                    {knowledgeBases.map((kb, index) => (
+                      <KnowledgeBaseChip
+                        key={`kb-${index}-${kb.provider}-${kb.index}-${kb.namespace}`}
+                        knowledgeBase={kb}
+                        onRemove={() => handleRemoveKnowledgeBase(index)}
+                      />
+                    ))}
+                  </>
                 )}
               </div>
               <button
@@ -143,7 +182,7 @@ export function CreateAgentContainer() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
               >
                 <PlusIcon className="h-4 w-4" />
-                Create Knowledge Base
+                Add Knowledge Base
               </button>
               <p className="text-gray-400 text-xs">
                 Add knowledge bases that this agent can access for information
@@ -151,14 +190,6 @@ export function CreateAgentContainer() {
               </p>
             </div>
           </div>
-
-          {/* Create Knowledge Base Modal */}
-          {showKnowledgeBaseModal && (
-            <CreateKnowledgeBaseModal
-              onClose={() => setShowKnowledgeBaseModal(false)}
-              onAdd={handleAddKnowledgeBase}
-            />
-          )}
 
           <div className="flex gap-3 pt-4">
             <button
@@ -178,6 +209,14 @@ export function CreateAgentContainer() {
           </div>
         </form>
       </div>
+
+      {/* Add Knowledge Base Modal - rendered outside form to avoid conflicts */}
+      {showKnowledgeBaseModal && (
+        <AddKnowledgeBaseModal
+          onClose={() => setShowKnowledgeBaseModal(false)}
+          onAdd={handleAddKnowledgeBase}
+        />
+      )}
     </div>
   );
 }
