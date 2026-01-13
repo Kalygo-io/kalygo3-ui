@@ -5,7 +5,7 @@ import * as React from "react";
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/kalygo-agent/chat-session-context";
+} from "@/app/dashboard/agent-chat/chat-session-context";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { nanoid } from "@/shared/utils";
 import { callKalygoAgent } from "@/services/callKalygoAgent";

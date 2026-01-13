@@ -21,8 +21,8 @@ export const navigation: NavigationItem[] = [
         enabled: true,
       },
       {
-        name: "Kalygo Agent",
-        href: "/dashboard/kalygo-agent",
+        name: "Agent Chat",
+        href: "/dashboard/agent-chat",
         enabled: true,
       },
       {

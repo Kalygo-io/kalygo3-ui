@@ -3,11 +3,11 @@
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/kalygo-agent/chat-session-context";
+} from "@/app/dashboard/agent-chat/chat-session-context";
 import {
   chatReducer,
   initialState,
-} from "@/app/dashboard/kalygo-agent/chat-session-reducer";
+} from "@/app/dashboard/agent-chat/chat-session-reducer";
 import { Chat as KalygoAgentChat } from "@/components/kalygo-agent-chat/chat";
 import { useReducer, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";

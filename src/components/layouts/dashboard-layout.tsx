@@ -145,8 +145,8 @@ export function DashboardLayout({
   const getSubMenuSections = (): SubMenuSection[] => {
     const sections: SubMenuSection[] = [];
 
-    // Kalygo Agent page - show past sessions
-    if (pathname.startsWith("/dashboard/kalygo-agent")) {
+    // Agent Chat page - show past sessions
+    if (pathname.startsWith("/dashboard/agent-chat")) {
       const kalygoSessions = sessions.filter(
         (session) => session.chatAppId === KALYGO_AGENT_CHAT_APP_ID
       );

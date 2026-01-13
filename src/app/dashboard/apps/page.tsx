@@ -73,11 +73,11 @@ export default function Page() {
           <h1 className="text-4xl font-semibold text-white mb-8">Playground</h1>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Kalygo Agent Card */}
+            {/* Agent Chat Card */}
             <AppCard
-              title="Kalygo Agent"
-              description="ReAct LLM agent for conversational interactions with a configurable set of tools."
-              href="/dashboard/kalygo-agent"
+              title="Agent Chat"
+              description="UI for interacting with ReAct LLM agents."
+              href="/dashboard/agent-chat"
             />
 
             {/* Cliff Notes Generator Card */}

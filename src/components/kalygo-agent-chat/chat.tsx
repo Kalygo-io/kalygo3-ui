@@ -3,7 +3,7 @@
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/kalygo-agent/chat-session-context";
+} from "@/app/dashboard/agent-chat/chat-session-context";
 import { ChatList } from "@/components/kalygo-agent-chat/chat-list";
 import { ChatPanel } from "@/components/shared/chat/chat-panel";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
@@ -183,7 +183,7 @@ export function Chat({ id, className }: ChatProps) {
                 content={
                   <>
                     <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
-                      Kalygo Agent 🧿
+                      Agent Chat 🧿
                     </h1>
                   </>
                 }
