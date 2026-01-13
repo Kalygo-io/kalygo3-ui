@@ -62,7 +62,7 @@ export function AgentsContainer() {
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
           <p className="text-gray-400 text-lg mb-4">No agents found</p>
           <p className="text-gray-500 text-sm mb-6">
-            You don't have any agents yet. Create one to get started.
+            You don&apos;t have any agents yet. Create one to get started.
           </p>
           <button
             onClick={handleCreate}
