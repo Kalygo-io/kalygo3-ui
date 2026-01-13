@@ -2,12 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { agentsService, CreateAgentRequest, KnowledgeBase } from "@/services/agentsService";
+import {
+  agentsService,
+  CreateAgentRequest,
+  KnowledgeBase,
+} from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
-import { ArrowLeftIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
-import { CreateKnowledgeBaseModal } from "./create-knowledge-base-modal";
+import {
+  ArrowLeftIcon,
+  PlusIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import {
+  vectorStoresService,
+  Index,
+  Namespace,
+} from "@/services/vectorStoresService";
+import { CreateKnowledgeBaseModal } from "./add-knowledge-base-modal";
 
 export function CreateAgentContainer() {
   const router = useRouter();
@@ -99,7 +111,8 @@ export function CreateAgentContainer() {
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <p className="text-gray-400 text-xs mt-2">
-              Optional: Define the system prompt that guides your agent&apos;s behavior and responses.
+              Optional: Define the system prompt that guides your agent&apos;s
+              behavior and responses.
             </p>
           </div>
 
@@ -111,7 +124,9 @@ export function CreateAgentContainer() {
               {/* Knowledge Base Tags */}
               <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 bg-gray-900 border border-gray-700 rounded-lg">
                 {knowledgeBases.length === 0 ? (
-                  <p className="text-gray-500 text-sm py-1">No knowledge bases added</p>
+                  <p className="text-gray-500 text-sm py-1">
+                    No knowledge bases added
+                  </p>
                 ) : (
                   knowledgeBases.map((kb, index) => (
                     <KnowledgeBaseChip
@@ -131,7 +146,8 @@ export function CreateAgentContainer() {
                 Create Knowledge Base
               </button>
               <p className="text-gray-400 text-xs">
-                Add knowledge bases that this agent can access for information retrieval.
+                Add knowledge bases that this agent can access for information
+                retrieval.
               </p>
             </div>
           </div>
