@@ -13,18 +13,28 @@ import { successToast } from "@/shared/toasts/successToast";
 interface AddKnowledgeBaseModalProps {
   onClose: () => void;
   onAdd: (kb: KnowledgeBase) => void;
+  initialKnowledgeBase?: KnowledgeBase;
 }
 
 export function AddKnowledgeBaseModal({
   onClose,
   onAdd,
+  initialKnowledgeBase,
 }: AddKnowledgeBaseModalProps) {
-  const [provider, setProvider] = useState<string>("pinecone");
+  const [provider, setProvider] = useState<string>(
+    initialKnowledgeBase?.provider || "pinecone"
+  );
   const [indexes, setIndexes] = useState<Index[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState<string>("");
+  const [selectedIndex, setSelectedIndex] = useState<string>(
+    initialKnowledgeBase?.index || ""
+  );
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
-  const [selectedNamespace, setSelectedNamespace] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
+  const [selectedNamespace, setSelectedNamespace] = useState<string>(
+    initialKnowledgeBase?.namespace || ""
+  );
+  const [description, setDescription] = useState<string>(
+    initialKnowledgeBase?.description || ""
+  );
   const [loadingIndexes, setLoadingIndexes] = useState(false);
   const [loadingNamespaces, setLoadingNamespaces] = useState(false);
 
@@ -39,7 +49,9 @@ export function AddKnowledgeBaseModal({
       loadNamespaces(selectedIndex);
     } else {
       setNamespaces([]);
-      setSelectedNamespace("");
+      if (!selectedIndex) {
+        setSelectedNamespace("");
+      }
     }
   }, [selectedIndex, provider]);
 
@@ -66,6 +78,14 @@ export function AddKnowledgeBaseModal({
       setLoadingNamespaces(false);
     }
   };
+
+  // Load namespaces when editing and index is already selected
+  useEffect(() => {
+    if (initialKnowledgeBase?.index && provider === "pinecone" && selectedIndex === initialKnowledgeBase.index && namespaces.length === 0) {
+      loadNamespaces(initialKnowledgeBase.index);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialKnowledgeBase?.index, provider, selectedIndex]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +128,9 @@ export function AddKnowledgeBaseModal({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-semibold text-white mb-4">
-          Add Knowledge Base to Agent
+          {initialKnowledgeBase
+            ? "Edit Knowledge Base"
+            : "Add Knowledge Base to Agent"}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -242,7 +264,7 @@ export function AddKnowledgeBaseModal({
               }
               className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
             >
-              Add Knowledge Base
+              {initialKnowledgeBase ? "Update Knowledge Base" : "Add Knowledge Base"}
             </button>
           </div>
           {/* Debug info - remove in production */}

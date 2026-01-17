@@ -35,6 +35,11 @@ export interface CreateAgentRequest {
   config: AgentConfig;
 }
 
+export interface UpdateAgentRequest {
+  name?: string;
+  config?: AgentConfig;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_AI_API_URL;
 
 class AgentsService {
@@ -94,6 +99,22 @@ class AgentsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
+
+    return this.handleResponse<Agent>(response);
+  }
+
+  async updateAgent(agentId: string, data: UpdateAgentRequest): Promise<Agent> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/agents/${encodeURIComponent(agentId)}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
 
     return this.handleResponse<Agent>(response);
   }
