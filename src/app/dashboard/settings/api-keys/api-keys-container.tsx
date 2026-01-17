@@ -75,7 +75,7 @@ export function ApiKeysContainer() {
   };
 
   const handleCopyNewKey = async () => {
-    if (newlyCreatedKey) {
+    if (newlyCreatedKey && newlyCreatedKey.key) {
       await copyToClipboard(newlyCreatedKey.key, newlyCreatedKey.id);
     }
   };
