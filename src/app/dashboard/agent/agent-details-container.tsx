@@ -112,20 +112,20 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
             </div>
           </div>
 
-          {/* Description */}
-          {agent.description && (
+          {/* System Prompt */}
+          {(agent.systemPrompt || agent.description) && (
             <div>
               <h2 className="text-xl font-semibold text-white mb-4">
-                Description
+                System Prompt
               </h2>
-              <p className="text-gray-300">{agent.description}</p>
+              <p className="text-gray-300">{agent.systemPrompt || agent.description}</p>
             </div>
           )}
 
           {/* Additional Properties */}
           {Object.keys(agent).some(
             (key) =>
-              !["id", "name", "description", "created_at", "updated_at", "status", "owner_id"].includes(
+              !["id", "name", "systemPrompt", "description", "created_at", "updated_at", "status", "owner_id"].includes(
                 key
               )
           ) && (
@@ -139,7 +139,7 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                     Object.fromEntries(
                       Object.entries(agent).filter(
                         ([key]) =>
-                          !["id", "name", "description", "created_at", "updated_at", "status", "owner_id"].includes(
+                          !["id", "name", "systemPrompt", "description", "created_at", "updated_at", "status", "owner_id"].includes(
                             key
                           )
                       )

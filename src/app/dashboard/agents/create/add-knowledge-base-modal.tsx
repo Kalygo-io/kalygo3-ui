@@ -24,6 +24,7 @@ export function AddKnowledgeBaseModal({
   const [selectedIndex, setSelectedIndex] = useState<string>("");
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
   const [loadingIndexes, setLoadingIndexes] = useState(false);
   const [loadingNamespaces, setLoadingNamespaces] = useState(false);
 
@@ -84,6 +85,7 @@ export function AddKnowledgeBaseModal({
         provider: "pinecone",
         index: selectedIndex,
         namespace: selectedNamespace,
+        ...(description.trim() && { description: description.trim() }),
       };
 
       console.log("Modal: About to call onAdd with:", knowledgeBase);
@@ -96,6 +98,7 @@ export function AddKnowledgeBaseModal({
       // Reset form state for next time
       setSelectedIndex("");
       setSelectedNamespace("");
+      setDescription("");
     } else {
       errorToast("Unsupported provider");
     }
@@ -120,6 +123,7 @@ export function AddKnowledgeBaseModal({
                 setProvider(e.target.value);
                 setSelectedIndex("");
                 setSelectedNamespace("");
+                setDescription("");
               }}
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -201,6 +205,23 @@ export function AddKnowledgeBaseModal({
                   )}
                 </div>
               )}
+
+              {/* Description Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe what this knowledge base contains..."
+                  rows={3}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+                <p className="text-gray-400 text-xs mt-2">
+                  Optional: Provide a description of what this knowledge base contains.
+                </p>
+              </div>
             </>
           )}
 

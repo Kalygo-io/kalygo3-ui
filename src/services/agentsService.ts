@@ -1,7 +1,8 @@
 export interface Agent {
   id: string;
   name: string;
-  description?: string;
+  systemPrompt?: string;
+  description?: string; // Keep for backwards compatibility
   created_at?: string;
   updated_at?: string;
   status?: string;
@@ -14,14 +15,24 @@ export interface KnowledgeBase {
   provider: string;
   index?: string;
   namespace?: string;
+  description?: string;
   [key: string]: any; // Allow for provider-specific properties
+}
+
+export interface AgentConfigData {
+  systemPrompt?: string;
+  knowledgeBases?: KnowledgeBase[];
+}
+
+export interface AgentConfig {
+  schema: string;
+  version: number;
+  data: AgentConfigData;
 }
 
 export interface CreateAgentRequest {
   name: string;
-  description?: string;
-  knowledge_bases?: KnowledgeBase[];
-  [key: string]: any; // Allow for additional properties
+  config: AgentConfig;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_AI_API_URL;

@@ -25,7 +25,7 @@ import { KnowledgeBaseChip } from "./knowledge-base-chip";
 export function CreateAgentContainer() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState("");
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -45,11 +45,28 @@ export function CreateAgentContainer() {
 
     try {
       setSubmitting(true);
+      
+      // Build config data object
+      const configData: { systemPrompt?: string; knowledgeBases?: KnowledgeBase[] } = {};
+      
+      if (systemPrompt.trim()) {
+        configData.systemPrompt = systemPrompt.trim();
+      }
+      
+      if (knowledgeBases.length > 0) {
+        configData.knowledgeBases = knowledgeBases;
+      }
+      
+      // Build the request payload matching the API structure
       const data: CreateAgentRequest = {
         name: name.trim(),
-        ...(description.trim() && { description: description.trim() }),
-        ...(knowledgeBases.length > 0 && { knowledge_bases: knowledgeBases }),
+        config: {
+          schema: "agent_config",
+          version: 1,
+          data: configData,
+        },
       };
+      
       const agent = await agentsService.createAgent(data);
       successToast("Agent created successfully");
       router.push(`/dashboard/agent?agent_id=${encodeURIComponent(agent.id)}`);
@@ -141,8 +158,8 @@ export function CreateAgentContainer() {
               System Prompt
             </label>
             <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Enter the system prompt for this agent..."
               rows={4}
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
