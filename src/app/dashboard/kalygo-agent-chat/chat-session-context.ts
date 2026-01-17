@@ -6,7 +6,6 @@ export interface ChatState {
   sessionId: string;
   currentTool: string;
   currentRequest: AbortController | null;
-  agentId?: string;
 }
 
 export const ChatContext = createContext<ChatState>({
@@ -15,7 +14,6 @@ export const ChatContext = createContext<ChatState>({
   sessionId: "",
   currentTool: "",
   currentRequest: null,
-  agentId: undefined,
 });
 
 export const ChatDispatchContext = createContext<any>(null);

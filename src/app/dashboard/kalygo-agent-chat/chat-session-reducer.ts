@@ -38,10 +38,6 @@ export type Action =
     }
   | {
       type: "ABORT_CURRENT_REQUEST";
-    }
-  | {
-      type: "SET_AGENT_ID";
-      payload: string;
     };
 
 export function chatReducer(
@@ -51,7 +47,6 @@ export function chatReducer(
     sessionId: string;
     currentTool: string;
     currentRequest: AbortController | null;
-    agentId?: string;
   },
   action: Action
 ) {
@@ -125,12 +120,6 @@ export function chatReducer(
         completionLoading: false,
       };
     }
-    case "SET_AGENT_ID": {
-      return {
-        ...state,
-        agentId: action.payload,
-      };
-    }
     default: {
       throw Error("Unknown action type");
     }
@@ -143,12 +132,10 @@ export const initialState: {
   sessionId: string;
   currentTool: string;
   currentRequest: AbortController | null;
-  agentId?: string;
 } = {
   messages: [],
   completionLoading: false,
-  sessionId: uuid(),
+  sessionId: "", // Start with empty string, will be set from URL or created session
   currentTool: "",
   currentRequest: null,
-  agentId: undefined,
 };

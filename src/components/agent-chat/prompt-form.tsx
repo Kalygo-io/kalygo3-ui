@@ -5,10 +5,10 @@ import * as React from "react";
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/kalygo-agent-chat/chat-session-context";
+} from "@/app/dashboard/agent-chat/chat-session-context";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { nanoid } from "@/shared/utils";
-import { callKalygoAgent } from "@/services/callKalygoAgent";
+import { callAgent } from "@/services/callAgent";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { StopIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
 
@@ -28,11 +28,19 @@ export function PromptForm({
   const chatState = React.useContext(ChatContext);
   const isRequestInFlight = chatState.completionLoading;
 
-  // Use sessionId from context if available, otherwise use prop
-  const effectiveSessionId = chatState.sessionId || sessionId;
+  if (!dispatch) {
+    console.error("ChatDispatchContext is not provided");
+    return (
+      <div className="p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400 text-sm">
+        Chat context is not available. Please refresh the page.
+      </div>
+    );
+  }
 
   const handleStopRequest = () => {
-    dispatch({ type: "ABORT_CURRENT_REQUEST" });
+    if (dispatch) {
+      dispatch({ type: "ABORT_CURRENT_REQUEST" });
+    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -54,6 +62,10 @@ export function PromptForm({
 
           setInput("");
           if (!prompt || isRequestInFlight) return;
+
+          if (!dispatch) {
+            throw new Error("ChatDispatchContext is not available");
+          }
 
           // Abort any existing request
           if (chatState.currentRequest) {
@@ -79,19 +91,12 @@ export function PromptForm({
             payload: true,
           });
 
-          // Ensure we have a valid sessionId (must be UUID format from backend)
-          if (!effectiveSessionId) {
-            throw new Error("Session ID is required");
+          // Get agentId from context
+          const agentId = chatState.agentId;
+          if (!agentId) {
+            throw new Error("Agent ID is required");
           }
-
-          // Validate UUID format - backend requires valid UUID
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          if (!uuidRegex.test(effectiveSessionId)) {
-            console.error("Invalid sessionId format:", effectiveSessionId);
-            throw new Error(`Invalid session ID format: ${effectiveSessionId}. Expected UUID format.`);
-          }
-
-          await callKalygoAgent(effectiveSessionId, prompt, dispatch, abortController);
+          await callAgent(agentId, sessionId, prompt, dispatch, abortController);
 
           dispatch({
             type: "SET_COMPLETION_LOADING",

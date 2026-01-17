@@ -3,15 +3,16 @@
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/kalygo-agent-chat/chat-session-context";
+} from "@/app/dashboard/agent-chat/chat-session-context";
 import { ChatList } from "@/components/kalygo-agent-chat/chat-list";
 import { ChatPanel } from "@/components/shared/chat/chat-panel";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
-import { PromptForm } from "@/components/kalygo-agent-chat/prompt-form";
+import { PromptForm } from "@/components/agent-chat/prompt-form";
 import { useScrollAnchor } from "@/shared/hooks/use-scroll-anchor";
 import { cn } from "@/shared/utils";
 import { useContext, useEffect, useState } from "react";
-import { ContextualAside } from "./contextual-aside";
+// ContextualAside removed - can be added later if needed
+// import { ContextualAside } from "./contextual-aside";
 import {
   InformationCircleIcon,
   ChevronDownIcon,
@@ -30,6 +31,14 @@ export function Chat({ id, className }: ChatProps) {
   const chatState = useContext(ChatContext);
   const dispatch = useContext(ChatDispatchContext);
   const { messagesRef, scrollRef, scrollToBottom } = useScrollAnchor();
+
+  if (!dispatch) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-400">Chat context is not available. Please refresh the page.</div>
+      </div>
+    );
+  }
 
   const toggleDrawer = () => {
     setIsDrawerOpen(!isDrawerOpen);
@@ -183,7 +192,7 @@ export function Chat({ id, className }: ChatProps) {
                 content={
                   <>
                     <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
-                      Kalygo Agent Chat 🧿
+                      Agent Chat 🧿
                     </h1>
                   </>
                 }
@@ -198,10 +207,11 @@ export function Chat({ id, className }: ChatProps) {
           />
         </div>
       </div>
-      <ContextualAside
+      {/* ContextualAside removed - can be added later if needed */}
+      {/* <ContextualAside
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-      />
+      /> */}
     </>
   );
 }

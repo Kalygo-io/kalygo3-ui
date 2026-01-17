@@ -1,0 +1,152 @@
+"use client";
+
+import { useReducer, useEffect, useRef, useCallback, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+  ChatContext,
+  ChatDispatchContext,
+} from "@/app/dashboard/agent-chat/chat-session-context";
+import {
+  chatReducer,
+  initialState,
+} from "@/app/dashboard/agent-chat/chat-session-reducer";
+import { Chat as AgentChat } from "@/components/agent-chat/chat";
+import { agentsService, Agent } from "@/services/agentsService";
+import { errorToast } from "@/shared/toasts/errorToast";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { useChatSessions } from "@/shared/hooks/use-chat-sessions";
+
+interface AgentChatInterfaceProps {
+  agentId: string;
+  onBack: () => void;
+}
+
+export function AgentChatInterface({
+  agentId,
+  onBack,
+}: AgentChatInterfaceProps) {
+  const [chat, dispatch] = useReducer(chatReducer, {
+    ...initialState,
+    agentId: agentId || undefined,
+  });
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const sessionCreatedRef = useRef(false);
+  const [agent, setAgent] = useState<Agent | null>(null);
+  const [loadingAgent, setLoadingAgent] = useState(true);
+
+  const sessionId = searchParams.get("session");
+
+  // Load agent details
+  useEffect(() => {
+    async function loadAgent() {
+      try {
+        setLoadingAgent(true);
+        const agentData = await agentsService.getAgent(agentId);
+        setAgent(agentData);
+        dispatch({ type: "SET_AGENT_ID", payload: agentId });
+      } catch (error: any) {
+        errorToast(error.message || "Failed to load agent");
+        onBack();
+      } finally {
+        setLoadingAgent(false);
+      }
+    }
+    loadAgent();
+  }, [agentId, onBack]);
+
+  // Handle current session deletion
+  const handleCurrentSessionDeleted = useCallback(() => {
+    // Reset chat state to initial state
+    dispatch({ type: "SET_MESSAGES", payload: [] });
+    dispatch({ type: "SET_SESSION_ID", payload: "" });
+    onBack();
+  }, [onBack]);
+
+  const { createSession, getSession } = useChatSessions(
+    handleCurrentSessionDeleted
+  );
+
+  // Cleanup effect to abort any ongoing requests when component unmounts
+  useEffect(() => {
+    return () => {
+      if (chat.currentRequest) {
+        dispatch({ type: "ABORT_CURRENT_REQUEST" });
+      }
+    };
+  }, [chat.currentRequest]);
+
+  useEffect(() => {
+    async function asyncCode() {
+      if (sessionId) {
+        dispatch({ type: "SET_SESSION_ID", payload: sessionId });
+        const session = await getSession(sessionId);
+        if (session && session.chatHistory.length > 0) {
+          dispatch({ type: "SET_MESSAGES", payload: session.chatHistory });
+        } else if (session) {
+          // Session exists but has no messages, this is fine
+        } else {
+          // Create a new session associated with this agent
+          // TODO: Update createSession to accept agentId when API supports it
+          const newSession = await createSession("agent-chat"); // Placeholder app ID
+          const url = new URL(window.location.href);
+          url.searchParams.set("session", newSession.sessionId);
+          window.history.replaceState({}, "", url.toString());
+        }
+      } else if (!sessionCreatedRef.current) {
+        sessionCreatedRef.current = true;
+        // Create a new session associated with this agent
+        // TODO: Update createSession to accept agentId when API supports it
+        const newSession = await createSession("agent-chat"); // Placeholder app ID
+        const url = new URL(window.location.href);
+        url.searchParams.set("session", newSession.sessionId);
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+
+    asyncCode();
+  }, [sessionId, createSession, getSession]);
+
+  if (loadingAgent) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-400">Loading agent...</div>
+      </div>
+    );
+  }
+
+  if (!agent) {
+    return null;
+  }
+
+  return (
+    <ChatContext.Provider value={chat}>
+      <ChatDispatchContext.Provider value={dispatch}>
+        <div className="h-screen flex flex-col">
+          {/* Header with agent name and back button */}
+          <div className="border-b border-gray-700 bg-gray-800/50 px-4 py-3 flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              title="Back to agent selection"
+            >
+              <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-lg font-semibold text-white">{agent.name}</h1>
+              {agent.config?.data?.systemPrompt && (
+                <p className="text-sm text-gray-400 line-clamp-1">
+                  {agent.config.data.systemPrompt}
+                </p>
+              )}
+            </div>
+          </div>
+          {/* Chat interface */}
+          <div className="flex-1 overflow-hidden">
+            <AgentChat />
+          </div>
+        </div>
+      </ChatDispatchContext.Provider>
+    </ChatContext.Provider>
+  );
+}
