@@ -10,7 +10,7 @@ import { EmptyScreen } from "@/components/shared/chat/empty-screen";
 import { PromptForm } from "@/components/agent-chat/prompt-form";
 import { useScrollAnchor } from "@/shared/hooks/use-scroll-anchor";
 import { cn } from "@/shared/utils";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 // ContextualAside removed - can be added later if needed
 // import { ContextualAside } from "./contextual-aside";
 import {
@@ -32,20 +32,12 @@ export function Chat({ id, className }: ChatProps) {
   const dispatch = useContext(ChatDispatchContext);
   const { messagesRef, scrollRef, scrollToBottom } = useScrollAnchor();
 
-  if (!dispatch) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-400">Chat context is not available. Please refresh the page.</div>
-      </div>
-    );
-  }
-
   const toggleDrawer = () => {
     setIsDrawerOpen(!isDrawerOpen);
   };
 
   // Check scroll position and update button visibility
-  const checkScrollPosition = () => {
+  const checkScrollPosition = useCallback(() => {
     if (scrollRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
       const hasScrollableContent = scrollHeight > clientHeight;
@@ -53,7 +45,7 @@ export function Chat({ id, className }: ChatProps) {
 
       setShowScrollButton(hasScrollableContent && !isNearBottom);
     }
-  };
+  }, [scrollRef]);
 
   // Check if we need to show the scroll button
   useEffect(() => {
@@ -67,13 +59,22 @@ export function Chat({ id, className }: ChatProps) {
       checkScrollPosition();
       return () => scrollElement.removeEventListener("scroll", handleScroll);
     }
-  }, [scrollRef]);
+  }, [scrollRef, checkScrollPosition]);
 
   // Also check when messages change to catch new content
   useEffect(() => {
     const timer = setTimeout(checkScrollPosition, 100);
     return () => clearTimeout(timer);
-  }, [chatState?.messages]);
+  }, [chatState?.messages, checkScrollPosition]);
+
+  // Early return check AFTER all hooks
+  if (!dispatch) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-400">Chat context is not available. Please refresh the page.</div>
+      </div>
+    );
+  }
 
   const handleScrollToBottom = () => {
     scrollToBottom();
