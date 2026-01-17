@@ -58,120 +58,219 @@ export async function callAgent(
     while (true) {
       // Check for cancellation before reading
       if (abortController?.signal.aborted) {
-        console.log("Request aborted, stopping stream read");
-        reader.cancel();
+        console.log("Agent request cancelled");
         break;
       }
 
       const { done, value } = await reader.read();
-
       if (done) {
-        console.log("Stream done");
+        console.log("Stream complete");
         break;
       }
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n");
+      let chunk = decoder.decode(value);
+      console.log("Raw chunk received:", chunk);
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
+      try {
+        const parsedChunk = JSON.parse(chunk);
+        console.log("Parsed chunk:", parsedChunk);
+        dispatchEventToState(
+          parsedChunk,
+          dispatch,
+          aiMessageId,
+          accMessage,
+          retrievalCalls
+        );
+      } catch (e) {
+        console.log(
+          "Failed to parse as single JSON, trying multi-chunk parsing..."
+        );
+        let multiChunkAcc = "";
+        let idx = 0;
+        let braceCount = 0;
+        let inString = false;
+        let escapeNext = false;
 
-        try {
-          const parsedChunk = JSON.parse(line);
+        while (idx < chunk.length) {
+          const char = chunk[idx];
 
-          if (parsedChunk.type === "content") {
-            accMessage.content += parsedChunk.content || "";
-            dispatch({
-              type: "EDIT_MESSAGE",
-              payload: {
-                id: aiMessageId,
-                content: accMessage.content,
-                role: "ai",
-              },
-            });
-          } else if (parsedChunk.type === "retrieval_call") {
-            retrievalCalls.push(parsedChunk);
-            dispatch({
-              type: "SET_CURRENT_TOOL",
-              payload: parsedChunk.tool || "",
-            });
-            dispatch({
-              type: "EDIT_MESSAGE",
-              payload: {
-                id: aiMessageId,
-                retrievalCalls: retrievalCalls,
-              },
-            });
-          } else if (parsedChunk.type === "error") {
-            throw parsedChunk.error || "Unknown error";
-          }
-        } catch (parseError) {
-          // If JSON parsing fails, it might be a partial chunk
-          // Try to extract content if it looks like a content chunk
-          if (line.includes('"type":"content"')) {
-            try {
-              const contentMatch = line.match(/"content":"([^"]*)"/);
-              if (contentMatch) {
-                accMessage.content += contentMatch[1] || "";
-                dispatch({
-                  type: "EDIT_MESSAGE",
-                  payload: {
-                    id: aiMessageId,
-                    content: accMessage.content,
-                    role: "ai",
-                  },
-                });
-              }
-            } catch (e) {
-              // Ignore parsing errors for partial chunks
+          if (escapeNext) {
+            multiChunkAcc += char;
+            escapeNext = false;
+          } else if (char === "\\") {
+            multiChunkAcc += char;
+            escapeNext = true;
+          } else if (char === '"' && !escapeNext) {
+            multiChunkAcc += char;
+            inString = !inString;
+          } else if (!inString) {
+            if (char === "{") {
+              braceCount++;
+            } else if (char === "}") {
+              braceCount--;
             }
+            multiChunkAcc += char;
+
+            // Try to parse when we have a complete JSON object
+            if (braceCount === 0 && multiChunkAcc.trim()) {
+              try {
+                const parsedChunk = JSON.parse(multiChunkAcc.trim());
+                console.log("Parsed multi-chunk:", parsedChunk);
+
+                dispatchEventToState(
+                  parsedChunk,
+                  dispatch,
+                  aiMessageId,
+                  accMessage,
+                  retrievalCalls
+                );
+
+                // Move to next character after the parsed JSON
+                chunk = chunk.substring(idx + 1);
+                idx = 0;
+                multiChunkAcc = "";
+                braceCount = 0;
+                continue;
+              } catch (parseError) {
+                // Continue accumulating if this isn't valid JSON yet
+              }
+            }
+          } else {
+            multiChunkAcc += char;
           }
+
+          idx++;
         }
       }
     }
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.log("Agent request aborted");
+      throw error;
+    }
+    console.error("Error in streaming response:", error);
+    throw error;
+  } finally {
+    if (reader) {
+      reader.releaseLock();
+    }
+  }
+}
 
-    // Finalize the message
-    if (accMessage.content) {
-      dispatch({
-        type: "EDIT_MESSAGE",
-        payload: {
-          id: aiMessageId,
-          content: accMessage.content,
-          role: "ai",
-          retrievalCalls: retrievalCalls.length > 0 ? retrievalCalls : undefined,
-        },
-      });
-    } else {
-      // If no content was received, add an empty AI message
+function dispatchEventToState(
+  parsedChunk: Record<string, any>,
+  dispatch: React.Dispatch<Action>,
+  aiMessageId: string,
+  accMessage: { content: string },
+  retrievalCalls: any[]
+) {
+  try {
+    console.log("Processing event:", parsedChunk.event, parsedChunk);
+
+    // Only handle essential events to isolate the issue
+    if (parsedChunk.event === "on_chain_start") {
       dispatch({
         type: "ADD_MESSAGE",
         payload: {
           id: aiMessageId,
           content: "",
           role: "ai",
-          retrievalCalls: retrievalCalls.length > 0 ? retrievalCalls : undefined,
+          error: null,
         },
       });
-    }
+    } else if (parsedChunk.event === "on_chat_model_stream") {
+      accMessage.content += parsedChunk.data || "";
+      dispatch({
+        type: "EDIT_MESSAGE",
+        payload: {
+          id: aiMessageId,
+          content: accMessage.content,
+        },
+      });
+    } else if (parsedChunk.event === "on_chain_end") {
+      const finalContent = parsedChunk.data || accMessage.content;
+      dispatch({
+        type: "EDIT_MESSAGE",
+        payload: {
+          id: aiMessageId,
+          content: finalContent,
+        },
+      });
 
-    dispatch({
-      type: "SET_CURRENT_TOOL",
-      payload: "",
-    });
-  } catch (error: any) {
-    if (error.name === "AbortError") {
-      console.log("Request was aborted");
-      throw error;
+      // Handle retrieval calls if available
+      console.log(
+        "Chain end event - checking for retrieval calls:",
+        parsedChunk
+      );
+      console.log("Chain end event keys:", Object.keys(parsedChunk));
+      if (parsedChunk.retrieval_calls) {
+        try {
+          console.log("Retrieval calls found:", parsedChunk.retrieval_calls);
+          const retrievalCallsData = Array.isArray(parsedChunk.retrieval_calls)
+            ? parsedChunk.retrieval_calls
+            : [];
+
+          console.log("Processed retrieval calls data:", retrievalCallsData);
+
+          dispatch({
+            type: "EDIT_MESSAGE",
+            payload: {
+              id: aiMessageId,
+              retrievalCalls: retrievalCallsData,
+            },
+          });
+
+          console.log("Retrieval calls dispatched to state");
+          console.log(
+            "Message should now have retrievalCalls:",
+            retrievalCallsData
+          );
+          console.log("Retrieval calls count:", retrievalCallsData.length);
+        } catch (error) {
+          console.error("Error processing retrieval calls:", error);
+        }
+      } else {
+        console.log("No retrieval calls found in chain end event");
+        console.log("Available keys in parsedChunk:", Object.keys(parsedChunk));
+      }
+    } else if (parsedChunk.event === "on_tool_start") {
+      try {
+        console.log("Tool start event data:", parsedChunk);
+        const toolMessage = parsedChunk.data || "Tool starting...";
+        console.log("Setting current tool:", toolMessage);
+
+        dispatch({
+          type: "SET_CURRENT_TOOL",
+          payload: toolMessage,
+        });
+
+        // Use a safer notification approach
+        console.log("🔧 Tool started:", toolMessage);
+        // You could also dispatch a custom notification action here if needed
+        // dispatch({ type: "ADD_NOTIFICATION", payload: { message: toolMessage, type: "info" } });
+      } catch (error) {
+        console.error("Error handling tool start:", error, parsedChunk);
+      }
+    } else if (parsedChunk.event === "on_tool_end") {
+      try {
+        console.log("Tool end event data:", parsedChunk);
+        console.log("Clearing current tool");
+
+        dispatch({
+          type: "SET_CURRENT_TOOL",
+          payload: "",
+        });
+
+        console.log("✅ Tool completed successfully");
+      } catch (error) {
+        console.error("Error handling tool end:", error, parsedChunk);
+      }
+    } else if (parsedChunk.event === "on_chat_model_start") {
+      console.log("Chat model started");
+    } else {
+      console.log("Unhandled event:", parsedChunk.event);
     }
-    console.error("Error reading stream:", error);
-    dispatch({
-      type: "EDIT_MESSAGE",
-      payload: {
-        id: aiMessageId,
-        error: error.message || error,
-        role: "ai",
-      },
-    });
-    throw error;
+  } catch (error) {
+    console.error("Error in dispatchEventToState:", error, parsedChunk);
   }
 }
