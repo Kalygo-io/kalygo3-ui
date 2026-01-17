@@ -31,9 +31,11 @@ export function ToolCallsDrawer({
     if (isOpen && retrievalCalls.length > 0) {
       const allChunkKeys = new Set<string>();
       retrievalCalls.forEach((call, toolCallIndex) => {
-        call.reranked_results.forEach((_, chunkIndex) => {
-          allChunkKeys.add(`${toolCallIndex}-${chunkIndex}`);
-        });
+        if (call.reranked_results) {
+          call.reranked_results.forEach((_, chunkIndex) => {
+            allChunkKeys.add(`${toolCallIndex}-${chunkIndex}`);
+          });
+        }
       });
       setExpandedChunks(allChunkKeys);
     }
@@ -128,7 +130,7 @@ export function ToolCallsDrawer({
                   </span>
                   <span className="text-white">
                     {retrievalCalls.reduce(
-                      (total, call) => total + call.reranked_results.length,
+                      (total, call) => total + (call.reranked_results?.length || 0),
                       0
                     )}
                   </span>
@@ -169,7 +171,7 @@ export function ToolCallsDrawer({
                         <div className="flex items-center space-x-1">
                           <span className="text-xs text-gray-400">Chunks:</span>
                           <span className="text-xs font-medium text-white">
-                            {call.reranked_results.length}
+                            {call.reranked_results?.length || 0}
                           </span>
                         </div>
                         <button
@@ -219,8 +221,13 @@ export function ToolCallsDrawer({
                         {/* Chunks Section */}
                         <div className="mb-4">
                           <h4 className="text-sm font-medium text-gray-300 mb-3">
-                            Retrieved Chunks ({call.reranked_results.length})
+                            Retrieved Chunks ({call.reranked_results?.length || 0})
                           </h4>
+                          {!call.reranked_results || call.reranked_results.length === 0 ? (
+                            <div className="text-center py-4 text-gray-400 text-sm">
+                              No chunks retrieved for this tool call
+                            </div>
+                          ) : (
                           <div className="space-y-3">
                             {call.reranked_results.map(
                               (result, resultIndex) => (
@@ -343,6 +350,7 @@ export function ToolCallsDrawer({
                               )
                             )}
                           </div>
+                          )}
                         </div>
 
                         {/* Message */}
