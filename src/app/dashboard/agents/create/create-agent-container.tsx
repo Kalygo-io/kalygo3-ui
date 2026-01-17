@@ -81,34 +81,34 @@ export function CreateAgentContainer() {
     console.log("handleAddKnowledgeBase called with:", kb);
     console.log("Current knowledgeBases state:", knowledgeBases);
 
+    // Check for duplicates before updating state
+    const isDuplicate = knowledgeBases.some(
+      (existing) =>
+        existing.provider === kb.provider &&
+        existing.index === kb.index &&
+        existing.namespace === kb.namespace
+    );
+
+    if (isDuplicate) {
+      errorToast("This knowledge base is already added");
+      return;
+    }
+
     // Use functional update to ensure we have the latest state
     setKnowledgeBases((prev) => {
       console.log("Previous state in setKnowledgeBases:", prev);
-
-      // Check for duplicates
-      const isDuplicate = prev.some(
-        (existing) =>
-          existing.provider === kb.provider &&
-          existing.index === kb.index &&
-          existing.namespace === kb.namespace
-      );
-
-      if (isDuplicate) {
-        errorToast("This knowledge base is already added");
-        return prev;
-      }
-
-      // Success - knowledge base added to local state (not saved to API yet)
-      const displayName =
-        kb.index && kb.namespace
-          ? `${kb.index} / ${kb.namespace}`
-          : kb.provider;
-      successToast(`Knowledge base "${displayName}" added`);
-
       const updated = [...prev, kb];
       console.log("Updated knowledgeBases:", updated);
       return updated;
     });
+
+    // Show success toast after state update
+    const displayName =
+      kb.index && kb.namespace
+        ? `${kb.index} / ${kb.namespace}`
+        : kb.provider;
+    successToast(`Knowledge base "${displayName}" added`);
+
     setShowKnowledgeBaseModal(false);
   };
 
@@ -155,18 +155,18 @@ export function CreateAgentContainer() {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              System Prompt
+              System Prompt *
             </label>
             <textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Enter the system prompt for this agent..."
               rows={4}
+              required
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <p className="text-gray-400 text-xs mt-2">
-              Optional: Define the system prompt that guides your agent&apos;s
-              behavior and responses.
+              The system prompt that guides your agent&apos;s behavior and responses.
             </p>
           </div>
 
@@ -202,8 +202,7 @@ export function CreateAgentContainer() {
                 Add Knowledge Base
               </button>
               <p className="text-gray-400 text-xs">
-                Add knowledge bases that this agent can access for information
-                retrieval.
+                Optional: Zero or more knowledge base bindings used by the agent.
               </p>
             </div>
           </div>

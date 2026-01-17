@@ -96,11 +96,6 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
       return;
     }
 
-    if (knowledgeBases.length === 0) {
-      errorToast("At least one knowledge base is required");
-      return;
-    }
-
     try {
       setSaving(true);
       
@@ -162,22 +157,26 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
       setEditingKnowledgeBaseIndex(null);
     } else {
       // Add new knowledge base
+      // Check for duplicates before updating state
+      const isDuplicate = knowledgeBases.some(
+        (existing) =>
+          existing.provider === kb.provider &&
+          existing.index === kb.index &&
+          existing.namespace === kb.namespace
+      );
+
+      if (isDuplicate) {
+        errorToast("This knowledge base is already added");
+        return;
+      }
+
+      // Use functional update to ensure we have the latest state
       setKnowledgeBases((prev) => {
-        const isDuplicate = prev.some(
-          (existing) =>
-            existing.provider === kb.provider &&
-            existing.index === kb.index &&
-            existing.namespace === kb.namespace
-        );
-
-        if (isDuplicate) {
-          errorToast("This knowledge base is already added");
-          return prev;
-        }
-
-        successToast(`Knowledge base "${kb.index} / ${kb.namespace}" added`);
         return [...prev, kb];
       });
+
+      // Show success toast after state update
+      successToast(`Knowledge base "${kb.index} / ${kb.namespace}" added`);
     }
     setShowKnowledgeBaseModal(false);
   };
@@ -326,7 +325,7 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-medium text-gray-300">
-                  Knowledge Bases * (at least 1 required)
+                  Knowledge Bases
                 </label>
                 <button
                   type="button"
@@ -475,7 +474,7 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                 </div>
               )}
               <p className="text-gray-400 text-xs mt-2">
-                One or more knowledge base bindings used by the agent.
+                Optional: Zero or more knowledge base bindings used by the agent.
               </p>
             </div>
           </div>
