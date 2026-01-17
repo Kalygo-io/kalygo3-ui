@@ -58,6 +58,11 @@ export const navigation: NavigationItem[] = [
         enabled: true,
       },
       {
+        name: "API Keys",
+        href: "/dashboard/settings/api-keys",
+        enabled: true,
+      },
+      {
         name: "Payment Settings",
         href: "/dashboard/settings/payment",
         enabled: false,
