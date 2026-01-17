@@ -16,6 +16,8 @@ import {
   TrashIcon,
   PlusIcon,
   XMarkIcon,
+  PencilIcon,
+  LinkIcon,
 } from "@heroicons/react/24/outline";
 import {
   vectorStoresService,
@@ -322,57 +324,159 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
 
             {/* Knowledge Bases */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Knowledge Bases * (at least 1 required)
-              </label>
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-3 bg-gray-900 border border-gray-700 rounded-lg">
-                  {knowledgeBases.length === 0 ? (
-                    <p className="text-gray-500 text-sm py-1">
-                      No knowledge bases added
-                    </p>
-                  ) : (
-                    knowledgeBases.map((kb, index) => (
-                      <div key={index} className="group relative inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 border border-blue-500/40 rounded-full text-sm text-blue-200 hover:bg-blue-600/30 transition-colors">
-                        <button
-                          type="button"
-                          onClick={() => handleEditKnowledgeBase(index)}
-                          className="font-medium cursor-pointer"
-                        >
-                          {kb.index && kb.namespace
-                            ? `${kb.index} / ${kb.namespace}`
-                            : kb.provider}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveKnowledgeBase(index);
-                          }}
-                          className="hover:bg-blue-500/40 rounded-full p-0.5 transition-colors flex-shrink-0"
-                          aria-label="Remove knowledge base"
-                        >
-                          <XMarkIcon className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-medium text-gray-300">
+                  Knowledge Bases * (at least 1 required)
+                </label>
                 <button
                   type="button"
                   onClick={() => {
                     setEditingKnowledgeBaseIndex(null);
                     setShowKnowledgeBaseModal(true);
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
                 >
                   <PlusIcon className="h-4 w-4" />
                   Add Knowledge Base
                 </button>
-                <p className="text-gray-400 text-xs">
-                  One or more knowledge base bindings used by the agent.
-                </p>
               </div>
+
+              {knowledgeBases.length === 0 ? (
+                <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-8 text-center">
+                  <p className="text-gray-400 text-sm mb-4">
+                    No knowledge bases added yet
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingKnowledgeBaseIndex(null);
+                      setShowKnowledgeBaseModal(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add Your First Knowledge Base
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-800/50 border-b border-gray-700/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Provider
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Index
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Namespace
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Description
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700/50">
+                        {knowledgeBases.map((kb, index) => {
+                          const canNavigate =
+                            kb.provider === "pinecone" && kb.index;
+
+                          return (
+                            <tr
+                              key={index}
+                              className="hover:bg-gray-800/30 transition-colors"
+                            >
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="text-sm text-white font-medium capitalize">
+                                  {kb.provider}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="text-sm text-gray-300">
+                                  {kb.index || (
+                                    <span className="text-gray-500 italic">
+                                      —
+                                    </span>
+                                  )}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="text-sm text-gray-300">
+                                  {kb.namespace || (
+                                    <span className="text-gray-500 italic">
+                                      (default)
+                                    </span>
+                                  )}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="text-sm text-gray-300">
+                                  {kb.description || (
+                                    <span className="text-gray-500 italic">
+                                      No description
+                                    </span>
+                                  )}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  {canNavigate && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        router.push(
+                                          `/dashboard/vector-stores?indexName=${encodeURIComponent(kb.index!)}`
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
+                                      title="View details"
+                                    >
+                                      <LinkIcon className="h-4 w-4" />
+                                      View Details
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditKnowledgeBase(index);
+                                    }}
+                                    className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
+                                    title="Edit knowledge base"
+                                    aria-label="Edit knowledge base"
+                                  >
+                                    <PencilIcon className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveKnowledgeBase(index);
+                                    }}
+                                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                    title="Remove knowledge base"
+                                    aria-label="Remove knowledge base"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              <p className="text-gray-400 text-xs mt-2">
+                One or more knowledge base bindings used by the agent.
+              </p>
             </div>
           </div>
         </div>

@@ -178,7 +178,7 @@ export function VectorStoresContainer() {
               onCreateNamespace={() => setShowCreateNamespaceForm(index.name)}
               onViewDetails={() =>
                 router.push(
-                  `/dashboard/vector-stores/${encodeURIComponent(index.name)}`
+                  `/dashboard/vector-stores?indexName=${encodeURIComponent(index.name)}`
                 )
               }
             />
