@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { agentsService, Agent } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { successToast } from "@/shared/toasts/successToast";
+import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
   const router = useRouter();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!agentId) {
@@ -37,6 +39,29 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!agentId || !agent) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${agent.name}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await agentsService.deleteAgent(agentId);
+      successToast(`Agent "${agent.name}" deleted successfully`);
+      router.push("/dashboard/agents");
+    } catch (error: any) {
+      errorToast(error.message || "Failed to delete agent");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -56,14 +81,27 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push("/dashboard/agents")}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
+          </button>
+          <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
+        </div>
         <button
-          onClick={() => router.push("/dashboard/agents")}
-          className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Delete agent"
         >
-          <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
+          <TrashIcon className="h-5 w-5" />
+          <span className="text-sm font-medium">
+            {deleting ? "Deleting..." : "Delete"}
+          </span>
         </button>
-        <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
       </div>
 
       {/* Agent Details */}

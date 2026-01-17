@@ -97,6 +97,21 @@ class AgentsService {
 
     return this.handleResponse<Agent>(response);
   }
+
+  async deleteAgent(agentId: string): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/agents/${encodeURIComponent(agentId)}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      }
+    );
+
+    return this.handleResponse<void>(response);
+  }
 }
 
 export const agentsService = new AgentsService();
