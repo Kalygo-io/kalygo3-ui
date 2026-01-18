@@ -24,7 +24,7 @@ export function ContextualAside({
     <>
       {/* Mobile overlay backdrop */}
       <div
-        className={`fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black bg-opacity-50 z-[75] lg:hidden transition-opacity duration-300 ${
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -32,13 +32,13 @@ export function ContextualAside({
 
       {/* Drawer */}
       <div
-        className={`fixed inset-y-0 right-0 w-96 bg-gray-900 border-l border-gray-700 z-[70] transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 right-0 w-96 bg-gray-900 border-l border-gray-700 z-[80] transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          {/* Header - positioned below top nav (64px = h-16) */}
+          <div className="flex items-center justify-between p-4 pt-20 border-b border-gray-700">
             <h2 className="text-lg font-semibold text-white">Agent Config</h2>
             <DrawerCloseButton onClose={onClose} />
           </div>
