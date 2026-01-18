@@ -43,6 +43,7 @@ export interface UpdateAgentRequest {
 
 // Helper function to ensure HTTPS in production
 function getApiBaseUrl(): string {
+  console.log("getApiBaseUrl", process.env.NEXT_PUBLIC_AI_API_URL);
   const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
   
   // If we're in the browser and the page is HTTPS, ensure API URL is also HTTPS
