@@ -8,13 +8,13 @@ import {
   chatReducer,
   initialState,
 } from "@/app/dashboard/agent-chat/chat-session-reducer";
-import { Chat as KalygoAgentChat } from "@/components/kalygo-agent-chat/chat";
+import { Chat as AgentChat } from "@/components/agent-chat/chat";
 import { useReducer, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useChatSessions } from "@/shared/hooks/use-chat-sessions";
 import { KALYGO_AGENT_CHAT_APP_ID } from "@/ts/types/ChatAppIds";
 
-export function KalygoAgentContainer() {
+export function AgentContainer() {
   const [chat, dispatch] = useReducer(chatReducer, initialState);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -74,7 +74,7 @@ export function KalygoAgentContainer() {
   return (
     <ChatContext.Provider value={chat}>
       <ChatDispatchContext.Provider value={dispatch}>
-        <KalygoAgentChat />
+        <AgentChat />
       </ChatDispatchContext.Provider>
     </ChatContext.Provider>
   );
