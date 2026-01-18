@@ -143,7 +143,7 @@ export function AgentChatInterface({
           </div>
           {/* Chat interface */}
           <div className="flex-1 overflow-hidden">
-            <AgentChat />
+            <AgentChat agent={agent} />
           </div>
         </div>
       </ChatDispatchContext.Provider>

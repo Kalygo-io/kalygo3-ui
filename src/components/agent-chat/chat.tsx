@@ -4,7 +4,7 @@ import {
   ChatContext,
   ChatDispatchContext,
 } from "@/app/dashboard/agent-chat/chat-session-context";
-import { ChatList } from "@/components/kalygo-agent-chat/chat-list";
+import { ChatList } from "@/components/agent-chat/chat-list";
 import { ChatPanel } from "@/components/shared/chat/chat-panel";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
 import { PromptForm } from "@/components/agent-chat/prompt-form";
@@ -20,10 +20,14 @@ import {
 } from "@heroicons/react/24/outline";
 import { clearSessionMessages } from "@/services/clearSessionMessages";
 import { errorToast, successToast } from "@/shared/toasts";
+import { ContextualAside } from "./contextual-aside";
+import { Agent } from "@/services/agentsService";
 
-export interface ChatProps extends React.ComponentProps<"div"> {}
+export interface ChatProps extends React.ComponentProps<"div"> {
+  agent?: Agent | null;
+}
 
-export function Chat({ id, className }: ChatProps) {
+export function Chat({ id, className, agent }: ChatProps) {
   const [input, setInput] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -208,11 +212,11 @@ export function Chat({ id, className }: ChatProps) {
           />
         </div>
       </div>
-      {/* ContextualAside removed - can be added later if needed */}
-      {/* <ContextualAside
+      <ContextualAside
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-      /> */}
+        agent={agent}
+      />
     </>
   );
 }
