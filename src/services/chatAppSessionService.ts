@@ -111,6 +111,8 @@ class ChatAppSessionService {
       const sessionData = await resp.json();
 
       // Transform the API response to match our interface
+      // Note: messages from the backend should follow the chat-message schema
+      // and include fields like role, content, and toolCalls (for AI messages)
       const session: ChatAppSession = {
         id: sessionData.id,
         sessionId: sessionData.sessionId,
@@ -118,7 +120,7 @@ class ChatAppSessionService {
         accountId: sessionData.accountId,
         createdAt: sessionData.createdAt,
         title: sessionData.title,
-        chatHistory: sessionData.messages || [],
+        chatHistory: sessionData.messages || [], // Messages preserve all fields including toolCalls
       };
 
       return session;

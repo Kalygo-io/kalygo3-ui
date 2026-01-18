@@ -6,19 +6,21 @@ import {
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
-import { RetrievalCall } from "@/ts/types/Message";
+import { ToolCall, RetrievalCall } from "@/ts/types/Message";
 import { useCopyToClipboard } from "@/shared/hooks/use-copy-to-clipboard";
 
 interface ToolCallsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  retrievalCalls: RetrievalCall[];
+  toolCalls?: ToolCall[]; // New schema-based tool calls
+  retrievalCalls?: RetrievalCall[]; // Legacy retrieval calls
 }
 
 export function ToolCallsDrawer({
   isOpen,
   onClose,
-  retrievalCalls,
+  toolCalls = [],
+  retrievalCalls = [],
 }: ToolCallsDrawerProps) {
   const [expandedToolCalls, setExpandedToolCalls] = useState<Set<number>>(
     new Set()
@@ -26,20 +28,36 @@ export function ToolCallsDrawer({
   const [expandedChunks, setExpandedChunks] = useState<Set<string>>(new Set());
   const { copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
 
-  // Expand all chunks by default when drawer opens or retrievalCalls change
+  // Use new toolCalls if available, otherwise fall back to legacy retrievalCalls
+  const allToolCalls = toolCalls.length > 0 ? toolCalls : retrievalCalls;
+  const isNewSchema = toolCalls.length > 0;
+
+  // Expand all chunks by default when drawer opens or toolCalls change
   useEffect(() => {
-    if (isOpen && retrievalCalls.length > 0) {
+    if (isOpen && allToolCalls.length > 0) {
       const allChunkKeys = new Set<string>();
-      retrievalCalls.forEach((call, toolCallIndex) => {
-        if (call.reranked_results) {
-          call.reranked_results.forEach((_, chunkIndex) => {
-            allChunkKeys.add(`${toolCallIndex}-${chunkIndex}`);
-          });
+      allToolCalls.forEach((call, toolCallIndex) => {
+        if (isNewSchema) {
+          // New schema: call.results
+          const toolCall = call as ToolCall;
+          if (toolCall.results) {
+            toolCall.results.forEach((_, chunkIndex) => {
+              allChunkKeys.add(`${toolCallIndex}-${chunkIndex}`);
+            });
+          }
+        } else {
+          // Legacy schema: call.reranked_results
+          const retrievalCall = call as RetrievalCall;
+          if (retrievalCall.reranked_results) {
+            retrievalCall.reranked_results.forEach((_, chunkIndex) => {
+              allChunkKeys.add(`${toolCallIndex}-${chunkIndex}`);
+            });
+          }
         }
       });
       setExpandedChunks(allChunkKeys);
     }
-  }, [isOpen, retrievalCalls]);
+  }, [isOpen, allToolCalls, isNewSchema]);
 
   if (!isOpen) return null;
 
@@ -84,6 +102,45 @@ export function ToolCallsDrawer({
     return nameWithoutExt.substring(0, maxNameLength) + "..." + extension;
   };
 
+  // Helper to get filename from metadata (new schema) or result (legacy)
+  const getFilename = (result: any): string | undefined => {
+    if (isNewSchema) {
+      return result.metadata?.filename || 
+             result.metadata?.source || 
+             result.metadata?.file_name;
+    } else {
+      return result.filename;
+    }
+  };
+
+  // Helper to get score (new schema uses score, legacy uses relevance_score)
+  const getScore = (result: any): number => {
+    if (isNewSchema) {
+      return result.score || 0;
+    } else {
+      return result.relevance_score || 0;
+    }
+  };
+
+  // Helper to get similarity score (legacy only)
+  const getSimilarityScore = (result: any): number | undefined => {
+    if (!isNewSchema) {
+      return result.similarity_score;
+    }
+    return undefined;
+  };
+
+  // Calculate total chunks
+  const totalChunks = allToolCalls.reduce((total, call) => {
+    if (isNewSchema) {
+      const toolCall = call as ToolCall;
+      return total + (toolCall.results?.length || 0);
+    } else {
+      const retrievalCall = call as RetrievalCall;
+      return total + (retrievalCall.reranked_results?.length || 0);
+    }
+  }, 0);
+
   return (
     <div className="fixed inset-0 z-[70] overflow-hidden">
       {/* Backdrop */}
@@ -122,23 +179,18 @@ export function ToolCallsDrawer({
                   <span className="text-blue-400 font-medium">
                     Tool Calls Made:
                   </span>
-                  <span className="text-white">{retrievalCalls.length}</span>
+                  <span className="text-white">{allToolCalls.length}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-blue-400 font-medium">
                     Total Chunks Retrieved:
                   </span>
-                  <span className="text-white">
-                    {retrievalCalls.reduce(
-                      (total, call) => total + (call.reranked_results?.length || 0),
-                      0
-                    )}
-                  </span>
+                  <span className="text-white">{totalChunks}</span>
                 </div>
               </div>
             </div>
 
-            {retrievalCalls.length === 0 ? (
+            {allToolCalls.length === 0 ? (
               <div className="text-center py-8">
                 <DocumentTextIcon className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                 <p className="text-gray-400">
@@ -148,226 +200,248 @@ export function ToolCallsDrawer({
             ) : (
               <div className="space-y-4">
                 <h4 className="text-md font-semibold text-white mb-3">
-                  Tool Calls ({retrievalCalls.length})
+                  Tool Calls ({allToolCalls.length})
                 </h4>
 
-                {retrievalCalls.map((call, index) => (
-                  <div
-                    key={index}
-                    className="bg-gray-800/50 border border-gray-600/50 rounded-lg p-4"
-                  >
-                    {/* Tool Call Header with Expand/Collapse */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-400">
-                          #{index + 1}
-                        </span>
-                        <DocumentTextIcon className="w-5 h-5 text-blue-400" />
-                        <h3 className="text-lg font-medium text-white">
-                          Retrieval Call
-                        </h3>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs text-gray-400">Chunks:</span>
-                          <span className="text-xs font-medium text-white">
-                            {call.reranked_results?.length || 0}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => toggleToolCallExpanded(index)}
-                          className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center"
-                        >
-                          {expandedToolCalls.has(index) ? (
-                            <>
-                              <ChevronUpIcon className="w-4 h-4 mr-1" />
-                              Hide Details
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDownIcon className="w-4 h-4 mr-1" />
-                              Show Details
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                {allToolCalls.map((call, index) => {
+                  const toolCall = call as ToolCall;
+                  const retrievalCall = call as RetrievalCall;
+                  
+                  // Get results based on schema
+                  const results = isNewSchema 
+                    ? toolCall.results || []
+                    : retrievalCall.reranked_results || [];
+                  
+                  // Get tool name
+                  const toolName = isNewSchema 
+                    ? toolCall.name || "Retrieval Call"
+                    : "Retrieval Call";
 
-                    {/* Query and Namespace - Always visible */}
-                    <div className="mb-3">
-                      <div className="flex items-start space-x-2">
-                        <span className="text-blue-400 font-medium text-sm">
-                          Query:
-                        </span>
-                        <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                          {call.query}
-                        </span>
+                  return (
+                    <div
+                      key={index}
+                      className="bg-gray-800/50 border border-gray-600/50 rounded-lg p-4"
+                    >
+                      {/* Tool Call Header with Expand/Collapse */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-400">
+                            #{index + 1}
+                          </span>
+                          <DocumentTextIcon className="w-5 h-5 text-blue-400" />
+                          <h3 className="text-lg font-medium text-white">
+                            {toolName}
+                          </h3>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-1">
+                            <span className="text-xs text-gray-400">Chunks:</span>
+                            <span className="text-xs font-medium text-white">
+                              {results.length}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => toggleToolCallExpanded(index)}
+                            className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center"
+                          >
+                            {expandedToolCalls.has(index) ? (
+                              <>
+                                <ChevronUpIcon className="w-4 h-4 mr-1" />
+                                Hide Details
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDownIcon className="w-4 h-4 mr-1" />
+                                Show Details
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
-                      {call.namespace && (
-                        <div className="flex items-start space-x-2 mt-2">
+
+                      {/* Query, Namespace, and Index - Always visible */}
+                      <div className="mb-3">
+                        <div className="flex items-start space-x-2">
                           <span className="text-blue-400 font-medium text-sm">
-                            Namespace:
+                            Query:
                           </span>
                           <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                            {call.namespace}
+                            {isNewSchema ? toolCall.query : retrievalCall.query}
                           </span>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Expanded Content */}
-                    {expandedToolCalls.has(index) && (
-                      <div className="mt-4 pt-4 border-t border-gray-600/30">
-                        {/* Chunks Section */}
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium text-gray-300 mb-3">
-                            Retrieved Chunks ({call.reranked_results?.length || 0})
-                          </h4>
-                          {!call.reranked_results || call.reranked_results.length === 0 ? (
-                            <div className="text-center py-4 text-gray-400 text-sm">
-                              No chunks retrieved for this tool call
-                            </div>
-                          ) : (
-                          <div className="space-y-3">
-                            {call.reranked_results.map(
-                              (result, resultIndex) => (
-                                <div
-                                  key={resultIndex}
-                                  className="bg-gray-800/30 border border-gray-600/30 rounded-lg p-3"
-                                >
-                                  {/* Chunk Header */}
-                                  <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center space-x-2">
-                                      <span className="text-sm text-gray-400">
-                                        #{resultIndex + 1}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                      <div className="flex items-center space-x-1">
-                                        <span className="text-xs text-gray-400">
-                                          Relevance:
-                                        </span>
-                                        <span className="text-xs font-medium text-white">
-                                          {(
-                                            result.relevance_score * 100
-                                          ).toFixed(1)}
-                                          %
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center space-x-1">
-                                        <span className="text-xs text-gray-400">
-                                          Similarity:
-                                        </span>
-                                        <span className="text-xs font-medium text-blue-400">
-                                          {(
-                                            result.similarity_score * 100
-                                          ).toFixed(1)}
-                                          %
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Filename */}
-                                  {result.filename && (
-                                    <div className="mb-3">
-                                      <span
-                                        className="text-sm font-medium text-blue-400 bg-blue-900/20 px-3 py-1 rounded-lg border border-blue-700/30 cursor-pointer hover:bg-blue-900/30 transition-colors"
-                                        title={result.filename}
-                                        onClick={() =>
-                                          // @ts-ignore
-                                          copyToClipboard(result.filename)
-                                        }
-                                      >
-                                        📃 {ellipsizeFilename(result.filename)}
-                                      </span>
-                                    </div>
-                                  )}
-
-                                  {/* Actions */}
-                                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-600/30">
-                                    <button
-                                      onClick={() =>
-                                        toggleChunkExpanded(index, resultIndex)
-                                      }
-                                      className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center"
-                                    >
-                                      {expandedChunks.has(
-                                        `${index}-${resultIndex}`
-                                      ) ? (
-                                        <>
-                                          <ChevronUpIcon className="w-4 h-4 mr-1" />
-                                          Hide Chunk
-                                        </>
-                                      ) : (
-                                        <>
-                                          <ChevronDownIcon className="w-4 h-4 mr-1" />
-                                          Show Chunk
-                                        </>
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        copyChunkContent(result.content)
-                                      }
-                                      className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
-                                    >
-                                      <svg
-                                        className="w-3 h-3"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                        />
-                                      </svg>
-                                      <span>Copy</span>
-                                    </button>
-                                  </div>
-
-                                  {/* Chunk Content - Only shown when expanded */}
-                                  {expandedChunks.has(
-                                    `${index}-${resultIndex}`
-                                  ) && (
-                                    <div className="mt-3 bg-gray-900/50 p-3 rounded border border-gray-600/30 overflow-x-auto">
-                                      <div className="text-xs text-gray-500 mb-2 flex items-center">
-                                        <ChevronDownIcon className="w-3 h-3 mr-1" />
-                                        Full Content
-                                      </div>
-                                      <div
-                                        className="text-sm text-gray-300 leading-relaxed font-mono"
-                                        style={{ whiteSpace: "pre-wrap" }}
-                                      >
-                                        {result.content}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            )}
+                        {(isNewSchema ? toolCall.namespace : retrievalCall.namespace) && (
+                          <div className="flex items-start space-x-2 mt-2">
+                            <span className="text-blue-400 font-medium text-sm">
+                              Namespace:
+                            </span>
+                            <span className="text-white text-sm bg-gray-800 p-2 rounded">
+                              {isNewSchema ? toolCall.namespace : retrievalCall.namespace}
+                            </span>
                           </div>
-                          )}
-                        </div>
-
-                        {/* Message */}
-                        {call.message && (
-                          <div className="mt-4 pt-4 border-t border-gray-600/30">
-                            <h4 className="text-sm font-medium text-gray-300 mb-2">
-                              Tool Message:
-                            </h4>
-                            <p className="text-gray-200 text-sm bg-gray-800/50 p-3 rounded border border-gray-600/50">
-                              {call.message}
-                            </p>
+                        )}
+                        {isNewSchema && toolCall.index && (
+                          <div className="flex items-start space-x-2 mt-2">
+                            <span className="text-blue-400 font-medium text-sm">
+                              Index:
+                            </span>
+                            <span className="text-white text-sm bg-gray-800 p-2 rounded">
+                              {toolCall.index}
+                            </span>
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {/* Expanded Content */}
+                      {expandedToolCalls.has(index) && (
+                        <div className="mt-4 pt-4 border-t border-gray-600/30">
+                          {/* Results Section */}
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-gray-300 mb-3">
+                              Retrieved Chunks ({results.length})
+                            </h4>
+                            {results.length === 0 ? (
+                              <div className="text-center py-4 text-gray-400 text-sm">
+                                No chunks retrieved for this tool call
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {results.map((result, resultIndex) => {
+                                  const filename = getFilename(result);
+                                  const score = getScore(result);
+                                  const similarityScore = getSimilarityScore(result);
+
+                                  return (
+                                    <div
+                                      key={resultIndex}
+                                      className="bg-gray-800/30 border border-gray-600/30 rounded-lg p-3"
+                                    >
+                                      {/* Chunk Header */}
+                                      <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center space-x-2">
+                                          <span className="text-sm text-gray-400">
+                                            #{resultIndex + 1}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center space-x-3">
+                                          <div className="flex items-center space-x-1">
+                                            <span className="text-xs text-gray-400">
+                                              {isNewSchema ? "Score" : "Relevance"}:
+                                            </span>
+                                            <span className="text-xs font-medium text-white">
+                                              {(score * 100).toFixed(1)}%
+                                            </span>
+                                          </div>
+                                          {similarityScore !== undefined && (
+                                            <div className="flex items-center space-x-1">
+                                              <span className="text-xs text-gray-400">
+                                                Similarity:
+                                              </span>
+                                              <span className="text-xs font-medium text-blue-400">
+                                                {(similarityScore * 100).toFixed(1)}%
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Filename */}
+                                      {filename && (
+                                        <div className="mb-3">
+                                          <span
+                                            className="text-sm font-medium text-blue-400 bg-blue-900/20 px-3 py-1 rounded-lg border border-blue-700/30 cursor-pointer hover:bg-blue-900/30 transition-colors"
+                                            title={filename}
+                                            onClick={() => copyToClipboard(filename)}
+                                          >
+                                            📃 {ellipsizeFilename(filename)}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {/* Actions */}
+                                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-600/30">
+                                        <button
+                                          onClick={() =>
+                                            toggleChunkExpanded(index, resultIndex)
+                                          }
+                                          className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center"
+                                        >
+                                          {expandedChunks.has(
+                                            `${index}-${resultIndex}`
+                                          ) ? (
+                                            <>
+                                              <ChevronUpIcon className="w-4 h-4 mr-1" />
+                                              Hide Chunk
+                                            </>
+                                          ) : (
+                                            <>
+                                              <ChevronDownIcon className="w-4 h-4 mr-1" />
+                                              Show Chunk
+                                            </>
+                                          )}
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            copyChunkContent(result.content)
+                                          }
+                                          className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
+                                        >
+                                          <svg
+                                            className="w-3 h-3"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                            />
+                                          </svg>
+                                          <span>Copy</span>
+                                        </button>
+                                      </div>
+
+                                      {/* Chunk Content - Only shown when expanded */}
+                                      {expandedChunks.has(
+                                        `${index}-${resultIndex}`
+                                      ) && (
+                                        <div className="mt-3 bg-gray-900/50 p-3 rounded border border-gray-600/30 overflow-x-auto">
+                                          <div className="text-xs text-gray-500 mb-2 flex items-center">
+                                            <ChevronDownIcon className="w-3 h-3 mr-1" />
+                                            Full Content
+                                          </div>
+                                          <div
+                                            className="text-sm text-gray-300 leading-relaxed font-mono"
+                                            style={{ whiteSpace: "pre-wrap" }}
+                                          >
+                                            {result.content}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Message (legacy only) */}
+                          {!isNewSchema && retrievalCall.message && (
+                            <div className="mt-4 pt-4 border-t border-gray-600/30">
+                              <h4 className="text-sm font-medium text-gray-300 mb-2">
+                                Tool Message:
+                              </h4>
+                              <p className="text-gray-200 text-sm bg-gray-800/50 p-3 rounded border border-gray-600/50">
+                                {retrievalCall.message}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

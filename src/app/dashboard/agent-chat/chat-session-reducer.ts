@@ -22,6 +22,7 @@ export type Action =
         content?: string;
         error?: any;
         retrievalCalls?: any[];
+        toolCalls?: any[];
       };
     }
   | {
@@ -62,10 +63,7 @@ export function chatReducer(
         messages: [
           ...state.messages,
           {
-            id: action.payload.id,
-            content: action.payload.content,
-            role: action.payload.role,
-            error: action.payload.error,
+            ...action.payload, // Preserve all fields including toolCalls, retrievalCalls, etc.
           },
         ],
       };

@@ -7,7 +7,8 @@ export interface Message {
   blocks?: Message[];
   rerankedMatches?: RerankedMatch[];
   kb_search_query?: string;
-  retrievalCalls?: RetrievalCall[];
+  retrievalCalls?: RetrievalCall[]; // Legacy - kept for backward compatibility
+  toolCalls?: ToolCall[]; // New schema-based tool calls
 }
 
 export interface RetrievalCall {
@@ -27,4 +28,20 @@ export interface RerankedMatch {
   content: string;
   filename?: string;
   kb_search_query?: string;
+}
+
+// New schema-based tool call types
+export interface ToolCall {
+  name: string; // e.g., "retrieval with re-ranking"
+  query: string;
+  namespace: string;
+  index: string;
+  results: RetrievalResult[];
+}
+
+export interface RetrievalResult {
+  chunk_id: string;
+  score: number;
+  content: string;
+  metadata?: Record<string, any>;
 }

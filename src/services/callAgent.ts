@@ -197,20 +197,47 @@ function dispatchEventToState(
         },
       });
 
-      // Handle retrieval calls if available
+      // Handle tool calls if available (new schema) or retrieval calls (legacy)
       console.log(
-        "Chain end event - checking for retrieval calls:",
+        "Chain end event - checking for tool calls:",
         parsedChunk
       );
       console.log("Chain end event keys:", Object.keys(parsedChunk));
-      if (parsedChunk.retrieval_calls) {
-        try {
-          console.log("Retrieval calls found:", parsedChunk.retrieval_calls);
-          const retrievalCallsData = Array.isArray(parsedChunk.retrieval_calls)
-            ? parsedChunk.retrieval_calls
-            : [];
+      
+      // Check multiple possible locations for toolCalls (new schema)
+      const toolCallsData = 
+        parsedChunk.toolCalls ||  // Direct property
+        parsedChunk.data?.toolCalls ||  // Nested in data
+        parsedChunk.tool_calls ||  // Snake case variant
+        parsedChunk.data?.tool_calls ||  // Snake case in data
+        null;
 
-          console.log("Processed retrieval calls data:", retrievalCallsData);
+      // Check for legacy retrieval_calls
+      const retrievalCallsData = 
+        parsedChunk.retrieval_calls ||
+        parsedChunk.data?.retrieval_calls ||
+        null;
+
+      if (toolCallsData && Array.isArray(toolCallsData)) {
+        try {
+          console.log("Tool calls found (new schema):", toolCallsData);
+
+          dispatch({
+            type: "EDIT_MESSAGE",
+            payload: {
+              id: aiMessageId,
+              toolCalls: toolCallsData,
+            },
+          });
+
+          console.log("Tool calls dispatched to state");
+          console.log("Tool calls count:", toolCallsData.length);
+        } catch (error) {
+          console.error("Error processing tool calls:", error);
+        }
+      } else if (retrievalCallsData && Array.isArray(retrievalCallsData)) {
+        try {
+          console.log("Retrieval calls found (legacy):", retrievalCallsData);
 
           dispatch({
             type: "EDIT_MESSAGE",
@@ -221,16 +248,12 @@ function dispatchEventToState(
           });
 
           console.log("Retrieval calls dispatched to state");
-          console.log(
-            "Message should now have retrievalCalls:",
-            retrievalCallsData
-          );
           console.log("Retrieval calls count:", retrievalCallsData.length);
         } catch (error) {
           console.error("Error processing retrieval calls:", error);
         }
       } else {
-        console.log("No retrieval calls found in chain end event");
+        console.log("No tool calls or retrieval calls found in chain end event");
         console.log("Available keys in parsedChunk:", Object.keys(parsedChunk));
       }
     } else if (parsedChunk.event === "on_tool_start") {

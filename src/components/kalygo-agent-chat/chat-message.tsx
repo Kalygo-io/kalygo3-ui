@@ -96,8 +96,8 @@ export const ChatMessage = memo(
 
                 {/* Tool Calls Button for AI messages */}
                 {P.message.role === "ai" &&
-                  P.message.retrievalCalls &&
-                  P.message.retrievalCalls.length > 0 && (
+                  ((P.message.toolCalls && P.message.toolCalls.length > 0) ||
+                    (P.message.retrievalCalls && P.message.retrievalCalls.length > 0)) && (
                     <div className="mt-4">
                       <button
                         onClick={() => setIsDrawerOpen(true)}
@@ -106,7 +106,8 @@ export const ChatMessage = memo(
                         <DocumentTextIcon className="w-4 h-4 text-blue-400" />
                         <span className="text-sm font-medium">
                           Tool Calls & References (
-                          {P.message.retrievalCalls.length})
+                          {(P.message.toolCalls?.length || 0) +
+                            (P.message.retrievalCalls?.length || 0)})
                         </span>
                       </button>
                     </div>
@@ -124,6 +125,7 @@ export const ChatMessage = memo(
           <ToolCallsDrawer
             isOpen={isDrawerOpen}
             onClose={() => setIsDrawerOpen(false)}
+            toolCalls={P.message.toolCalls || []}
             retrievalCalls={P.message.retrievalCalls || []}
           />
         </>
