@@ -1,4 +1,19 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:4000";
+// Helper function to ensure HTTPS in production
+function getApiBaseUrl(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
+  
+  // If we're in the browser and the page is HTTPS, ensure API URL is also HTTPS
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    // Replace http:// with https:// for production domains
+    if (apiUrl.startsWith("http://")) {
+      return apiUrl.replace("http://", "https://");
+    }
+  }
+  
+  return apiUrl;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 export enum ApiKeyStatus {
   ACTIVE = "active",
