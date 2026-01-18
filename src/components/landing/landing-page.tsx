@@ -470,7 +470,7 @@ export function LandingPage() {
 
           <div className="pt-8 border-t border-gray-800 flex items-center justify-center">
             <p className="text-gray-400 text-sm">
-              © 2025 Kalygo. All rights reserved.
+              © 2026 Kalygo. All rights reserved.
             </p>
           </div>
         </div>
