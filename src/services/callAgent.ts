@@ -52,6 +52,17 @@ export async function callAgent(
   };
   let retrievalCalls: any[] = [];
 
+  // Create the AI message immediately so EDIT_MESSAGE never races ADD_MESSAGE
+  dispatch({
+    type: "ADD_MESSAGE",
+    payload: {
+      id: aiMessageId,
+      content: "",
+      role: "ai",
+      error: null,
+    },
+  });
+
   console.log("Starting to read stream...");
 
   try {
@@ -168,16 +179,9 @@ function dispatchEventToState(
     console.log("Processing event:", parsedChunk.event, parsedChunk);
 
     // Only handle essential events to isolate the issue
-    if (parsedChunk.event === "on_chain_start") {
-      dispatch({
-        type: "ADD_MESSAGE",
-        payload: {
-          id: aiMessageId,
-          content: "",
-          role: "ai",
-          error: null,
-        },
-      });
+    if (parsedChunk.event === "on_chat_model_start") {
+      // Message already created upfront (before stream processing), so just log this event
+      console.log("Chat model started");
     } else if (parsedChunk.event === "on_chat_model_stream") {
       accMessage.content += parsedChunk.data || "";
       dispatch({
@@ -288,8 +292,6 @@ function dispatchEventToState(
       } catch (error) {
         console.error("Error handling tool end:", error, parsedChunk);
       }
-    } else if (parsedChunk.event === "on_chat_model_start") {
-      console.log("Chat model started");
     } else {
       console.log("Unhandled event:", parsedChunk.event);
     }
