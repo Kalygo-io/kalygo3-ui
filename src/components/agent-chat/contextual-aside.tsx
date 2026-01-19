@@ -7,7 +7,7 @@ import {
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
-import { Agent, KnowledgeBase } from "@/services/agentsService";
+import { Agent, KnowledgeBase, isAgentConfigV1, ToolV2 } from "@/services/agentsService";
 
 interface ContextualAsideProps {
   isOpen: boolean;
@@ -153,8 +153,9 @@ export function ContextualAside({
                       </div>
                     )}
 
-                    {/* Knowledge Bases */}
-                    {agent.config.data?.knowledgeBases &&
+                    {/* Knowledge Bases / Tools */}
+                    {agent.config && isAgentConfigV1(agent.config) && 
+                      agent.config.data?.knowledgeBases &&
                       agent.config.data.knowledgeBases.length > 0 && (
                         <div className="bg-gray-800/50 rounded-lg p-3">
                           <div className="flex flex-col space-y-2">
@@ -202,8 +203,68 @@ export function ContextualAside({
                         </div>
                       )}
 
-                    {/* No Knowledge Bases */}
-                    {(!agent.config.data?.knowledgeBases ||
+                    {/* V2 Tools */}
+                    {agent.config && !isAgentConfigV1(agent.config) &&
+                      agent.config.data?.tools &&
+                      agent.config.data.tools.length > 0 && (
+                        <div className="bg-gray-800/50 rounded-lg p-3">
+                          <div className="flex flex-col space-y-2">
+                            <span className="text-xs text-gray-400">
+                              Tools ({agent.config.data.tools.length})
+                            </span>
+                            <div className="space-y-2">
+                              {agent.config.data.tools.map(
+                                (tool: ToolV2, index: number) => (
+                                  <div
+                                    key={index}
+                                    className="bg-gray-900/50 p-2 rounded border border-gray-700/50"
+                                  >
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <DocumentTextIcon className="w-4 h-4 text-purple-400" />
+                                      <span className="text-xs font-medium text-white">
+                                        {tool.type === "vectorSearchWithReranking" ? "Vector Search + Rerank" : "Vector Search"}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-gray-300 space-y-1 pl-6">
+                                      <div>
+                                        <span className="text-gray-400">Provider: </span>
+                                        <span className="text-white">{tool.provider}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-400">Index: </span>
+                                        <span className="text-white">{tool.index}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-400">Namespace: </span>
+                                        <span className="text-white">{tool.namespace}</span>
+                                      </div>
+                                      {tool.description && (
+                                        <div>
+                                          <span className="text-gray-400">Description: </span>
+                                          <span className="text-white">{tool.description}</span>
+                                        </div>
+                                      )}
+                                      {tool.type === "vectorSearchWithReranking" ? (
+                                        <div>
+                                          <span className="text-gray-400">K: {tool.topK || 20}, N: {tool.topN || 5}</span>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <span className="text-gray-400">Top K: {tool.topK || 10}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                    {/* No Knowledge Bases / Tools */}
+                    {agent.config && isAgentConfigV1(agent.config) && 
+                      (!agent.config.data?.knowledgeBases ||
                       agent.config.data.knowledgeBases.length === 0) && (
                       <div className="bg-gray-800/50 rounded-lg p-3">
                         <div className="flex flex-col space-y-1">
@@ -212,6 +273,21 @@ export function ContextualAside({
                           </span>
                           <span className="text-sm text-gray-500 italic">
                             No knowledge bases configured
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {agent.config && !isAgentConfigV1(agent.config) &&
+                      (!agent.config.data?.tools ||
+                      agent.config.data.tools.length === 0) && (
+                      <div className="bg-gray-800/50 rounded-lg p-3">
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-xs text-gray-400">
+                            Tools
+                          </span>
+                          <span className="text-sm text-gray-500 italic">
+                            No tools configured
                           </span>
                         </div>
                       </div>
