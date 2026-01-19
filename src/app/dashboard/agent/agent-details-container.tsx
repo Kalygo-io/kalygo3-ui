@@ -9,6 +9,7 @@ import {
   AgentConfigData,
   KnowledgeBase,
   getAgentVersion,
+  AgentConfigV1,
 } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
@@ -67,7 +68,7 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
       if (data.config) {
         setName(data.name || "");
         setSystemPrompt(data.config.data?.systemPrompt || "");
-        setKnowledgeBases(data.config.data?.knowledgeBases || []);
+        setKnowledgeBases((data.config as AgentConfigV1).data?.knowledgeBases || []);
         setConfigVersion(data.config.version || 1);
       } else {
         // Fallback for older format
