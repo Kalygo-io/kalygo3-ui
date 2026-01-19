@@ -7,9 +7,11 @@ import {
   Agent,
   AgentConfig,
   AgentConfigData,
+  AgentConfigDataV1,
   KnowledgeBase,
   getAgentVersion,
   AgentConfigV1,
+  UpdateAgentRequest,
 } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
@@ -107,16 +109,16 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
     try {
       setSaving(true);
       
-      const configData: AgentConfigData = {
+      const configData: AgentConfigDataV1 = {
         systemPrompt: systemPrompt.trim(),
         knowledgeBases: knowledgeBases,
       };
 
-      const updateData = {
+      const updateData: UpdateAgentRequest = {
         name: name.trim(),
         config: {
-          schema: "agent_config",
-          version: configVersion,
+          schema: "agent_config" as const,
+          version: 1 as const,
           data: configData,
         },
       };

@@ -436,7 +436,7 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                                         type="button"
                                         onClick={() =>
                                           router.push(
-                                            `/dashboard/vector-stores?indexName=${encodeURIComponent(vectorTool.index)}`
+                                            `/dashboard/vector-stores?indexName=${encodeURIComponent(tool.index)}`
                                           )
                                         }
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
