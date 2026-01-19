@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import {
   agentsService,
   Agent,
-  AgentConfig,
-  AgentConfigData,
-  KnowledgeBase,
-  getAgentVersion,
+  AgentConfigV2,
+  AgentConfigDataV2,
+  VectorSearchTool,
+  VectorSearchWithRerankingTool,
+  ToolV2,
 } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
-import { AgentDetailsV2 } from "./agent-details-v2";
 import {
   ArrowLeftIcon,
   TrashIcon,
@@ -21,15 +21,9 @@ import {
   PencilIcon,
   LinkIcon,
 } from "@heroicons/react/24/outline";
-import {
-  vectorStoresService,
-  Index,
-  Namespace,
-} from "@/services/vectorStoresService";
-import { AddKnowledgeBaseModal } from "../agents/create/add-knowledge-base-modal";
-import { KnowledgeBaseChip } from "../agents/create/knowledge-base-chip";
+import { AddVectorSearchToolModal } from "./add-vector-search-tool-modal";
 
-export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
+export function AgentDetailsV2({ agentId }: { agentId?: string }) {
   const router = useRouter();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,10 +33,9 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
   // Form state
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-  const [configVersion, setConfigVersion] = useState<number>(1);
-  const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false);
-  const [editingKnowledgeBaseIndex, setEditingKnowledgeBaseIndex] = useState<number | null>(null);
+  const [tools, setTools] = useState<ToolV2[]>([]);
+  const [showAddToolModal, setShowAddToolModal] = useState(false);
+  const [editingToolIndex, setEditingToolIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!agentId) {
@@ -63,18 +56,15 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
       const data = await agentsService.getAgent(agentId);
       setAgent(data);
       
-      // Extract config data
-      if (data.config) {
+      // Extract V2 config data
+      if (data.config && data.config.version === 2) {
+        const v2Config = data.config as AgentConfigV2;
         setName(data.name || "");
-        setSystemPrompt(data.config.data?.systemPrompt || "");
-        setKnowledgeBases(data.config.data?.knowledgeBases || []);
-        setConfigVersion(data.config.version || 1);
+        setSystemPrompt(v2Config.data.systemPrompt || "");
+        setTools(v2Config.data.tools || []);
       } else {
-        // Fallback for older format
-        setName(data.name || "");
-        setSystemPrompt(data.systemPrompt || data.description || "");
-        setKnowledgeBases([]);
-        setConfigVersion(1);
+        errorToast("Agent is not using V2 schema");
+        router.push("/dashboard/agents");
       }
     } catch (error: any) {
       errorToast(error.message || "Failed to load agent");
@@ -83,11 +73,6 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
       setLoading(false);
     }
   };
-
-  // Route to appropriate component based on agent version
-  if (agent && getAgentVersion(agent) === 2) {
-    return <AgentDetailsV2 agentId={agentId} />;
-  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,16 +91,16 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
     try {
       setSaving(true);
       
-      const configData: AgentConfigData = {
+      const configData: AgentConfigDataV2 = {
         systemPrompt: systemPrompt.trim(),
-        knowledgeBases: knowledgeBases,
+        tools: tools.length > 0 ? tools : undefined,
       };
 
       const updateData = {
         name: name.trim(),
         config: {
-          schema: "agent_config",
-          version: configVersion,
+          schema: "agent_config" as const,
+          version: 2 as const,
           data: configData,
         },
       };
@@ -153,48 +138,46 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
     }
   };
 
-  const handleAddKnowledgeBase = (kb: KnowledgeBase) => {
-    if (editingKnowledgeBaseIndex !== null) {
-      // Update existing knowledge base
-      setKnowledgeBases((prev) => {
+  const handleAddTool = (tool: ToolV2) => {
+    if (editingToolIndex !== null) {
+      // Update existing tool
+      setTools((prev) => {
         const updated = [...prev];
-        updated[editingKnowledgeBaseIndex] = kb;
+        updated[editingToolIndex] = tool;
         return updated;
       });
-      setEditingKnowledgeBaseIndex(null);
+      setEditingToolIndex(null);
+      successToast("Tool updated successfully");
     } else {
-      // Add new knowledge base
-      // Check for duplicates before updating state
-      const isDuplicate = knowledgeBases.some(
+      // Add new tool
+      // Check for duplicates (same type, provider, index, and namespace)
+      const isDuplicate = tools.some(
         (existing) =>
-          existing.provider === kb.provider &&
-          existing.index === kb.index &&
-          existing.namespace === kb.namespace
+          existing.type === tool.type &&
+          existing.provider === tool.provider &&
+          existing.index === tool.index &&
+          existing.namespace === tool.namespace
       );
 
       if (isDuplicate) {
-        errorToast("This knowledge base is already added");
+        errorToast("This tool is already added");
         return;
       }
 
-      // Use functional update to ensure we have the latest state
-      setKnowledgeBases((prev) => {
-        return [...prev, kb];
-      });
-
-      // Show success toast after state update
-      successToast(`Knowledge base "${kb.index} / ${kb.namespace}" added`);
+      setTools((prev) => [...prev, tool]);
+      successToast("Tool added successfully");
     }
-    setShowKnowledgeBaseModal(false);
+    setShowAddToolModal(false);
   };
 
-  const handleRemoveKnowledgeBase = (index: number) => {
-    setKnowledgeBases(knowledgeBases.filter((_, i) => i !== index));
+  const handleRemoveTool = (index: number) => {
+    setTools(tools.filter((_, i) => i !== index));
+    successToast("Tool removed successfully");
   };
 
-  const handleEditKnowledgeBase = (index: number) => {
-    setEditingKnowledgeBaseIndex(index);
-    setShowKnowledgeBaseModal(true);
+  const handleEditTool = (index: number) => {
+    setEditingToolIndex(index);
+    setShowAddToolModal(true);
   };
 
   if (loading) {
@@ -213,8 +196,8 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
     );
   }
 
-  const editingKnowledgeBase = editingKnowledgeBaseIndex !== null 
-    ? knowledgeBases[editingKnowledgeBaseIndex] 
+  const editingTool = editingToolIndex !== null 
+    ? tools[editingToolIndex] 
     : null;
 
   return (
@@ -228,7 +211,10 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
           >
             <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
           </button>
-          <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
+          <div>
+            <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
+            <p className="text-sm text-blue-400 mt-1">Agent Config v2</p>
+          </div>
         </div>
         <button
           onClick={handleDelete}
@@ -291,7 +277,7 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">
-              Agent Config v{configVersion}
+              Agent Configuration
             </h2>
           </div>
 
@@ -324,44 +310,44 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                 required
               />
               <p className="text-gray-400 text-xs mt-2">
-                The system prompt that guides your agent&apos;s behavior and responses.
+                The system prompt that defines the agent&apos;s behavior and personality.
               </p>
             </div>
 
-            {/* Knowledge Bases */}
+            {/* Tools */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-medium text-gray-300">
-                  Knowledge Bases
+                  Tools
                 </label>
                 <button
                   type="button"
                   onClick={() => {
-                    setEditingKnowledgeBaseIndex(null);
-                    setShowKnowledgeBaseModal(true);
+                    setEditingToolIndex(null);
+                    setShowAddToolModal(true);
                   }}
                   className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
                 >
                   <PlusIcon className="h-4 w-4" />
-                  Add Knowledge Base
+                  Add Tool
                 </button>
               </div>
 
-              {knowledgeBases.length === 0 ? (
+              {tools.length === 0 ? (
                 <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-8 text-center">
                   <p className="text-gray-400 text-sm mb-4">
-                    No knowledge bases added yet
+                    No tools added yet
                   </p>
                   <button
                     type="button"
                     onClick={() => {
-                      setEditingKnowledgeBaseIndex(null);
-                      setShowKnowledgeBaseModal(true);
+                      setEditingToolIndex(null);
+                      setShowAddToolModal(true);
                     }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Add Your First Knowledge Base
+                    Add Your First Tool
                   </button>
                 </div>
               ) : (
@@ -370,6 +356,9 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                     <table className="w-full">
                       <thead className="bg-gray-800/50 border-b border-gray-700/50">
                         <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Type
+                          </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             Provider
                           </th>
@@ -388,92 +377,99 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700/50">
-                        {knowledgeBases.map((kb, index) => {
-                          const canNavigate =
-                            kb.provider === "pinecone" && kb.index;
+                        {tools.map((tool, index) => {
+                          if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
+                            const canNavigate = tool.provider === "pinecone" && tool.index;
+                            const isReranking = tool.type === "vectorSearchWithReranking";
 
-                          return (
-                            <tr
-                              key={index}
-                              className="hover:bg-gray-800/30 transition-colors"
-                            >
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-white font-medium capitalize">
-                                  {kb.provider}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-300">
-                                  {kb.index || (
-                                    <span className="text-gray-500 italic">
-                                      —
+                            return (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-800/30 transition-colors"
+                              >
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    isReranking
+                                      ? "bg-blue-600/20 text-blue-300 border border-blue-500/40"
+                                      : "bg-purple-600/20 text-purple-300 border border-purple-500/40"
+                                  }`}>
+                                    {isReranking ? "Vector Search + Rerank" : "Vector Search"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm text-white font-medium capitalize">
+                                    {tool.provider}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm text-gray-300">
+                                    {tool.index}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm text-gray-300">
+                                    {tool.namespace}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="space-y-1">
+                                    <span className="text-sm text-gray-300 block">
+                                      {tool.description || (
+                                        <span className="text-gray-500 italic">
+                                          No description
+                                        </span>
+                                      )}
                                     </span>
-                                  )}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-300">
-                                  {kb.namespace || (
-                                    <span className="text-gray-500 italic">
-                                      (default)
-                                    </span>
-                                  )}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="text-sm text-gray-300">
-                                  {kb.description || (
-                                    <span className="text-gray-500 italic">
-                                      No description
-                                    </span>
-                                  )}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  {canNavigate && (
+                                    <div className="text-xs text-gray-500">
+                                      {isReranking ? (
+                                        <>K: {tool.topK || 20}, N: {tool.topN || 5}</>
+                                      ) : (
+                                        <>Top K: {tool.topK || 10}</>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    {canNavigate && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          router.push(
+                                            `/dashboard/vector-stores?indexName=${encodeURIComponent(vectorTool.index)}`
+                                          )
+                                        }
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
+                                        title="View details"
+                                      >
+                                        <LinkIcon className="h-4 w-4" />
+                                        View Details
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
-                                      onClick={() =>
-                                        router.push(
-                                          `/dashboard/vector-stores?indexName=${encodeURIComponent(kb.index!)}`
-                                        )
-                                      }
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
-                                      title="View details"
+                                      onClick={() => handleEditTool(index)}
+                                      className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
+                                      title="Edit tool"
+                                      aria-label="Edit tool"
                                     >
-                                      <LinkIcon className="h-4 w-4" />
-                                      View Details
+                                      <PencilIcon className="h-4 w-4" />
                                     </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditKnowledgeBase(index);
-                                    }}
-                                    className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
-                                    title="Edit knowledge base"
-                                    aria-label="Edit knowledge base"
-                                  >
-                                    <PencilIcon className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveKnowledgeBase(index);
-                                    }}
-                                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                    title="Remove knowledge base"
-                                    aria-label="Remove knowledge base"
-                                  >
-                                    <TrashIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTool(index)}
+                                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                      title="Remove tool"
+                                      aria-label="Remove tool"
+                                    >
+                                      <TrashIcon className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
+                          return null;
                         })}
                       </tbody>
                     </table>
@@ -481,7 +477,7 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                 </div>
               )}
               <p className="text-gray-400 text-xs mt-2">
-                Optional: Zero or more knowledge base bindings used by the agent.
+                Tools extend the agent&apos;s capabilities. Add vector search tools to enable knowledge base retrieval.
               </p>
             </div>
           </div>
@@ -499,15 +495,15 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
         </div>
       </form>
 
-      {/* Add/Edit Knowledge Base Modal */}
-      {showKnowledgeBaseModal && (
-        <AddKnowledgeBaseModal
+      {/* Add/Edit Tool Modal */}
+      {showAddToolModal && (
+        <AddVectorSearchToolModal
           onClose={() => {
-            setShowKnowledgeBaseModal(false);
-            setEditingKnowledgeBaseIndex(null);
+            setShowAddToolModal(false);
+            setEditingToolIndex(null);
           }}
-          onAdd={handleAddKnowledgeBase}
-          initialKnowledgeBase={editingKnowledgeBase || undefined}
+          onAdd={handleAddTool}
+          initialTool={editingTool || undefined}
         />
       )}
     </div>
