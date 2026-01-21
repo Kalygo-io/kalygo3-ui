@@ -1,4 +1,4 @@
-import { Action } from "@/app/dashboard/agentic-rag/chat-session-reducer";
+import { Action } from "@/app/dashboard/jwt-agent/chat-session-reducer";
 import { nanoid } from "@/shared/utils";
 import React from "react";
 
