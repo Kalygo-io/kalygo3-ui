@@ -145,7 +145,7 @@ interface MetadataCardProps {
 }
 
 export function MetadataCard({ metadata, score }: MetadataCardProps) {
-  if ("q" in metadata && "a" in metadata) {
+  if (isQaMetadata(metadata)) {
     return <QACard {...metadata} score={score} />;
   } else {
     return <DocumentCard {...metadata} score={score} />;
