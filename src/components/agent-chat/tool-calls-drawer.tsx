@@ -7,12 +7,46 @@ import {
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { ToolCall, RetrievalCall } from "@/ts/types/Message";
+import {
+  VectorSearchToolCall,
+  VectorSearchWithRerankingToolCall,
+  VectorSearchResult,
+  TextDocumentMetadata,
+  QaMetadata,
+} from "@/ts/types/ChatMessage";
 import { useCopyToClipboard } from "@/shared/hooks/use-copy-to-clipboard";
+
+// Type guards
+function isTextDocumentMetadata(
+  metadata: TextDocumentMetadata | QaMetadata
+): metadata is TextDocumentMetadata {
+  return "chunkId" in metadata && "totalChunks" in metadata;
+}
+
+function isQaMetadata(
+  metadata: TextDocumentMetadata | QaMetadata
+): metadata is QaMetadata {
+  return "q" in metadata && "a" in metadata && "row_number" in metadata;
+}
+
+function isVectorSearchToolCall(
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall
+): call is VectorSearchToolCall {
+  return call.toolType === "vectorSearch";
+}
+
+function isVectorSearchWithRerankingToolCall(
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall
+): call is VectorSearchWithRerankingToolCall {
+  return call.toolType === "vectorSearchWithReranking";
+}
 
 interface ToolCallsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  toolCalls?: ToolCall[]; // New schema-based tool calls
+  toolCalls?:
+    | ToolCall[]
+    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall)[]; // Support both old and new schema
   retrievalCalls?: RetrievalCall[]; // Legacy retrieval calls
 }
 
@@ -28,16 +62,37 @@ export function ToolCallsDrawer({
   const [expandedChunks, setExpandedChunks] = useState<Set<string>>(new Set());
   const { copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
 
+  // Detect which schema is being used
+  const isV2Schema =
+    toolCalls.length > 0 &&
+    toolCalls[0] &&
+    "toolType" in toolCalls[0] &&
+    (toolCalls[0] as any).toolType !== undefined;
+  
+  const isLegacyNewSchema = 
+    toolCalls.length > 0 &&
+    !isV2Schema;
+  
   // Use new toolCalls if available, otherwise fall back to legacy retrievalCalls
   const allToolCalls = toolCalls.length > 0 ? toolCalls : retrievalCalls;
-  const isNewSchema = toolCalls.length > 0;
+  const isNewSchema = isLegacyNewSchema; // Keep backward compatibility with existing logic
 
   // Expand all chunks by default when drawer opens or toolCalls change
   useEffect(() => {
     if (isOpen && allToolCalls.length > 0) {
       const allChunkKeys = new Set<string>();
       allToolCalls.forEach((call, toolCallIndex) => {
-        if (isNewSchema) {
+        if (isV2Schema) {
+          // V2 schema: call.output.results
+          const v2Call = call as
+            | VectorSearchToolCall
+            | VectorSearchWithRerankingToolCall;
+          if (v2Call.output?.results) {
+            v2Call.output.results.forEach((_, chunkIndex) => {
+              allChunkKeys.add(`${toolCallIndex}-${chunkIndex}`);
+            });
+          }
+        } else if (isNewSchema) {
           // New schema: call.results
           const toolCall = call as ToolCall;
           if (toolCall.results) {
@@ -57,7 +112,7 @@ export function ToolCallsDrawer({
       });
       setExpandedChunks(allChunkKeys);
     }
-  }, [isOpen, allToolCalls, isNewSchema]);
+  }, [isOpen, allToolCalls, isNewSchema, isV2Schema]);
 
   if (!isOpen) return null;
 
@@ -104,10 +159,12 @@ export function ToolCallsDrawer({
 
   // Helper to get filename from metadata (new schema) or result (legacy)
   const getFilename = (result: any): string | undefined => {
-    if (isNewSchema) {
-      return result.metadata?.filename || 
-             result.metadata?.source || 
-             result.metadata?.file_name;
+    if (isV2Schema || isNewSchema) {
+      return (
+        result.metadata?.filename ||
+        result.metadata?.source ||
+        result.metadata?.file_name
+      );
     } else {
       return result.filename;
     }
@@ -115,7 +172,7 @@ export function ToolCallsDrawer({
 
   // Helper to get score (new schema uses score, legacy uses relevance_score)
   const getScore = (result: any): number => {
-    if (isNewSchema) {
+    if (isV2Schema || isNewSchema) {
       return result.score || 0;
     } else {
       return result.relevance_score || 0;
@@ -124,15 +181,29 @@ export function ToolCallsDrawer({
 
   // Helper to get similarity score (legacy only)
   const getSimilarityScore = (result: any): number | undefined => {
-    if (!isNewSchema) {
+    if (!isNewSchema && !isV2Schema) {
       return result.similarity_score;
     }
     return undefined;
   };
 
+  // Helper to get content from result
+  const getContent = (result: any): string => {
+    if (isV2Schema) {
+      return result.metadata?.content || result.content || "";
+    } else {
+      return result.content || "";
+    }
+  };
+
   // Calculate total chunks
   const totalChunks = allToolCalls.reduce((total, call) => {
-    if (isNewSchema) {
+    if (isV2Schema) {
+      const v2Call = call as
+        | VectorSearchToolCall
+        | VectorSearchWithRerankingToolCall;
+      return total + (v2Call.output?.results?.length || 0);
+    } else if (isNewSchema) {
       const toolCall = call as ToolCall;
       return total + (toolCall.results?.length || 0);
     } else {
@@ -204,18 +275,32 @@ export function ToolCallsDrawer({
                 </h4>
 
                 {allToolCalls.map((call, index) => {
+                  const v2Call = call as
+                    | VectorSearchToolCall
+                    | VectorSearchWithRerankingToolCall;
                   const toolCall = call as ToolCall;
                   const retrievalCall = call as RetrievalCall;
-                  
+
                   // Get results based on schema
-                  const results = isNewSchema 
-                    ? toolCall.results || []
-                    : retrievalCall.reranked_results || [];
-                  
+                  let results: any[] = [];
+                  if (isV2Schema) {
+                    results = v2Call.output?.results || [];
+                  } else if (isNewSchema) {
+                    results = toolCall.results || [];
+                  } else {
+                    results = retrievalCall.reranked_results || [];
+                  }
+
                   // Get tool name
-                  const toolName = isNewSchema 
-                    ? toolCall.name || "Retrieval Call"
-                    : "Retrieval Call";
+                  let toolName = "Retrieval Call";
+                  if (isV2Schema) {
+                    toolName = v2Call.toolName || "Vector Search";
+                  } else if (isNewSchema) {
+                    toolName = toolCall.name || "Retrieval Call";
+                  }
+
+                  // Get tool type for v2 schema
+                  const toolType = isV2Schema ? v2Call.toolType : undefined;
 
                   return (
                     <div
@@ -261,31 +346,73 @@ export function ToolCallsDrawer({
 
                       {/* Query, Namespace, and Index - Always visible */}
                       <div className="mb-3">
+                        {/* Tool Type (v2 schema only) */}
+                        {isV2Schema && toolType && (
+                          <div className="flex items-start space-x-2 mb-2">
+                            <span className="text-blue-400 font-medium text-sm">
+                              Tool Type:
+                            </span>
+                            <span className="text-white text-sm bg-gray-800 p-2 rounded">
+                              {toolType === "vectorSearch"
+                                ? "Vector Search"
+                                : "Vector Search with Reranking"}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Query */}
                         <div className="flex items-start space-x-2">
                           <span className="text-blue-400 font-medium text-sm">
                             Query:
                           </span>
                           <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                            {isNewSchema ? toolCall.query : retrievalCall.query}
+                            {isV2Schema
+                              ? v2Call.input?.query
+                              : isNewSchema
+                              ? toolCall.query
+                              : retrievalCall.query}
                           </span>
                         </div>
-                        {(isNewSchema ? toolCall.namespace : retrievalCall.namespace) && (
+
+                        {/* Top K (v2 schema only) */}
+                        {isV2Schema && v2Call.input?.topK && (
+                          <div className="flex items-start space-x-2 mt-2">
+                            <span className="text-blue-400 font-medium text-sm">
+                              Top K:
+                            </span>
+                            <span className="text-white text-sm bg-gray-800 p-2 rounded">
+                              {v2Call.input.topK}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Namespace */}
+                        {((isV2Schema && v2Call.output?.namespace) ||
+                          (isNewSchema && toolCall.namespace) ||
+                          (!isNewSchema && !isV2Schema && retrievalCall.namespace)) && (
                           <div className="flex items-start space-x-2 mt-2">
                             <span className="text-blue-400 font-medium text-sm">
                               Namespace:
                             </span>
                             <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                              {isNewSchema ? toolCall.namespace : retrievalCall.namespace}
+                              {isV2Schema
+                                ? v2Call.output.namespace
+                                : isNewSchema
+                                ? toolCall.namespace
+                                : retrievalCall.namespace}
                             </span>
                           </div>
                         )}
-                        {isNewSchema && toolCall.index && (
+
+                        {/* Index */}
+                        {((isV2Schema && v2Call.output?.index) ||
+                          (isNewSchema && toolCall.index)) && (
                           <div className="flex items-start space-x-2 mt-2">
                             <span className="text-blue-400 font-medium text-sm">
                               Index:
                             </span>
                             <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                              {toolCall.index}
+                              {isV2Schema ? v2Call.output.index : toolCall.index}
                             </span>
                           </div>
                         )}
@@ -357,6 +484,90 @@ export function ToolCallsDrawer({
                                         </div>
                                       )}
 
+                                      {/* Metadata Display for v2 schema */}
+                                      {isV2Schema && result.metadata && (
+                                        <div className="mt-3 pt-3 border-t border-gray-600/30">
+                                          <h5 className="text-xs font-medium text-gray-400 mb-2">
+                                            Metadata
+                                          </h5>
+                                          <div className="space-y-1 text-xs">
+                                            {isQaMetadata(result.metadata) ? (
+                                              <>
+                                                <div className="flex space-x-2">
+                                                  <span className="text-gray-500">Row:</span>
+                                                  <span className="text-gray-300">
+                                                    {result.metadata.row_number}
+                                                  </span>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                  <span className="text-gray-500">User ID:</span>
+                                                  <span className="text-gray-300">
+                                                    {result.metadata.user_id}
+                                                  </span>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                  <span className="text-gray-500">Email:</span>
+                                                  <span className="text-gray-300">
+                                                    {result.metadata.user_email}
+                                                  </span>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                  <span className="text-gray-500">Uploaded:</span>
+                                                  <span className="text-gray-300">
+                                                    {new Date(
+                                                      parseInt(result.metadata.upload_timestamp)
+                                                    ).toLocaleDateString()}
+                                                  </span>
+                                                </div>
+                                              </>
+                                            ) : isTextDocumentMetadata(result.metadata) ? (
+                                              <>
+                                                <div className="flex space-x-2">
+                                                  <span className="text-gray-500">Chunk:</span>
+                                                  <span className="text-gray-300">
+                                                    {result.metadata.chunkNumber} of{" "}
+                                                    {result.metadata.totalChunks}
+                                                  </span>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                  <span className="text-gray-500">Chunk ID:</span>
+                                                  <span className="text-gray-300">
+                                                    {result.metadata.chunkId}
+                                                  </span>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                  <span className="text-gray-500">Tokens:</span>
+                                                  <span className="text-gray-300">
+                                                    {result.metadata.chunkSizeTokens}
+                                                  </span>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                  <span className="text-gray-500">Uploaded:</span>
+                                                  <span className="text-gray-300">
+                                                    {new Date(
+                                                      parseInt(result.metadata.uploadTimestamp)
+                                                    ).toLocaleDateString()}
+                                                  </span>
+                                                </div>
+                                                {/* Display custom YAML front matter fields */}
+                                                {Object.keys(result.metadata)
+                                                  .filter((key) => key.startsWith("file_"))
+                                                  .map((key) => (
+                                                    <div key={key} className="flex space-x-2">
+                                                      <span className="text-gray-500">
+                                                        {key.replace("file_", "").replace(/_/g, " ")}:
+                                                      </span>
+                                                      <span className="text-gray-300">
+                                                        {String(result.metadata[key])}
+                                                      </span>
+                                                    </div>
+                                                  ))}
+                                              </>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                      )}
+
                                       {/* Actions */}
                                       <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-600/30">
                                         <button
@@ -370,18 +581,18 @@ export function ToolCallsDrawer({
                                           ) ? (
                                             <>
                                               <ChevronUpIcon className="w-4 h-4 mr-1" />
-                                              Hide Chunk
+                                              Hide Content
                                             </>
                                           ) : (
                                             <>
                                               <ChevronDownIcon className="w-4 h-4 mr-1" />
-                                              Show Chunk
+                                              Show Content
                                             </>
                                           )}
                                         </button>
                                         <button
                                           onClick={() =>
-                                            copyChunkContent(result.content)
+                                            copyChunkContent(getContent(result))
                                           }
                                           className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
                                         >
@@ -411,12 +622,41 @@ export function ToolCallsDrawer({
                                             <ChevronDownIcon className="w-3 h-3 mr-1" />
                                             Full Content
                                           </div>
-                                          <div
-                                            className="text-sm text-gray-300 leading-relaxed font-mono"
-                                            style={{ whiteSpace: "pre-wrap" }}
-                                          >
-                                            {result.content}
-                                          </div>
+                                          {isV2Schema &&
+                                          result.metadata &&
+                                          isQaMetadata(result.metadata) ? (
+                                            <div className="space-y-3">
+                                              <div>
+                                                <div className="text-xs font-medium text-blue-400 mb-1">
+                                                  Question:
+                                                </div>
+                                                <div
+                                                  className="text-sm text-gray-300 leading-relaxed"
+                                                  style={{ whiteSpace: "pre-wrap" }}
+                                                >
+                                                  {result.metadata.q}
+                                                </div>
+                                              </div>
+                                              <div>
+                                                <div className="text-xs font-medium text-green-400 mb-1">
+                                                  Answer:
+                                                </div>
+                                                <div
+                                                  className="text-sm text-gray-300 leading-relaxed"
+                                                  style={{ whiteSpace: "pre-wrap" }}
+                                                >
+                                                  {result.metadata.a}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div
+                                              className="text-sm text-gray-300 leading-relaxed font-mono"
+                                              style={{ whiteSpace: "pre-wrap" }}
+                                            >
+                                              {getContent(result)}
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                     </div>
