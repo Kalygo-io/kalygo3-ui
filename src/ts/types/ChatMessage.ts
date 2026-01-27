@@ -20,7 +20,7 @@ export interface ChatMessageV2 {
   /**
    * Array of tool calls made during the generation of this message. Only present for AI messages. Each tool call has a different schema depending on the tool type.
    */
-  toolCalls?: (VectorSearchToolCall | VectorSearchWithRerankingToolCall)[];
+  toolCalls?: (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall)[];
 }
 /**
  * Tool call for vector search (semantic retrieval)
@@ -202,4 +202,70 @@ export interface VectorSearchWithRerankingToolCall {
     index: string;
     [k: string]: unknown;
   };
+}
+
+/**
+ * Tool call for database read operations (querying structured data)
+ */
+export interface DbReadToolCall {
+  /**
+   * The type of tool (dbRead)
+   */
+  toolType: "dbRead";
+  /**
+   * The specific tool instance name (e.g., 'read_sessions', 'read_usage')
+   */
+  toolName: string;
+  input: {
+    /**
+     * The database table being queried
+     */
+    table: string;
+    /**
+     * Columns requested (optional)
+     */
+    columns?: string[];
+    /**
+     * Query filters applied (optional)
+     */
+    filters?: Record<string, unknown>;
+    /**
+     * Maximum rows requested
+     */
+    limit?: number;
+    [k: string]: unknown;
+  };
+  output: {
+    /**
+     * Query results as array of row objects
+     */
+    rows: DbReadRow[];
+    /**
+     * The table that was queried
+     */
+    table: string;
+    /**
+     * Total number of rows returned
+     */
+    rowCount?: number;
+    /**
+     * Column names in the result set
+     */
+    columns?: string[];
+    [k: string]: unknown;
+  };
+}
+
+/**
+ * A single row from a database query result
+ */
+export interface DbReadRow {
+  /**
+   * Row identifier (if present)
+   */
+  id?: number | string;
+  /**
+   * Dynamic properties from the database row
+   */
+  [k: string]: unknown;
 }

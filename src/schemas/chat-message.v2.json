@@ -32,6 +32,9 @@
           },
           {
             "$ref": "#/$defs/vectorSearchWithRerankingToolCall"
+          },
+          {
+            "$ref": "#/$defs/dbReadToolCall"
           }
         ],
         "description": "A tool call. The schema varies by tool type."
@@ -311,6 +314,98 @@
         }
       },
       "additionalProperties": false
+    },
+    "dbReadToolCall": {
+      "type": "object",
+      "description": "Tool call for database read operations (querying structured data)",
+      "additionalProperties": false,
+      "required": [
+        "toolType",
+        "toolName",
+        "input",
+        "output"
+      ],
+      "properties": {
+        "toolType": {
+          "type": "string",
+          "const": "dbRead",
+          "description": "The type of tool (dbRead)"
+        },
+        "toolName": {
+          "type": "string",
+          "description": "The specific tool instance name (e.g., 'read_sessions', 'read_usage')"
+        },
+        "input": {
+          "type": "object",
+          "required": [
+            "table"
+          ],
+          "properties": {
+            "table": {
+              "type": "string",
+              "description": "The database table being queried"
+            },
+            "columns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Columns requested (optional)"
+            },
+            "filters": {
+              "type": "object",
+              "description": "Query filters applied (optional)",
+              "additionalProperties": true
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows requested"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "rows",
+            "table"
+          ],
+          "properties": {
+            "rows": {
+              "type": "array",
+              "description": "Query results as array of row objects",
+              "items": {
+                "$ref": "#/$defs/dbReadRow"
+              }
+            },
+            "table": {
+              "type": "string",
+              "description": "The table that was queried"
+            },
+            "rowCount": {
+              "type": "integer",
+              "description": "Total number of rows returned"
+            },
+            "columns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Column names in the result set"
+            }
+          }
+        }
+      }
+    },
+    "dbReadRow": {
+      "type": "object",
+      "description": "A single row from a database query result",
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": ["integer", "string"],
+          "description": "Row identifier (if present)"
+        }
+      }
     }
   },
   "examples": [
@@ -383,6 +478,41 @@
             ],
             "namespace": "qa",
             "index": "knowledge-base"
+          }
+        }
+      ]
+    },
+    {
+      "role": "ai",
+      "content": "I found 3 recent chat sessions in your account...",
+      "toolCalls": [
+        {
+          "toolType": "dbRead",
+          "toolName": "read_chat_sessions",
+          "input": {
+            "table": "chat_app_sessions",
+            "limit": 10
+          },
+          "output": {
+            "rows": [
+              {
+                "id": 1,
+                "session_id": "abc-123",
+                "chat_app_id": "agent-chat",
+                "created_at": "2026-01-26T10:30:00Z",
+                "title": "AI School Discussion"
+              },
+              {
+                "id": 2,
+                "session_id": "def-456",
+                "chat_app_id": "agent-chat",
+                "created_at": "2026-01-25T14:20:00Z",
+                "title": "Pricing Questions"
+              }
+            ],
+            "table": "chat_app_sessions",
+            "rowCount": 2,
+            "columns": ["id", "session_id", "chat_app_id", "created_at", "title"]
           }
         }
       ]

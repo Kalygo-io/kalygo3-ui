@@ -4,12 +4,15 @@ import {
   WrenchScrewdriverIcon,
   ChevronDownIcon,
   InformationCircleIcon,
+  TableCellsIcon,
+  CircleStackIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { ToolCall, RetrievalCall } from "@/ts/types/Message";
 import {
   VectorSearchToolCall,
   VectorSearchWithRerankingToolCall,
+  DbReadToolCall,
   VectorSearchResult,
   TextDocumentMetadata,
   QaMetadata,
@@ -36,9 +39,15 @@ function isVectorSearchToolCall(
 }
 
 function isVectorSearchWithRerankingToolCall(
-  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall
 ): call is VectorSearchWithRerankingToolCall {
   return call.toolType === "vectorSearchWithReranking";
+}
+
+function isDbReadToolCall(
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall
+): call is DbReadToolCall {
+  return call.toolType === "dbRead";
 }
 
 interface ToolCallsDrawerProps {
@@ -46,7 +55,7 @@ interface ToolCallsDrawerProps {
   onClose: () => void;
   toolCalls?:
     | ToolCall[]
-    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall)[]; // Support both old and new schema
+    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall)[]; // Support both old and new schema
   retrievalCalls?: RetrievalCall[]; // Legacy retrieval calls
 }
 
@@ -196,9 +205,14 @@ export function ToolCallsDrawer({
     }
   };
 
-  // Calculate total chunks
+  // Calculate total chunks/rows
   const totalChunks = allToolCalls.reduce((total, call) => {
     if (isV2Schema) {
+      // Check if it's a dbRead tool
+      if (isDbReadToolCall(call as any)) {
+        const dbCall = call as DbReadToolCall;
+        return total + (dbCall.output?.rows?.length || 0);
+      }
       const v2Call = call as
         | VectorSearchToolCall
         | VectorSearchWithRerankingToolCall;
@@ -243,7 +257,7 @@ export function ToolCallsDrawer({
                 These are the tool calls made by the agent to retrieve
                 information and generate its response. Each tool call represents
                 a specific action the agent took, such as searching knowledge
-                bases or performing calculations.
+                bases, querying databases, or performing calculations.
               </p>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center space-x-2">
@@ -254,7 +268,7 @@ export function ToolCallsDrawer({
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-blue-400 font-medium">
-                    Total Chunks Retrieved:
+                    Total Results Retrieved:
                   </span>
                   <span className="text-white">{totalChunks}</span>
                 </div>
@@ -275,6 +289,21 @@ export function ToolCallsDrawer({
                 </h4>
 
                 {allToolCalls.map((call, index) => {
+                  // Check for dbRead tool first (v2 schema)
+                  if (isV2Schema && isDbReadToolCall(call as any)) {
+                    const dbCall = call as DbReadToolCall;
+                    return (
+                      <DbReadToolCallCard
+                        key={index}
+                        index={index}
+                        toolCall={dbCall}
+                        isExpanded={expandedToolCalls.has(index)}
+                        onToggleExpand={() => toggleToolCallExpanded(index)}
+                        copyToClipboard={copyToClipboard}
+                      />
+                    );
+                  }
+
                   const v2Call = call as
                     | VectorSearchToolCall
                     | VectorSearchWithRerankingToolCall;
@@ -687,6 +716,203 @@ export function ToolCallsDrawer({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Database Read Tool Call Card Component
+interface DbReadToolCallCardProps {
+  index: number;
+  toolCall: DbReadToolCall;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  copyToClipboard: (text: string) => void;
+}
+
+function DbReadToolCallCard({
+  index,
+  toolCall,
+  isExpanded,
+  onToggleExpand,
+  copyToClipboard,
+}: DbReadToolCallCardProps) {
+  const rows = toolCall.output?.rows || [];
+  const columns = toolCall.output?.columns || 
+    (rows.length > 0 ? Object.keys(rows[0]) : []);
+  const tableName = toolCall.input?.table || toolCall.output?.table || "Unknown Table";
+
+  // Format table name for display
+  const formatTableName = (name: string) => 
+    name.split("_").map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(" ");
+
+  // Format cell value for display
+  const formatCellValue = (value: unknown): string => {
+    if (value === null || value === undefined) return "—";
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
+
+  // Truncate long values
+  const truncateValue = (value: string, maxLength: number = 50): string => {
+    if (value.length <= maxLength) return value;
+    return value.substring(0, maxLength) + "...";
+  };
+
+  return (
+    <div className="bg-gray-800/50 border border-gray-600/50 rounded-lg p-4">
+      {/* Tool Call Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-400">#{index + 1}</span>
+          <CircleStackIcon className="w-5 h-5 text-green-400" />
+          <h3 className="text-lg font-medium text-white">
+            {toolCall.toolName || "Database Query"}
+          </h3>
+        </div>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1">
+            <span className="text-xs text-gray-400">Rows:</span>
+            <span className="text-xs font-medium text-white">{rows.length}</span>
+          </div>
+          <button
+            onClick={onToggleExpand}
+            className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUpIcon className="w-4 h-4 mr-1" />
+                Hide Details
+              </>
+            ) : (
+              <>
+                <ChevronDownIcon className="w-4 h-4 mr-1" />
+                Show Details
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Tool Type & Table */}
+      <div className="mb-3">
+        <div className="flex items-start space-x-2 mb-2">
+          <span className="text-green-400 font-medium text-sm">Tool Type:</span>
+          <span className="text-white text-sm bg-gray-800 p-2 rounded">
+            Database Query
+          </span>
+        </div>
+        <div className="flex items-start space-x-2">
+          <span className="text-green-400 font-medium text-sm">Table:</span>
+          <span className="text-white text-sm bg-gray-800 p-2 rounded flex items-center">
+            <TableCellsIcon className="w-4 h-4 mr-2 text-green-400" />
+            {formatTableName(tableName)}
+          </span>
+        </div>
+        {toolCall.input?.limit && (
+          <div className="flex items-start space-x-2 mt-2">
+            <span className="text-green-400 font-medium text-sm">Limit:</span>
+            <span className="text-white text-sm bg-gray-800 p-2 rounded">
+              {toolCall.input.limit}
+            </span>
+          </div>
+        )}
+        {toolCall.input?.columns && toolCall.input.columns.length > 0 && (
+          <div className="flex items-start space-x-2 mt-2">
+            <span className="text-green-400 font-medium text-sm">Columns:</span>
+            <span className="text-white text-sm bg-gray-800 p-2 rounded">
+              {toolCall.input.columns.join(", ")}
+            </span>
+          </div>
+        )}
+        {toolCall.input?.filters && Object.keys(toolCall.input.filters).length > 0 && (
+          <div className="flex items-start space-x-2 mt-2">
+            <span className="text-green-400 font-medium text-sm">Filters:</span>
+            <span className="text-white text-sm bg-gray-800 p-2 rounded font-mono">
+              {JSON.stringify(toolCall.input.filters)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded Content - Results Table */}
+      {isExpanded && (
+        <div className="mt-4 pt-4 border-t border-gray-600/30">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-medium text-gray-300">
+              Query Results ({rows.length} rows)
+            </h4>
+            <button
+              onClick={() => copyToClipboard(JSON.stringify(rows, null, 2))}
+              className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span>Copy JSON</span>
+            </button>
+          </div>
+
+          {rows.length === 0 ? (
+            <div className="text-center py-4 text-gray-400 text-sm">
+              No rows returned from this query
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-800/50 border-b border-gray-600/30">
+                    {columns.map((col, colIndex) => (
+                      <th
+                        key={colIndex}
+                        className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
+                      >
+                        {col.replace(/_/g, " ")}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700/30">
+                  {rows.map((row, rowIndex) => (
+                    <tr
+                      key={rowIndex}
+                      className="hover:bg-gray-700/20 transition-colors"
+                    >
+                      {columns.map((col, colIndex) => {
+                        const value = formatCellValue(row[col]);
+                        const isTruncated = value.length > 50;
+                        return (
+                          <td
+                            key={colIndex}
+                            className="px-3 py-2 text-gray-300 whitespace-nowrap"
+                            title={isTruncated ? value : undefined}
+                          >
+                            {truncateValue(value)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Row Details - Show full JSON for each row */}
+          <details className="mt-4">
+            <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+              View Raw Data (JSON)
+            </summary>
+            <div className="mt-2 bg-gray-900/50 p-3 rounded border border-gray-600/30 overflow-x-auto">
+              <pre className="text-xs text-gray-400 font-mono whitespace-pre-wrap">
+                {JSON.stringify(rows, null, 2)}
+              </pre>
+            </div>
+          </details>
+        </div>
+      )}
     </div>
   );
 }

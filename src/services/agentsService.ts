@@ -45,7 +45,15 @@ export interface VectorSearchWithRerankingTool {
   topN?: number;
 }
 
-export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool;
+export interface DbReadTool {
+  type: "dbRead";
+  table: string;
+  description?: string;
+  columns?: string[];
+  limit?: number;
+}
+
+export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool | DbReadTool;
 
 export interface AgentConfigDataV2 {
   systemPrompt: string;

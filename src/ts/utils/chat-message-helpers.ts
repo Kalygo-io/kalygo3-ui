@@ -1,6 +1,7 @@
 import {
   VectorSearchToolCall,
   VectorSearchWithRerankingToolCall,
+  DbReadToolCall,
   TextDocumentMetadata,
   QaMetadata,
 } from "@/ts/types/ChatMessage";
@@ -24,10 +25,15 @@ export function isQaMetadata(
 }
 
 /**
+ * Union type for all tool calls
+ */
+export type AnyToolCall = VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall;
+
+/**
  * Type guard to check if tool call is VectorSearchToolCall
  */
 export function isVectorSearchToolCall(
-  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall
+  call: AnyToolCall
 ): call is VectorSearchToolCall {
   return call.toolType === "vectorSearch";
 }
@@ -36,9 +42,18 @@ export function isVectorSearchToolCall(
  * Type guard to check if tool call is VectorSearchWithRerankingToolCall
  */
 export function isVectorSearchWithRerankingToolCall(
-  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall
+  call: AnyToolCall
 ): call is VectorSearchWithRerankingToolCall {
   return call.toolType === "vectorSearchWithReranking";
+}
+
+/**
+ * Type guard to check if tool call is DbReadToolCall
+ */
+export function isDbReadToolCall(
+  call: AnyToolCall
+): call is DbReadToolCall {
+  return call.toolType === "dbRead";
 }
 
 /**
@@ -83,11 +98,28 @@ export function formatScore(score: number): string {
  * Get tool type display name
  */
 export function getToolTypeDisplayName(
-  toolType: "vectorSearch" | "vectorSearchWithReranking"
+  toolType: "vectorSearch" | "vectorSearchWithReranking" | "dbRead"
 ): string {
-  return toolType === "vectorSearch"
-    ? "Vector Search"
-    : "Vector Search with Reranking";
+  switch (toolType) {
+    case "vectorSearch":
+      return "Vector Search";
+    case "vectorSearchWithReranking":
+      return "Vector Search with Reranking";
+    case "dbRead":
+      return "Database Query";
+    default:
+      return toolType;
+  }
+}
+
+/**
+ * Format table name for display (convert snake_case to Title Case)
+ */
+export function formatTableName(tableName: string): string {
+  return tableName
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 /**
