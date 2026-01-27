@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { Message } from "@/ts/types/Message";
+import { Message, ErrorDetails } from "@/ts/types/Message";
 
 export type Action =
   | {
@@ -20,7 +20,7 @@ export type Action =
         id: string;
         role?: "human" | "ai";
         content?: string;
-        error?: any;
+        error?: ErrorDetails | null;
         retrievalCalls?: any[];
         toolCalls?: any[];
       };

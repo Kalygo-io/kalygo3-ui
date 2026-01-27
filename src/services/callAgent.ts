@@ -292,6 +292,40 @@ function dispatchEventToState(
       } catch (error) {
         console.error("Error handling tool end:", error, parsedChunk);
       }
+    } else if (parsedChunk.event === "error") {
+      try {
+        console.log("Error event received:", parsedChunk);
+        
+        const errorData = parsedChunk.data || {};
+        const errorDetails = {
+          error: errorData.error || "Unknown error",
+          message: errorData.message || "An error occurred",
+          timestamp: Date.now(),
+          stack: errorData.stack,
+        };
+
+        console.error("❌ Agent error:", errorDetails);
+
+        // Update the AI message with error details
+        dispatch({
+          type: "EDIT_MESSAGE",
+          payload: {
+            id: aiMessageId,
+            error: errorDetails,
+            content: accMessage.content || "Error occurred while processing your request.",
+          },
+        });
+
+        // Clear any active tool
+        dispatch({
+          type: "SET_CURRENT_TOOL",
+          payload: "",
+        });
+
+        console.log("Error dispatched to state");
+      } catch (error) {
+        console.error("Error handling error event:", error, parsedChunk);
+      }
     } else {
       console.log("Unhandled event:", parsedChunk.event);
     }

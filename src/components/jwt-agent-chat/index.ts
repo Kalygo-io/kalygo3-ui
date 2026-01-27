@@ -6,6 +6,7 @@ export {
   QACard,
   DocumentCard,
 } from "./metadata-cards";
+export { ErrorDetailsDrawer } from "./error-details-drawer";
 
 // Chat Components
 export { ChatMessage } from "./chat-message";

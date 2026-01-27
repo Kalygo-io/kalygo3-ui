@@ -6,12 +6,14 @@ import {
   CheckIcon,
   ClipboardDocumentIcon,
   DocumentTextIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 import { Separator } from "@/components/shared/separator";
 import { memo, useState } from "react";
 import { ChatMarkdown } from "@/components/shared/markdown/chat-markdown";
 import { ToolCallsDrawer } from "./tool-calls-drawer";
+import { ErrorDetailsDrawer } from "./error-details-drawer";
 import { useCopyToClipboard } from "@/shared/hooks/use-copy-to-clipboard";
 
 interface P {
@@ -53,6 +55,7 @@ function MessageActions({ message }: { message: Message }) {
 export const ChatMessage = memo(
   function ChatMessage(P: P) {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isErrorDrawerOpen, setIsErrorDrawerOpen] = useState(false);
 
     if (P.message.role === "ai" || P.message.role === "human") {
       return (
@@ -64,7 +67,8 @@ export const ChatMessage = memo(
                 P.message.role === "human"
                   ? "bg-white/10 backdrop-blur-sm border border-white/20"
                   : "bg-gray-800/50 backdrop-blur-sm border border-gray-700/50",
-                "flex hover:shadow-lg hover:scale-[1.001]"
+                "flex hover:shadow-lg hover:scale-[1.001]",
+                P.message.error && "border-red-500/50 bg-red-900/10"
               )}
             >
               <div
@@ -94,8 +98,24 @@ export const ChatMessage = memo(
               >
                 <ChatMarkdown content={P.message.content} />
 
+                {/* Error Button */}
+                {P.message.error && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setIsErrorDrawerOpen(true)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-red-900/20 hover:bg-red-900/30 border border-red-700/50 rounded-lg transition-colors text-white"
+                    >
+                      <ExclamationTriangleIcon className="w-4 h-4 text-red-400" />
+                      <span className="text-sm font-medium text-red-400">
+                        View Error Details
+                      </span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Tool Calls Button for AI messages */}
                 {P.message.role === "ai" &&
+                  !P.message.error &&
                   P.message.retrievalCalls &&
                   P.message.retrievalCalls.length > 0 && (
                     <div className="mt-4">
@@ -126,6 +146,15 @@ export const ChatMessage = memo(
             onClose={() => setIsDrawerOpen(false)}
             retrievalCalls={P.message.retrievalCalls || []}
           />
+
+          {/* Error Details Drawer */}
+          {P.message.error && (
+            <ErrorDetailsDrawer
+              isOpen={isErrorDrawerOpen}
+              onClose={() => setIsErrorDrawerOpen(false)}
+              error={P.message.error}
+            />
+          )}
         </>
       );
     } else {

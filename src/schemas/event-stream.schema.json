@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kalygo.example/schemas/event-stream.schema.json",
+  "title": "Agent Event Stream",
+  "description": "Schema for server-sent events in the agent streaming API",
+  "type": "object",
+  "required": ["event"],
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "on_chat_model_start",
+        "on_chat_model_stream",
+        "on_chain_end",
+        "on_tool_start",
+        "on_tool_end",
+        "error"
+      ],
+      "description": "The type of event being emitted"
+    },
+    "data": {
+      "description": "Event-specific data payload. Structure varies by event type.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/streamData"
+        },
+        {
+          "$ref": "#/$defs/chainEndData"
+        },
+        {
+          "$ref": "#/$defs/toolData"
+        },
+        {
+          "$ref": "#/$defs/errorData"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "streamData": {
+      "type": "string",
+      "description": "Text content streamed from the chat model (for on_chat_model_stream event)"
+    },
+    "chainEndData": {
+      "type": "string",
+      "description": "Final content when the chain completes (for on_chain_end event)"
+    },
+    "toolData": {
+      "type": "string",
+      "description": "Tool name or status message (for on_tool_start and on_tool_end events)"
+    },
+    "errorData": {
+      "type": "object",
+      "description": "Error details when an error occurs",
+      "required": ["error", "message"],
+      "properties": {
+        "error": {
+          "type": "string",
+          "description": "Short error title (e.g., 'Internal server error', 'Database connection failed')"
+        },
+        "message": {
+          "type": "string",
+          "description": "Detailed error message with context and debugging information"
+        },
+        "stack": {
+          "type": "string",
+          "description": "Stack trace (optional, for debugging)"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "event": "on_chat_model_start",
+      "data": null
+    },
+    {
+      "event": "on_chat_model_stream",
+      "data": "Hello"
+    },
+    {
+      "event": "on_tool_start",
+      "data": "search_docs"
+    },
+    {
+      "event": "on_tool_end",
+      "data": "search_docs"
+    },
+    {
+      "event": "on_chain_end",
+      "data": "Here is the complete response..."
+    },
+    {
+      "event": "error",
+      "data": {
+        "error": "Internal server error",
+        "message": "QueuePool limit of size 3 overflow 2 reached, connection timed out, timeout 30.00 (Background on this error at: https://sqlalche.me/e/20/3o7r)",
+        "stack": "Traceback (most recent call last):\n  File ...\n  ..."
+      }
+    }
+  ]
+}
