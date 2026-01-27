@@ -20,7 +20,7 @@ export interface ChatMessageV2 {
   /**
    * Array of tool calls made during the generation of this message. Only present for AI messages. Each tool call has a different schema depending on the tool type.
    */
-  toolCalls?: (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall)[];
+  toolCalls?: (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall)[];
 }
 /**
  * Tool call for vector search (semantic retrieval)
@@ -268,4 +268,52 @@ export interface DbReadRow {
    * Dynamic properties from the database row
    */
   [k: string]: unknown;
+}
+
+/**
+ * Tool call for database write operations (inserting records)
+ */
+export interface DbWriteToolCall {
+  /**
+   * The type of tool (dbWrite)
+   */
+  toolType: "dbWrite";
+  /**
+   * The specific tool instance name (e.g., 'create_lead', 'insert_order')
+   */
+  toolName: string;
+  input: {
+    /**
+     * The database table being written to
+     */
+    table: string;
+    /**
+     * The data being inserted
+     */
+    data: Record<string, unknown>;
+    [k: string]: unknown;
+  };
+  output: {
+    /**
+     * Whether the insert was successful
+     */
+    success: boolean;
+    /**
+     * The table that was written to
+     */
+    table: string;
+    /**
+     * The inserted record (if returned)
+     */
+    record?: Record<string, unknown>;
+    /**
+     * The ID of the inserted record (if available)
+     */
+    insertedId?: number | string;
+    /**
+     * Error message if insert failed
+     */
+    error?: string;
+    [k: string]: unknown;
+  };
 }

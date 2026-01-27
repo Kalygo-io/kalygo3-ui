@@ -5,6 +5,9 @@ import {
   InformationCircleIcon,
   CogIcon,
   DocumentTextIcon,
+  CircleStackIcon,
+  PencilSquareIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { Agent, KnowledgeBase, isAgentConfigV1, ToolV2 } from "@/services/agentsService";
@@ -214,48 +217,171 @@ export function ContextualAside({
                             </span>
                             <div className="space-y-2">
                               {agent.config.data.tools.map(
-                                (tool: ToolV2, index: number) => (
-                                  <div
-                                    key={index}
-                                    className="bg-gray-900/50 p-2 rounded border border-gray-700/50"
-                                  >
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <DocumentTextIcon className="w-4 h-4 text-purple-400" />
-                                      <span className="text-xs font-medium text-white">
-                                        {tool.type === "vectorSearchWithReranking" ? "Vector Search + Rerank" : "Vector Search"}
-                                      </span>
+                                (tool: ToolV2, index: number) => {
+                                  // Vector Search tools
+                                  if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="bg-gray-900/50 p-2 rounded border border-gray-700/50"
+                                      >
+                                        <div className="flex items-center space-x-2 mb-1">
+                                          <MagnifyingGlassIcon className="w-4 h-4 text-purple-400" />
+                                          <span className="text-xs font-medium text-white">
+                                            {tool.type === "vectorSearchWithReranking" ? "Vector Search + Rerank" : "Vector Search"}
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-gray-300 space-y-1 pl-6">
+                                          <div>
+                                            <span className="text-gray-400">Provider: </span>
+                                            <span className="text-white">{tool.provider}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-400">Index: </span>
+                                            <span className="text-white">{tool.index}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-400">Namespace: </span>
+                                            <span className="text-white">{tool.namespace}</span>
+                                          </div>
+                                          {tool.description && (
+                                            <div>
+                                              <span className="text-gray-400">Description: </span>
+                                              <span className="text-white">{tool.description}</span>
+                                            </div>
+                                          )}
+                                          {tool.type === "vectorSearchWithReranking" ? (
+                                            <div>
+                                              <span className="text-gray-400">K: {tool.topK || 20}, N: {tool.topN || 5}</span>
+                                            </div>
+                                          ) : (
+                                            <div>
+                                              <span className="text-gray-400">Top K: {tool.topK || 10}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // Database Read tool
+                                  if (tool.type === "dbRead") {
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="bg-gray-900/50 p-2 rounded border border-green-700/30"
+                                      >
+                                        <div className="flex items-center space-x-2 mb-1">
+                                          <CircleStackIcon className="w-4 h-4 text-green-400" />
+                                          <span className="text-xs font-medium text-white">
+                                            Database Read
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-gray-300 space-y-1 pl-6">
+                                          <div>
+                                            <span className="text-gray-400">Table: </span>
+                                            <span className="text-white">{tool.table}</span>
+                                          </div>
+                                          {tool.name && (
+                                            <div>
+                                              <span className="text-gray-400">Tool Name: </span>
+                                              <span className="text-white font-mono">{tool.name}</span>
+                                            </div>
+                                          )}
+                                          <div>
+                                            <span className="text-gray-400">Credential ID: </span>
+                                            <span className="text-white">{tool.credentialId}</span>
+                                          </div>
+                                          {tool.columns && tool.columns.length > 0 && (
+                                            <div>
+                                              <span className="text-gray-400">Columns: </span>
+                                              <span className="text-white">{tool.columns.join(", ")}</span>
+                                            </div>
+                                          )}
+                                          <div>
+                                            <span className="text-gray-400">Max Limit: </span>
+                                            <span className="text-white">{tool.maxLimit || 100}</span>
+                                          </div>
+                                          {tool.description && (
+                                            <div>
+                                              <span className="text-gray-400">Description: </span>
+                                              <span className="text-white">{tool.description}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // Database Write tool
+                                  if (tool.type === "dbWrite") {
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="bg-gray-900/50 p-2 rounded border border-orange-700/30"
+                                      >
+                                        <div className="flex items-center space-x-2 mb-1">
+                                          <PencilSquareIcon className="w-4 h-4 text-orange-400" />
+                                          <span className="text-xs font-medium text-white">
+                                            Database Write
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-gray-300 space-y-1 pl-6">
+                                          <div>
+                                            <span className="text-gray-400">Table: </span>
+                                            <span className="text-white">{tool.table}</span>
+                                          </div>
+                                          {tool.name && (
+                                            <div>
+                                              <span className="text-gray-400">Tool Name: </span>
+                                              <span className="text-white font-mono">{tool.name}</span>
+                                            </div>
+                                          )}
+                                          <div>
+                                            <span className="text-gray-400">Credential ID: </span>
+                                            <span className="text-white">{tool.credentialId}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-400">Columns: </span>
+                                            <span className="text-white">{tool.columns.join(", ")}</span>
+                                          </div>
+                                          {tool.requiredColumns && tool.requiredColumns.length > 0 && (
+                                            <div>
+                                              <span className="text-gray-400">Required: </span>
+                                              <span className="text-orange-400">{tool.requiredColumns.join(", ")}</span>
+                                            </div>
+                                          )}
+                                          {tool.injectAccountId && (
+                                            <div>
+                                              <span className="text-orange-400">+ Auto-inject account_id</span>
+                                            </div>
+                                          )}
+                                          {tool.description && (
+                                            <div>
+                                              <span className="text-gray-400">Description: </span>
+                                              <span className="text-white">{tool.description}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // Fallback for unknown tool types
+                                  return (
+                                    <div
+                                      key={index}
+                                      className="bg-gray-900/50 p-2 rounded border border-gray-700/50"
+                                    >
+                                      <div className="flex items-center space-x-2 mb-1">
+                                        <DocumentTextIcon className="w-4 h-4 text-gray-400" />
+                                        <span className="text-xs font-medium text-white">
+                                          {(tool as any).type || "Unknown Tool"}
+                                        </span>
+                                      </div>
                                     </div>
-                                    <div className="text-xs text-gray-300 space-y-1 pl-6">
-                                      <div>
-                                        <span className="text-gray-400">Provider: </span>
-                                        <span className="text-white">{tool.provider}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-gray-400">Index: </span>
-                                        <span className="text-white">{tool.index}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-gray-400">Namespace: </span>
-                                        <span className="text-white">{tool.namespace}</span>
-                                      </div>
-                                      {tool.description && (
-                                        <div>
-                                          <span className="text-gray-400">Description: </span>
-                                          <span className="text-white">{tool.description}</span>
-                                        </div>
-                                      )}
-                                      {tool.type === "vectorSearchWithReranking" ? (
-                                        <div>
-                                          <span className="text-gray-400">K: {tool.topK || 20}, N: {tool.topN || 5}</span>
-                                        </div>
-                                      ) : (
-                                        <div>
-                                          <span className="text-gray-400">Top K: {tool.topK || 10}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
+                                  );
+                                }
                               )}
                             </div>
                           </div>

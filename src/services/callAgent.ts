@@ -329,26 +329,17 @@ function dispatchEventToState(
           parsedChunk.data?.query ||
           {};
 
-        // Detect tool type from name or explicit type field
-        const explicitToolType =
+        // Get tool type from event data (backend provides this)
+        const toolType =
           parsedChunk.toolType ||
           parsedChunk.tool_type ||
           parsedChunk.data?.toolType ||
-          parsedChunk.data?.tool_type;
-
-        // Infer tool type from name if not explicitly provided
-        let inferredToolType: "vectorSearch" | "vectorSearchWithReranking" | "dbRead" = "vectorSearch";
-        if (explicitToolType) {
-          inferredToolType = explicitToolType;
-        } else if (toolName.toLowerCase().includes("read") || toolName.toLowerCase().includes("db_")) {
-          inferredToolType = "dbRead";
-        } else if (toolName.toLowerCase().includes("rerank")) {
-          inferredToolType = "vectorSearchWithReranking";
-        }
+          parsedChunk.data?.tool_type ||
+          "unknown"; // Default fallback only if backend doesn't provide
 
         // Create a new tool call entry
         const newToolCall = {
-          toolType: inferredToolType,
+          toolType: toolType,
           toolName: toolName,
           input:
             typeof toolInput === "object" ? toolInput : { query: toolInput },
@@ -438,24 +429,16 @@ function dispatchEventToState(
             parsedChunk.data?.name ||
             "unknown_tool";
 
-          // Detect tool type from name or explicit type field
-          const explicitToolType =
+          // Get tool type from event data (backend provides this)
+          const toolType =
             parsedChunk.toolType ||
             parsedChunk.tool_type ||
             parsedChunk.data?.toolType ||
-            parsedChunk.data?.tool_type;
-
-          let inferredToolType: "vectorSearch" | "vectorSearchWithReranking" | "dbRead" = "vectorSearch";
-          if (explicitToolType) {
-            inferredToolType = explicitToolType;
-          } else if (toolName.toLowerCase().includes("read") || toolName.toLowerCase().includes("db_")) {
-            inferredToolType = "dbRead";
-          } else if (toolName.toLowerCase().includes("rerank")) {
-            inferredToolType = "vectorSearchWithReranking";
-          }
+            parsedChunk.data?.tool_type ||
+            "unknown"; // Default fallback only if backend doesn't provide
 
           const newCompletedToolCall = {
-            toolType: inferredToolType,
+            toolType: toolType,
             toolName: toolName,
             input: {},
             output:

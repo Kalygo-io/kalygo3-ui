@@ -55,7 +55,18 @@ export interface DbReadTool {
   maxLimit?: number; // Max rows per query (1-1000, default 100)
 }
 
-export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool | DbReadTool;
+export interface DbWriteTool {
+  type: "dbWrite";
+  credentialId: number; // ID of stored credential with db_connection type
+  table: string;
+  name?: string; // Custom tool name (e.g., 'create_lead'), defaults to 'insert_{table}'
+  description?: string;
+  columns: string[]; // Columns that can be written (required)
+  requiredColumns?: string[]; // Columns that must be provided when inserting
+  injectAccountId?: boolean; // Auto-inject user's account_id into the record
+}
+
+export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool | DbReadTool | DbWriteTool;
 
 export interface AgentConfigDataV2 {
   systemPrompt: string;

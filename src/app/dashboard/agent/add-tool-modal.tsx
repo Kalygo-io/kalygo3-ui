@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, TableCellsIcon, KeyIcon } from "@heroicons/react/24/outline";
-import { ToolV2, DbReadTool } from "@/services/agentsService";
+import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { ToolV2, DbReadTool, DbWriteTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { credentialService, Credential, CredentialType, formatServiceName } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -19,7 +19,7 @@ export function AddToolModal({
   initialTool,
 }: AddToolModalProps) {
   // Tool category selection
-  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbRead">("vectorSearch");
+  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbRead" | "dbWrite">("vectorSearch");
   
   // Vector search state
   const [vectorToolType, setVectorToolType] = useState<"vectorSearch" | "vectorSearchWithReranking">("vectorSearch");
@@ -29,12 +29,18 @@ export function AddToolModal({
   const [topK, setTopK] = useState(10);
   const [topN, setTopN] = useState(5);
   
-  // DB Read state
+  // DB Read/Write shared state
   const [selectedCredentialId, setSelectedCredentialId] = useState<number | "">("");
   const [tableName, setTableName] = useState("");
   const [toolName, setToolName] = useState("");
   const [columns, setColumns] = useState("");
+  
+  // DB Read specific
   const [maxLimit, setMaxLimit] = useState(100);
+  
+  // DB Write specific
+  const [requiredColumns, setRequiredColumns] = useState("");
+  const [injectAccountId, setInjectAccountId] = useState(false);
   
   // Shared state
   const [description, setDescription] = useState("");
@@ -61,6 +67,14 @@ export function AddToolModal({
         setToolName(initialTool.name || "");
         setColumns(initialTool.columns?.join(", ") || "");
         setMaxLimit(initialTool.maxLimit || 100);
+      } else if (initialTool.type === "dbWrite") {
+        setToolCategory("dbWrite");
+        setSelectedCredentialId(initialTool.credentialId);
+        setTableName(initialTool.table);
+        setToolName(initialTool.name || "");
+        setColumns(initialTool.columns.join(", "));
+        setRequiredColumns(initialTool.requiredColumns?.join(", ") || "");
+        setInjectAccountId(initialTool.injectAccountId || false);
       } else {
         setToolCategory("vectorSearch");
         setVectorToolType(initialTool.type);
@@ -181,6 +195,69 @@ export function AddToolModal({
       }
 
       tool = dbTool;
+    } else if (toolCategory === "dbWrite") {
+      // DB Write tool validation
+      if (!selectedCredentialId) {
+        errorToast("Please select a database credential");
+        return;
+      }
+
+      if (!tableName.trim()) {
+        errorToast("Please enter a table name");
+        return;
+      }
+
+      // Validate tool name format if provided
+      if (toolName.trim() && !/^[a-z_][a-z0-9_]*$/.test(toolName.trim())) {
+        errorToast("Tool name must be lowercase with underscores only (e.g., create_lead)");
+        return;
+      }
+
+      // Parse columns (required for dbWrite)
+      const columnsArray = columns.trim()
+        ? columns.split(",").map((c) => c.trim()).filter((c) => c.length > 0)
+        : [];
+
+      if (columnsArray.length === 0) {
+        errorToast("Please specify at least one column for database write");
+        return;
+      }
+
+      // Parse required columns
+      const requiredColumnsArray = requiredColumns.trim()
+        ? requiredColumns.split(",").map((c) => c.trim()).filter((c) => c.length > 0)
+        : undefined;
+
+      // Validate required columns are subset of columns
+      if (requiredColumnsArray) {
+        const invalidRequired = requiredColumnsArray.filter((rc) => !columnsArray.includes(rc));
+        if (invalidRequired.length > 0) {
+          errorToast(`Required columns must be in the allowed columns list: ${invalidRequired.join(", ")}`);
+          return;
+        }
+      }
+
+      const dbWriteTool: DbWriteTool = {
+        type: "dbWrite",
+        credentialId: selectedCredentialId as number,
+        table: tableName.trim(),
+        columns: columnsArray,
+      };
+
+      if (toolName.trim()) {
+        dbWriteTool.name = toolName.trim();
+      }
+      if (description.trim()) {
+        dbWriteTool.description = description.trim();
+      }
+      if (requiredColumnsArray && requiredColumnsArray.length > 0) {
+        dbWriteTool.requiredColumns = requiredColumnsArray;
+      }
+      if (injectAccountId) {
+        dbWriteTool.injectAccountId = true;
+      }
+
+      tool = dbWriteTool;
     } else {
       // Vector search tools
       if (!selectedIndex) {
@@ -219,6 +296,12 @@ export function AddToolModal({
   };
 
   const selectedCredential = dbCredentials.find((c) => c.id === selectedCredentialId);
+  
+  // Determine color theme based on tool category
+  const isDbTool = toolCategory === "dbRead" || toolCategory === "dbWrite";
+  const accentColor = toolCategory === "dbWrite" ? "orange" : toolCategory === "dbRead" ? "green" : "blue";
+  const ringClass = toolCategory === "dbWrite" ? "focus:ring-orange-500" : toolCategory === "dbRead" ? "focus:ring-green-500" : "focus:ring-blue-500";
+  const buttonClass = toolCategory === "dbWrite" ? "bg-orange-600 hover:bg-orange-700" : toolCategory === "dbRead" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -251,7 +334,7 @@ export function AddToolModal({
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 Tool Category *
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setToolCategory("vectorSearch")}
@@ -270,7 +353,7 @@ export function AddToolModal({
                     Vector Search
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Semantic retrieval from knowledge bases
+                    Semantic retrieval
                   </div>
                 </button>
                 <button
@@ -288,10 +371,31 @@ export function AddToolModal({
                   <div className={`text-sm font-medium ${
                     toolCategory === "dbRead" ? "text-green-300" : "text-gray-400"
                   }`}>
-                    Database Query
+                    DB Read
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Read structured data from external DB
+                    Query data
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setToolCategory("dbWrite")}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    toolCategory === "dbWrite"
+                      ? "border-orange-500 bg-orange-500/10"
+                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
+                  }`}
+                >
+                  <PencilSquareIcon className={`h-8 w-8 mx-auto mb-2 ${
+                    toolCategory === "dbWrite" ? "text-orange-400" : "text-gray-500"
+                  }`} />
+                  <div className={`text-sm font-medium ${
+                    toolCategory === "dbWrite" ? "text-orange-300" : "text-gray-400"
+                  }`}>
+                    DB Write
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Insert records
                   </div>
                 </button>
               </div>
@@ -441,8 +545,8 @@ export function AddToolModal({
             </>
           )}
 
-          {/* Database Query Options */}
-          {toolCategory === "dbRead" && (
+          {/* Database Read/Write Options */}
+          {isDbTool && (
             <>
               {/* Credential Selection */}
               <div>
@@ -470,7 +574,7 @@ export function AddToolModal({
                   <select
                     value={selectedCredentialId}
                     onChange={(e) => setSelectedCredentialId(e.target.value ? parseInt(e.target.value) : "")}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 ${ringClass}`}
                     required
                     disabled={isEditing}
                   >
@@ -496,9 +600,15 @@ export function AddToolModal({
 
               {/* Selected Credential Info */}
               {selectedCredential && (
-                <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
+                <div className={`rounded-lg p-4 ${
+                  toolCategory === "dbWrite" 
+                    ? "bg-orange-900/20 border border-orange-700/50" 
+                    : "bg-green-900/20 border border-green-700/50"
+                }`}>
                   <div className="flex items-start gap-3">
-                    <CircleStackIcon className="h-5 w-5 text-green-400 mt-0.5" />
+                    <CircleStackIcon className={`h-5 w-5 mt-0.5 ${
+                      toolCategory === "dbWrite" ? "text-orange-400" : "text-green-400"
+                    }`} />
                     <div>
                       <h4 className="text-sm font-medium text-white">
                         {formatServiceName(selectedCredential.service_name)}
@@ -525,13 +635,15 @@ export function AddToolModal({
                   type="text"
                   value={tableName}
                   onChange={(e) => setTableName(e.target.value)}
-                  placeholder="e.g., users, orders, products"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder={toolCategory === "dbWrite" ? "e.g., leads, orders, contacts" : "e.g., users, orders, products"}
+                  className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass}`}
                   disabled={isEditing}
                   required
                 />
                 <p className="text-gray-400 text-xs mt-2">
-                  The database table the agent can query.
+                  {toolCategory === "dbWrite" 
+                    ? "The database table to insert records into."
+                    : "The database table the agent can query."}
                 </p>
               </div>
 
@@ -544,50 +656,108 @@ export function AddToolModal({
                   type="text"
                   value={toolName}
                   onChange={(e) => setToolName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
-                  placeholder={tableName ? `query_${tableName.toLowerCase()}` : "e.g., query_users"}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                  placeholder={
+                    tableName 
+                      ? toolCategory === "dbWrite" 
+                        ? `insert_${tableName.toLowerCase()}` 
+                        : `query_${tableName.toLowerCase()}`
+                      : toolCategory === "dbWrite"
+                        ? "e.g., create_lead"
+                        : "e.g., query_users"
+                  }
+                  className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass} font-mono`}
                 />
                 <p className="text-gray-400 text-xs mt-2">
-                  Optional custom name for the tool. Must be lowercase with underscores only.
-                  Defaults to &quot;query_{"{table}"}&quot;.
+                  Optional custom name. Must be lowercase with underscores only.
+                  Defaults to &quot;{toolCategory === "dbWrite" ? "insert" : "query"}_{"{table}"}&quot;.
                 </p>
               </div>
 
-              {/* Columns (optional) */}
+              {/* Columns */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Allowed Columns
+                  {toolCategory === "dbWrite" ? "Writable Columns *" : "Allowed Columns"}
                 </label>
                 <input
                   type="text"
                   value={columns}
                   onChange={(e) => setColumns(e.target.value)}
-                  placeholder="e.g., id, name, email, created_at"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                  placeholder={toolCategory === "dbWrite" 
+                    ? "e.g., name, email, phone, notes" 
+                    : "e.g., id, name, email, created_at"}
+                  className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass} font-mono`}
+                  required={toolCategory === "dbWrite"}
                 />
                 <p className="text-gray-400 text-xs mt-2">
-                  Comma-separated list of columns the agent can query and see.
-                  Leave empty to allow all non-sensitive columns.
+                  {toolCategory === "dbWrite" 
+                    ? "Comma-separated list of columns the agent can write to. Required for security."
+                    : "Comma-separated list of columns the agent can query and see. Leave empty to allow all."}
                 </p>
               </div>
 
-              {/* Max Limit */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Maximum Rows
-                </label>
-                <input
-                  type="number"
-                  value={maxLimit}
-                  onChange={(e) => setMaxLimit(Math.max(1, Math.min(1000, parseInt(e.target.value) || 100)))}
-                  min="1"
-                  max="1000"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-                <p className="text-gray-400 text-xs mt-2">
-                  Maximum rows the agent can request per query (1-1000). Default is 100.
-                </p>
-              </div>
+              {/* DB Write specific: Required Columns and Inject Account ID */}
+              {toolCategory === "dbWrite" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Required Columns
+                    </label>
+                    <input
+                      type="text"
+                      value={requiredColumns}
+                      onChange={(e) => setRequiredColumns(e.target.value)}
+                      placeholder="e.g., name, email"
+                      className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass} font-mono`}
+                    />
+                    <p className="text-gray-400 text-xs mt-2">
+                      Comma-separated columns that must be provided when inserting.
+                      Must be a subset of writable columns.
+                    </p>
+                  </div>
+
+                  {/* Inject Account ID */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center h-6">
+                      <input
+                        type="checkbox"
+                        id="injectAccountId"
+                        checked={injectAccountId}
+                        onChange={(e) => setInjectAccountId(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-600 bg-gray-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-gray-800"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="injectAccountId" className="text-sm font-medium text-gray-300 cursor-pointer">
+                        Auto-inject Account ID
+                      </label>
+                      <p className="text-gray-400 text-xs mt-1">
+                        Automatically set the <code className="text-orange-400">account_id</code> column to the 
+                        authenticated user&apos;s account. Enable this if the table has an account_id column.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* DB Read specific: Max Limit */}
+              {toolCategory === "dbRead" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Maximum Rows
+                  </label>
+                  <input
+                    type="number"
+                    value={maxLimit}
+                    onChange={(e) => setMaxLimit(Math.max(1, Math.min(1000, parseInt(e.target.value) || 100)))}
+                    min="1"
+                    max="1000"
+                    className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 ${ringClass}`}
+                  />
+                  <p className="text-gray-400 text-xs mt-2">
+                    Maximum rows the agent can request per query (1-1000). Default is 100.
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -599,13 +769,15 @@ export function AddToolModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={toolCategory === "dbRead" 
-                ? "Describe what data this table contains and what queries are useful..."
-                : "Describe what this knowledge base contains..."}
+              placeholder={
+                toolCategory === "dbWrite"
+                  ? "Describe what records this tool creates and when to use it..."
+                  : toolCategory === "dbRead" 
+                    ? "Describe what data this table contains and what queries are useful..."
+                    : "Describe what this knowledge base contains..."
+              }
               rows={3}
-              className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                toolCategory === "dbRead" ? "focus:ring-green-500" : "focus:ring-blue-500"
-              } resize-none`}
+              className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass} resize-none`}
             />
             <p className="text-gray-400 text-xs mt-2">
               Help the LLM decide when and how to use this tool.
@@ -623,12 +795,8 @@ export function AddToolModal({
             </button>
             <button
               type="submit"
-              disabled={toolCategory === "dbRead" && dbCredentials.length === 0}
-              className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-white disabled:opacity-50 disabled:cursor-not-allowed ${
-                toolCategory === "dbRead"
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
+              disabled={isDbTool && dbCredentials.length === 0}
+              className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-white disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
             >
               {isEditing ? "Update Tool" : "Add Tool"}
             </button>

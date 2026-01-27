@@ -10,6 +10,7 @@ import {
   VectorSearchTool,
   VectorSearchWithRerankingTool,
   DbReadTool,
+  DbWriteTool,
   ToolV2,
 } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -22,6 +23,7 @@ import {
   PencilIcon,
   LinkIcon,
   CircleStackIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import { AddToolModal } from "./add-tool-modal";
 
@@ -160,6 +162,14 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "dbRead" &&
+            existing.credentialId === tool.credentialId &&
+            existing.table === tool.table
+        );
+      } else if (tool.type === "dbWrite") {
+        // For dbWrite, check if same credentialId + table already exists
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "dbWrite" &&
             existing.credentialId === tool.credentialId &&
             existing.table === tool.table
         );
@@ -451,6 +461,94 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                                       type="button"
                                       onClick={() => handleEditTool(index)}
                                       className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
+                                      title="Edit tool"
+                                      aria-label="Edit tool"
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTool(index)}
+                                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                      title="Remove tool"
+                                      aria-label="Remove tool"
+                                    >
+                                      <TrashIcon className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          // Render dbWrite tools
+                          if (tool.type === "dbWrite") {
+                            const formatTableName = (name: string) =>
+                              name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+
+                            const toolDisplayName = tool.name || `insert_${tool.table}`;
+
+                            return (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-800/30 transition-colors"
+                              >
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-600/20 text-orange-300 border border-orange-500/40">
+                                    <PencilSquareIcon className="h-3 w-3" />
+                                    Database Write
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="space-y-1">
+                                    <span className="text-sm text-white font-medium block">
+                                      {formatTableName(tool.table)}
+                                    </span>
+                                    <code className="text-xs text-orange-400 bg-orange-900/20 px-1.5 py-0.5 rounded">
+                                      {toolDisplayName}
+                                    </code>
+                                    <div className="text-xs text-gray-500">
+                                      Credential ID: {tool.credentialId}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="space-y-1">
+                                    <span className="text-sm text-gray-300 block">
+                                      {tool.description || (
+                                        <span className="text-gray-500 italic">
+                                          No description
+                                        </span>
+                                      )}
+                                    </span>
+                                    <div className="text-xs text-gray-500">
+                                      Columns: {tool.columns.join(", ")}
+                                    </div>
+                                    {tool.requiredColumns && tool.requiredColumns.length > 0 && (
+                                      <div className="text-xs text-orange-400/80">
+                                        Required: {tool.requiredColumns.join(", ")}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="space-y-1">
+                                    <div className="text-xs text-gray-500">
+                                      {tool.columns.length} columns
+                                    </div>
+                                    {tool.injectAccountId && (
+                                      <div className="text-xs text-orange-400">
+                                        + account_id
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditTool(index)}
+                                      className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-600/20 rounded-lg transition-colors duration-200"
                                       title="Edit tool"
                                       aria-label="Edit tool"
                                     >

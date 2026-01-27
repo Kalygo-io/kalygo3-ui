@@ -16,6 +16,7 @@ import {
   TrashIcon,
   PencilIcon,
   CircleStackIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import { AddToolModal } from "../../agent/add-tool-modal";
 
@@ -88,6 +89,14 @@ export function CreateAgentV2Container() {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "dbRead" &&
+            existing.credentialId === tool.credentialId &&
+            existing.table === tool.table
+        );
+      } else if (tool.type === "dbWrite") {
+        // For dbWrite, check if same credentialId + table already exists
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "dbWrite" &&
             existing.credentialId === tool.credentialId &&
             existing.table === tool.table
         );
@@ -278,6 +287,80 @@ export function CreateAgentV2Container() {
                                 type="button"
                                 onClick={() => handleEditTool(index)}
                                 className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
+                                title="Edit tool"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                title="Remove tool"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Render dbWrite tools
+                    if (tool.type === "dbWrite") {
+                      const formatTableName = (name: string) =>
+                        name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+
+                      const toolDisplayName = tool.name || `insert_${tool.table}`;
+
+                      return (
+                        <div
+                          key={index}
+                          className="p-4 hover:bg-gray-800/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-600/20 text-orange-300 border border-orange-500/40">
+                                  <PencilSquareIcon className="h-3 w-3" />
+                                  Database Write
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-300">
+                                  <span className="font-medium">Table:</span>{" "}
+                                  <span className="text-white">{formatTableName(tool.table)}</span>{" "}
+                                  <code className="text-xs text-orange-400 bg-orange-900/20 px-1.5 py-0.5 rounded ml-1">
+                                    {toolDisplayName}
+                                  </code>
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Credential ID: {tool.credentialId}
+                                </p>
+                                {tool.description && (
+                                  <p className="text-sm text-gray-400">
+                                    {tool.description}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                  Columns: {tool.columns.join(", ")}
+                                </p>
+                                {tool.requiredColumns && tool.requiredColumns.length > 0 && (
+                                  <p className="text-xs text-orange-400/80">
+                                    Required: {tool.requiredColumns.join(", ")}
+                                  </p>
+                                )}
+                                {tool.injectAccountId && (
+                                  <p className="text-xs text-orange-400">
+                                    + Auto-inject account_id
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              <button
+                                type="button"
+                                onClick={() => handleEditTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-600/20 rounded-lg transition-colors duration-200"
                                 title="Edit tool"
                               >
                                 <PencilIcon className="h-4 w-4" />

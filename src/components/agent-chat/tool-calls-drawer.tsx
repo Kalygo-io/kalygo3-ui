@@ -13,6 +13,7 @@ import {
   VectorSearchToolCall,
   VectorSearchWithRerankingToolCall,
   DbReadToolCall,
+  DbWriteToolCall,
   VectorSearchResult,
   TextDocumentMetadata,
   QaMetadata,
@@ -45,9 +46,15 @@ function isVectorSearchWithRerankingToolCall(
 }
 
 function isDbReadToolCall(
-  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall
 ): call is DbReadToolCall {
   return call.toolType === "dbRead";
+}
+
+function isDbWriteToolCall(
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall
+): call is DbWriteToolCall {
+  return call.toolType === "dbWrite";
 }
 
 interface ToolCallsDrawerProps {
@@ -55,7 +62,7 @@ interface ToolCallsDrawerProps {
   onClose: () => void;
   toolCalls?:
     | ToolCall[]
-    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall)[]; // Support both old and new schema
+    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall)[]; // Support both old and new schema
   retrievalCalls?: RetrievalCall[]; // Legacy retrieval calls
 }
 
@@ -213,6 +220,11 @@ export function ToolCallsDrawer({
         const dbCall = call as DbReadToolCall;
         return total + (dbCall.output?.rows?.length || 0);
       }
+      // Check if it's a dbWrite tool
+      if (isDbWriteToolCall(call as any)) {
+        const dbWriteCall = call as DbWriteToolCall;
+        return total + (dbWriteCall.output?.success ? 1 : 0);
+      }
       const v2Call = call as
         | VectorSearchToolCall
         | VectorSearchWithRerankingToolCall;
@@ -304,6 +316,21 @@ export function ToolCallsDrawer({
                     );
                   }
 
+                  // Check for dbWrite tool (v2 schema)
+                  if (isV2Schema && isDbWriteToolCall(call as any)) {
+                    const dbWriteCall = call as DbWriteToolCall;
+                    return (
+                      <DbWriteToolCallCard
+                        key={index}
+                        index={index}
+                        toolCall={dbWriteCall}
+                        isExpanded={expandedToolCalls.has(index)}
+                        onToggleExpand={() => toggleToolCallExpanded(index)}
+                        copyToClipboard={copyToClipboard}
+                      />
+                    );
+                  }
+
                   const v2Call = call as
                     | VectorSearchToolCall
                     | VectorSearchWithRerankingToolCall;
@@ -384,7 +411,15 @@ export function ToolCallsDrawer({
                             <span className="text-white text-sm bg-gray-800 p-2 rounded">
                               {toolType === "vectorSearch"
                                 ? "Vector Search"
-                                : "Vector Search with Reranking"}
+                                : toolType === "vectorSearchWithReranking"
+                                ? "Vector Search with Reranking"
+                                : toolType === "dbRead"
+                                ? "Database Query"
+                                : toolType === "dbWrite"
+                                ? "Database Write"
+                                : toolType === "unknown"
+                                ? "Unknown Tool"
+                                : toolType}
                             </span>
                           </div>
                         )}
@@ -911,6 +946,177 @@ function DbReadToolCallCard({
               </pre>
             </div>
           </details>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Database Write Tool Call Card Component
+interface DbWriteToolCallCardProps {
+  index: number;
+  toolCall: DbWriteToolCall;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  copyToClipboard: (text: string) => void;
+}
+
+function DbWriteToolCallCard({
+  index,
+  toolCall,
+  isExpanded,
+  onToggleExpand,
+  copyToClipboard,
+}: DbWriteToolCallCardProps) {
+  const tableName = toolCall.input?.table || toolCall.output?.table || "Unknown Table";
+  const success = toolCall.output?.success ?? false;
+  const insertedRecord = toolCall.output?.record;
+  const insertedId = toolCall.output?.insertedId;
+  const error = toolCall.output?.error;
+
+  // Format table name for display
+  const formatTableName = (name: string) =>
+    name.split("_").map((word) =>
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(" ");
+
+  // PencilSquareIcon component (inline to avoid import issues)
+  const PencilSquareIcon = ({ className }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+    </svg>
+  );
+
+  return (
+    <div className="bg-gray-800/50 border border-gray-600/50 rounded-lg p-4">
+      {/* Tool Call Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-400">#{index + 1}</span>
+          <PencilSquareIcon className="w-5 h-5 text-orange-400" />
+          <h3 className="text-lg font-medium text-white">
+            {toolCall.toolName || "Database Write"}
+          </h3>
+        </div>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+              success 
+                ? "bg-green-600/20 text-green-400 border border-green-500/40"
+                : "bg-red-600/20 text-red-400 border border-red-500/40"
+            }`}>
+              {success ? "Success" : "Failed"}
+            </span>
+          </div>
+          <button
+            onClick={onToggleExpand}
+            className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUpIcon className="w-4 h-4 mr-1" />
+                Hide Details
+              </>
+            ) : (
+              <>
+                <ChevronDownIcon className="w-4 h-4 mr-1" />
+                Show Details
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Tool Type & Table */}
+      <div className="mb-3">
+        <div className="flex items-start space-x-2 mb-2">
+          <span className="text-orange-400 font-medium text-sm">Tool Type:</span>
+          <span className="text-white text-sm bg-gray-800 p-2 rounded">
+            Database Write
+          </span>
+        </div>
+        <div className="flex items-start space-x-2">
+          <span className="text-orange-400 font-medium text-sm">Table:</span>
+          <span className="text-white text-sm bg-gray-800 p-2 rounded flex items-center">
+            <TableCellsIcon className="w-4 h-4 mr-2 text-orange-400" />
+            {formatTableName(tableName)}
+          </span>
+        </div>
+      </div>
+
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="mt-4 pt-4 border-t border-gray-600/30">
+          {/* Input Data */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium text-gray-300">Input Data</h4>
+              <button
+                onClick={() => copyToClipboard(JSON.stringify(toolCall.input?.data || {}, null, 2))}
+                className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div className="bg-gray-900/50 p-3 rounded border border-gray-600/30 overflow-x-auto">
+              <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                {JSON.stringify(toolCall.input?.data || {}, null, 2)}
+              </pre>
+            </div>
+          </div>
+
+          {/* Output */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">Result</h4>
+            
+            {error ? (
+              <div className="bg-red-900/20 border border-red-700/30 rounded-lg p-3">
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {insertedId && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400 text-sm">Inserted ID:</span>
+                    <span className="text-green-400 text-sm font-mono bg-gray-800 px-2 py-1 rounded">
+                      {insertedId}
+                    </span>
+                  </div>
+                )}
+                
+                {insertedRecord && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-gray-400 text-sm">Inserted Record:</span>
+                      <button
+                        onClick={() => copyToClipboard(JSON.stringify(insertedRecord, null, 2))}
+                        className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <span>Copy</span>
+                      </button>
+                    </div>
+                    <div className="bg-gray-900/50 p-3 rounded border border-gray-600/30 overflow-x-auto">
+                      <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                        {JSON.stringify(insertedRecord, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {!insertedId && !insertedRecord && success && (
+                  <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3">
+                    <p className="text-green-400 text-sm">Record inserted successfully</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

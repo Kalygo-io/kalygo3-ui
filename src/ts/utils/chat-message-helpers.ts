@@ -2,6 +2,7 @@ import {
   VectorSearchToolCall,
   VectorSearchWithRerankingToolCall,
   DbReadToolCall,
+  DbWriteToolCall,
   TextDocumentMetadata,
   QaMetadata,
 } from "@/ts/types/ChatMessage";
@@ -27,7 +28,7 @@ export function isQaMetadata(
 /**
  * Union type for all tool calls
  */
-export type AnyToolCall = VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall;
+export type AnyToolCall = VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall;
 
 /**
  * Type guard to check if tool call is VectorSearchToolCall
@@ -54,6 +55,15 @@ export function isDbReadToolCall(
   call: AnyToolCall
 ): call is DbReadToolCall {
   return call.toolType === "dbRead";
+}
+
+/**
+ * Type guard to check if tool call is DbWriteToolCall
+ */
+export function isDbWriteToolCall(
+  call: AnyToolCall
+): call is DbWriteToolCall {
+  return call.toolType === "dbWrite";
 }
 
 /**
@@ -98,7 +108,7 @@ export function formatScore(score: number): string {
  * Get tool type display name
  */
 export function getToolTypeDisplayName(
-  toolType: "vectorSearch" | "vectorSearchWithReranking" | "dbRead"
+  toolType: "vectorSearch" | "vectorSearchWithReranking" | "dbRead" | "dbWrite" | "unknown" | string
 ): string {
   switch (toolType) {
     case "vectorSearch":
@@ -107,6 +117,10 @@ export function getToolTypeDisplayName(
       return "Vector Search with Reranking";
     case "dbRead":
       return "Database Query";
+    case "dbWrite":
+      return "Database Write";
+    case "unknown":
+      return "Unknown Tool";
     default:
       return toolType;
   }
