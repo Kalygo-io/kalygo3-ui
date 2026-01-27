@@ -35,16 +35,19 @@ export function AddVectorSearchToolModal({
 
   useEffect(() => {
     if (initialTool) {
-      setToolType(initialTool.type);
-      setSelectedIndex(initialTool.index);
-      setSelectedNamespace(initialTool.namespace);
-      setDescription(initialTool.description || "");
-      
-      if (initialTool.type === "vectorSearch") {
-        setTopK(initialTool.topK || 10);
-      } else if (initialTool.type === "vectorSearchWithReranking") {
-        setTopK(initialTool.topK || 20);
-        setTopN(initialTool.topN || 5);
+      // Only handle vector search tool types in this modal
+      if (initialTool.type === "vectorSearch" || initialTool.type === "vectorSearchWithReranking") {
+        setToolType(initialTool.type);
+        setSelectedIndex(initialTool.index);
+        setSelectedNamespace(initialTool.namespace);
+        setDescription(initialTool.description || "");
+        
+        if (initialTool.type === "vectorSearch") {
+          setTopK(initialTool.topK || 10);
+        } else if (initialTool.type === "vectorSearchWithReranking") {
+          setTopK(initialTool.topK || 20);
+          setTopN(initialTool.topN || 5);
+        }
       }
     }
   }, [initialTool]);
