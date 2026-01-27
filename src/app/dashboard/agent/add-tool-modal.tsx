@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, TableCellsIcon } from "@heroicons/react/24/outline";
-import { ToolV2 } from "@/services/agentsService";
+import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, TableCellsIcon, KeyIcon } from "@heroicons/react/24/outline";
+import { ToolV2, DbReadTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
+import { credentialService, Credential, CredentialType, formatServiceName } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
 
 interface AddToolModalProps {
@@ -29,8 +30,11 @@ export function AddToolModal({
   const [topN, setTopN] = useState(5);
   
   // DB Read state
+  const [selectedCredentialId, setSelectedCredentialId] = useState<number | "">("");
   const [tableName, setTableName] = useState("");
-  const [dbLimit, setDbLimit] = useState(50);
+  const [toolName, setToolName] = useState("");
+  const [columns, setColumns] = useState("");
+  const [maxLimit, setMaxLimit] = useState(100);
   
   // Shared state
   const [description, setDescription] = useState("");
@@ -40,6 +44,8 @@ export function AddToolModal({
   const [indices, setIndices] = useState<Index[]>([]);
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [loadingNamespaces, setLoadingNamespaces] = useState(false);
+  const [dbCredentials, setDbCredentials] = useState<Credential[]>([]);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
 
   const isEditing = !!initialTool;
 
@@ -50,8 +56,11 @@ export function AddToolModal({
       
       if (initialTool.type === "dbRead") {
         setToolCategory("dbRead");
+        setSelectedCredentialId(initialTool.credentialId);
         setTableName(initialTool.table);
-        setDbLimit(initialTool.limit || 50);
+        setToolName(initialTool.name || "");
+        setColumns(initialTool.columns?.join(", ") || "");
+        setMaxLimit(initialTool.maxLimit || 100);
       } else {
         setToolCategory("vectorSearch");
         setVectorToolType(initialTool.type);
@@ -70,6 +79,7 @@ export function AddToolModal({
 
   useEffect(() => {
     loadIndices();
+    loadDbCredentials();
   }, []);
 
   useEffect(() => {
@@ -106,24 +116,71 @@ export function AddToolModal({
     }
   };
 
+  const loadDbCredentials = async () => {
+    try {
+      setLoadingCredentials(true);
+      const allCredentials = await credentialService.listCredentials();
+      // Filter to only db_connection type credentials
+      const dbCreds = allCredentials.filter(
+        (c) => c.credential_type === CredentialType.DB_CONNECTION || c.credential_type === "db_connection"
+      );
+      setDbCredentials(dbCreds);
+    } catch (error: any) {
+      console.error("Failed to load credentials:", error);
+      // Don't show error toast as credentials might just not be set up yet
+    } finally {
+      setLoadingCredentials(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     let tool: ToolV2;
 
     if (toolCategory === "dbRead") {
-      // DB Read tool
+      // DB Read tool validation
+      if (!selectedCredentialId) {
+        errorToast("Please select a database credential");
+        return;
+      }
+
       if (!tableName.trim()) {
         errorToast("Please enter a table name");
         return;
       }
 
-      tool = {
+      // Validate tool name format if provided
+      if (toolName.trim() && !/^[a-z_][a-z0-9_]*$/.test(toolName.trim())) {
+        errorToast("Tool name must be lowercase with underscores only (e.g., query_users)");
+        return;
+      }
+
+      // Parse columns
+      const columnsArray = columns.trim()
+        ? columns.split(",").map((c) => c.trim()).filter((c) => c.length > 0)
+        : undefined;
+
+      const dbTool: DbReadTool = {
         type: "dbRead",
+        credentialId: selectedCredentialId as number,
         table: tableName.trim(),
-        description: description.trim() || undefined,
-        limit: dbLimit,
       };
+
+      if (toolName.trim()) {
+        dbTool.name = toolName.trim();
+      }
+      if (description.trim()) {
+        dbTool.description = description.trim();
+      }
+      if (columnsArray && columnsArray.length > 0) {
+        dbTool.columns = columnsArray;
+      }
+      if (maxLimit !== 100) {
+        dbTool.maxLimit = maxLimit;
+      }
+
+      tool = dbTool;
     } else {
       // Vector search tools
       if (!selectedIndex) {
@@ -160,6 +217,8 @@ export function AddToolModal({
 
     onAdd(tool);
   };
+
+  const selectedCredential = dbCredentials.find((c) => c.id === selectedCredentialId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -232,7 +291,7 @@ export function AddToolModal({
                     Database Query
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Read structured data from tables
+                    Read structured data from external DB
                   </div>
                 </button>
               </div>
@@ -385,7 +444,79 @@ export function AddToolModal({
           {/* Database Query Options */}
           {toolCategory === "dbRead" && (
             <>
-              {/* Table Name Input */}
+              {/* Credential Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Database Credential *
+                </label>
+                {loadingCredentials ? (
+                  <div className="text-gray-400 text-sm">Loading credentials...</div>
+                ) : dbCredentials.length === 0 ? (
+                  <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <KeyIcon className="h-5 w-5 text-yellow-400 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-yellow-300">
+                          No Database Credentials Found
+                        </h4>
+                        <p className="text-xs text-yellow-400/80 mt-1">
+                          You need to create a credential with type &quot;Database Connection&quot; first.
+                          Go to Credentials → Add Credential → Select &quot;Database Connection&quot; type.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedCredentialId}
+                    onChange={(e) => setSelectedCredentialId(e.target.value ? parseInt(e.target.value) : "")}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    required
+                    disabled={isEditing}
+                  >
+                    <option value="">Select a credential...</option>
+                    {dbCredentials.map((cred) => (
+                      <option key={cred.id} value={cred.id}>
+                        {formatServiceName(cred.service_name)}
+                        {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
+                        {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-gray-400 text-xs mt-2">
+                  Select a stored credential containing the database connection string.
+                </p>
+                {isEditing && (
+                  <p className="text-gray-400 text-xs mt-1">
+                    Credential cannot be changed when editing.
+                  </p>
+                )}
+              </div>
+
+              {/* Selected Credential Info */}
+              {selectedCredential && (
+                <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <CircleStackIcon className="h-5 w-5 text-green-400 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-medium text-white">
+                        {formatServiceName(selectedCredential.service_name)}
+                      </h4>
+                      {selectedCredential.credential_metadata?.label && (
+                        <p className="text-xs text-gray-300 mt-1">
+                          {selectedCredential.credential_metadata.label}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Credential ID: {selectedCredential.id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Table Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Database Table *
@@ -394,57 +525,67 @@ export function AddToolModal({
                   type="text"
                   value={tableName}
                   onChange={(e) => setTableName(e.target.value)}
-                  placeholder="e.g., chat_app_sessions"
+                  placeholder="e.g., users, orders, products"
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                   disabled={isEditing}
                   required
                 />
                 <p className="text-gray-400 text-xs mt-2">
-                  Enter the database table name to query. The backend will validate access permissions.
+                  The database table the agent can query.
                 </p>
-                {isEditing && (
-                  <p className="text-gray-400 text-xs mt-1">
-                    Table cannot be changed when editing.
-                  </p>
-                )}
               </div>
 
-              {/* Table Info Card */}
-              {tableName && (
-                <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <TableCellsIcon className="h-5 w-5 text-green-400 mt-0.5" />
-                    <div>
-                      <h4 className="text-sm font-medium text-white">
-                        Database Table
-                      </h4>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Table: <code className="text-green-400">{tableName}</code>
-                      </p>
-                      <p className="text-xs text-gray-500 mt-2">
-                        The agent will be able to query this table to retrieve relevant data.
-                        Only non-sensitive columns are returned.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Tool Name (optional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Tool Name
+                </label>
+                <input
+                  type="text"
+                  value={toolName}
+                  onChange={(e) => setToolName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+                  placeholder={tableName ? `query_${tableName.toLowerCase()}` : "e.g., query_users"}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                />
+                <p className="text-gray-400 text-xs mt-2">
+                  Optional custom name for the tool. Must be lowercase with underscores only.
+                  Defaults to &quot;query_{"{table}"}&quot;.
+                </p>
+              </div>
 
-              {/* Row Limit */}
+              {/* Columns (optional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Allowed Columns
+                </label>
+                <input
+                  type="text"
+                  value={columns}
+                  onChange={(e) => setColumns(e.target.value)}
+                  placeholder="e.g., id, name, email, created_at"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                />
+                <p className="text-gray-400 text-xs mt-2">
+                  Comma-separated list of columns the agent can query and see.
+                  Leave empty to allow all non-sensitive columns.
+                </p>
+              </div>
+
+              {/* Max Limit */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Maximum Rows
                 </label>
                 <input
                   type="number"
-                  value={dbLimit}
-                  onChange={(e) => setDbLimit(Math.max(1, Math.min(100, parseInt(e.target.value) || 50)))}
+                  value={maxLimit}
+                  onChange={(e) => setMaxLimit(Math.max(1, Math.min(1000, parseInt(e.target.value) || 100)))}
                   min="1"
-                  max="100"
+                  max="1000"
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
                 <p className="text-gray-400 text-xs mt-2">
-                  Maximum number of rows to return (1-100). Default is 50.
+                  Maximum rows the agent can request per query (1-1000). Default is 100.
                 </p>
               </div>
             </>
@@ -459,7 +600,7 @@ export function AddToolModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={toolCategory === "dbRead" 
-                ? "Describe when the agent should query this table..."
+                ? "Describe what data this table contains and what queries are useful..."
                 : "Describe what this knowledge base contains..."}
               rows={3}
               className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${
@@ -467,7 +608,7 @@ export function AddToolModal({
               } resize-none`}
             />
             <p className="text-gray-400 text-xs mt-2">
-              Help the LLM decide when to use this tool by describing its purpose.
+              Help the LLM decide when and how to use this tool.
             </p>
           </div>
 
@@ -482,7 +623,8 @@ export function AddToolModal({
             </button>
             <button
               type="submit"
-              className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-white ${
+              disabled={toolCategory === "dbRead" && dbCredentials.length === 0}
+              className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-white disabled:opacity-50 disabled:cursor-not-allowed ${
                 toolCategory === "dbRead"
                   ? "bg-green-600 hover:bg-green-700"
                   : "bg-blue-600 hover:bg-blue-700"

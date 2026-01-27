@@ -84,10 +84,11 @@ export function CreateAgentV2Container() {
       let isDuplicate = false;
       
       if (tool.type === "dbRead") {
-        // For dbRead, check if same table already exists
+        // For dbRead, check if same credentialId + table already exists
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "dbRead" &&
+            existing.credentialId === tool.credentialId &&
             existing.table === tool.table
         );
       } else {
@@ -231,6 +232,8 @@ export function CreateAgentV2Container() {
                       const formatTableName = (name: string) =>
                         name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
+                      const toolDisplayName = tool.name || `query_${tool.table}`;
+
                       return (
                         <div
                           key={index}
@@ -249,16 +252,24 @@ export function CreateAgentV2Container() {
                                   <span className="font-medium">Table:</span>{" "}
                                   <span className="text-white">{formatTableName(tool.table)}</span>{" "}
                                   <code className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded ml-1">
-                                    {tool.table}
+                                    {toolDisplayName}
                                   </code>
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Credential ID: {tool.credentialId}
                                 </p>
                                 {tool.description && (
                                   <p className="text-sm text-gray-400">
                                     {tool.description}
                                   </p>
                                 )}
+                                {tool.columns && tool.columns.length > 0 && (
+                                  <p className="text-xs text-gray-500">
+                                    Columns: {tool.columns.join(", ")}
+                                  </p>
+                                )}
                                 <p className="text-xs text-gray-500">
-                                  Limit: {tool.limit || 50} rows
+                                  Max: {tool.maxLimit || 100} rows
                                 </p>
                               </div>
                             </div>
