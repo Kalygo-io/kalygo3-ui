@@ -9,6 +9,7 @@ import {
   AgentConfigDataV2,
   VectorSearchTool,
   VectorSearchWithRerankingTool,
+  DbReadTool,
   ToolV2,
 } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -20,8 +21,9 @@ import {
   XMarkIcon,
   PencilIcon,
   LinkIcon,
+  CircleStackIcon,
 } from "@heroicons/react/24/outline";
-import { AddVectorSearchToolModal } from "./add-vector-search-tool-modal";
+import { AddToolModal } from "./add-tool-modal";
 
 export function AgentDetailsV2({ agentId }: { agentId?: string }) {
   const router = useRouter();
@@ -150,14 +152,30 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
       successToast("Tool updated successfully");
     } else {
       // Add new tool
-      // Check for duplicates (same type, provider, index, and namespace)
-      const isDuplicate = tools.some(
-        (existing) =>
-          existing.type === tool.type &&
-          existing.provider === tool.provider &&
-          existing.index === tool.index &&
-          existing.namespace === tool.namespace
-      );
+      // Check for duplicates based on tool type
+      let isDuplicate = false;
+      
+      if (tool.type === "dbRead") {
+        // For dbRead, check if same credentialId + table already exists
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "dbRead" &&
+            existing.credentialId === tool.credentialId &&
+            existing.table === tool.table
+        );
+      } else {
+        // For vector search tools, check type, provider, index, and namespace
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === tool.type &&
+            "provider" in existing && "provider" in tool &&
+            existing.provider === tool.provider &&
+            "index" in existing && "index" in tool &&
+            existing.index === tool.index &&
+            "namespace" in existing && "namespace" in tool &&
+            existing.namespace === tool.namespace
+        );
+      }
 
       if (isDuplicate) {
         errorToast("This tool is already added");
@@ -360,16 +378,13 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                             Type
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Provider
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Index
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Namespace
+                            Target
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             Description
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            Settings
                           </th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                             Actions
@@ -378,6 +393,85 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                       </thead>
                       <tbody className="divide-y divide-gray-700/50">
                         {tools.map((tool, index) => {
+                          // Render dbRead tools
+                          if (tool.type === "dbRead") {
+                            const formatTableName = (name: string) =>
+                              name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+
+                            const toolDisplayName = tool.name || `query_${tool.table}`;
+
+                            return (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-800/30 transition-colors"
+                              >
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-600/20 text-green-300 border border-green-500/40">
+                                    <CircleStackIcon className="h-3 w-3" />
+                                    Database Query
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="space-y-1">
+                                    <span className="text-sm text-white font-medium block">
+                                      {formatTableName(tool.table)}
+                                    </span>
+                                    <code className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded">
+                                      {toolDisplayName}
+                                    </code>
+                                    <div className="text-xs text-gray-500">
+                                      Credential ID: {tool.credentialId}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="space-y-1">
+                                    <span className="text-sm text-gray-300 block">
+                                      {tool.description || (
+                                        <span className="text-gray-500 italic">
+                                          No description
+                                        </span>
+                                      )}
+                                    </span>
+                                    {tool.columns && tool.columns.length > 0 && (
+                                      <div className="text-xs text-gray-500">
+                                        Columns: {tool.columns.join(", ")}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-xs text-gray-500">
+                                    Max: {tool.maxLimit || 100} rows
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditTool(index)}
+                                      className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
+                                      title="Edit tool"
+                                      aria-label="Edit tool"
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTool(index)}
+                                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                      title="Remove tool"
+                                      aria-label="Remove tool"
+                                    >
+                                      <TrashIcon className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
+                          
+                          // Render vector search tools
                           if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
                             const canNavigate = tool.provider === "pinecone" && tool.index;
                             const isReranking = tool.type === "vectorSearchWithReranking";
@@ -396,37 +490,32 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                                     {isReranking ? "Vector Search + Rerank" : "Vector Search"}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="text-sm text-white font-medium capitalize">
-                                    {tool.provider}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="text-sm text-gray-300">
-                                    {tool.index}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="text-sm text-gray-300">
-                                    {tool.namespace}
-                                  </span>
-                                </td>
                                 <td className="px-4 py-3">
                                   <div className="space-y-1">
-                                    <span className="text-sm text-gray-300 block">
-                                      {tool.description || (
-                                        <span className="text-gray-500 italic">
-                                          No description
-                                        </span>
-                                      )}
+                                    <span className="text-sm text-white font-medium capitalize block">
+                                      {tool.provider}
                                     </span>
-                                    <div className="text-xs text-gray-500">
-                                      {isReranking ? (
-                                        <>K: {tool.topK || 20}, N: {tool.topN || 5}</>
-                                      ) : (
-                                        <>Top K: {tool.topK || 10}</>
-                                      )}
-                                    </div>
+                                    <span className="text-xs text-gray-400">
+                                      {tool.index} / {tool.namespace}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="text-sm text-gray-300 block">
+                                    {tool.description || (
+                                      <span className="text-gray-500 italic">
+                                        No description
+                                      </span>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-xs text-gray-500">
+                                    {isReranking ? (
+                                      <>K: {tool.topK || 20}, N: {tool.topN || 5}</>
+                                    ) : (
+                                      <>Top K: {tool.topK || 10}</>
+                                    )}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-right">
@@ -477,7 +566,7 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                 </div>
               )}
               <p className="text-gray-400 text-xs mt-2">
-                Tools extend the agent&apos;s capabilities. Add vector search tools to enable knowledge base retrieval.
+                Tools extend the agent&apos;s capabilities. Add vector search tools for knowledge base retrieval or database query tools for structured data access.
               </p>
             </div>
           </div>
@@ -497,7 +586,7 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
 
       {/* Add/Edit Tool Modal */}
       {showAddToolModal && (
-        <AddVectorSearchToolModal
+        <AddToolModal
           onClose={() => {
             setShowAddToolModal(false);
             setEditingToolIndex(null);

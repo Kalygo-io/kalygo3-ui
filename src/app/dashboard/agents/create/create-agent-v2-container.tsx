@@ -15,8 +15,9 @@ import {
   PlusIcon,
   TrashIcon,
   PencilIcon,
+  CircleStackIcon,
 } from "@heroicons/react/24/outline";
-import { AddVectorSearchToolModal } from "../../agent/add-vector-search-tool-modal";
+import { AddToolModal } from "../../agent/add-tool-modal";
 
 export function CreateAgentV2Container() {
   const router = useRouter();
@@ -79,14 +80,30 @@ export function CreateAgentV2Container() {
       successToast("Tool updated successfully");
     } else {
       // Add new tool
-      // Check for duplicates (same type, provider, index, and namespace)
-      const isDuplicate = tools.some(
-        (existing) =>
-          existing.type === tool.type &&
-          existing.provider === tool.provider &&
-          existing.index === tool.index &&
-          existing.namespace === tool.namespace
-      );
+      // Check for duplicates based on tool type
+      let isDuplicate = false;
+      
+      if (tool.type === "dbRead") {
+        // For dbRead, check if same credentialId + table already exists
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "dbRead" &&
+            existing.credentialId === tool.credentialId &&
+            existing.table === tool.table
+        );
+      } else {
+        // For vector search tools, check type, provider, index, and namespace
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === tool.type &&
+            "provider" in existing && "provider" in tool &&
+            existing.provider === tool.provider &&
+            "index" in existing && "index" in tool &&
+            existing.index === tool.index &&
+            "namespace" in existing && "namespace" in tool &&
+            existing.namespace === tool.namespace
+        );
+      }
 
       if (isDuplicate) {
         errorToast("This tool is already added");
@@ -210,6 +227,76 @@ export function CreateAgentV2Container() {
               <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
                 <div className="divide-y divide-gray-700/50">
                   {tools.map((tool, index) => {
+                    // Render dbRead tools
+                    if (tool.type === "dbRead") {
+                      const formatTableName = (name: string) =>
+                        name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+
+                      const toolDisplayName = tool.name || `query_${tool.table}`;
+
+                      return (
+                        <div
+                          key={index}
+                          className="p-4 hover:bg-gray-800/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-600/20 text-green-300 border border-green-500/40">
+                                  <CircleStackIcon className="h-3 w-3" />
+                                  Database Query
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-300">
+                                  <span className="font-medium">Table:</span>{" "}
+                                  <span className="text-white">{formatTableName(tool.table)}</span>{" "}
+                                  <code className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded ml-1">
+                                    {toolDisplayName}
+                                  </code>
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Credential ID: {tool.credentialId}
+                                </p>
+                                {tool.description && (
+                                  <p className="text-sm text-gray-400">
+                                    {tool.description}
+                                  </p>
+                                )}
+                                {tool.columns && tool.columns.length > 0 && (
+                                  <p className="text-xs text-gray-500">
+                                    Columns: {tool.columns.join(", ")}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                  Max: {tool.maxLimit || 100} rows
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              <button
+                                type="button"
+                                onClick={() => handleEditTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
+                                title="Edit tool"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                title="Remove tool"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    // Render vector search tools
                     if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
                       const isReranking = tool.type === "vectorSearchWithReranking";
                       
@@ -281,7 +368,7 @@ export function CreateAgentV2Container() {
               </div>
             )}
             <p className="text-gray-400 text-xs mt-2">
-              Tools extend the agent&apos;s capabilities. Add vector search tools to enable knowledge base retrieval.
+              Tools extend the agent&apos;s capabilities. Add vector search tools for knowledge base retrieval or database query tools for structured data access.
             </p>
           </div>
 
@@ -307,7 +394,7 @@ export function CreateAgentV2Container() {
 
       {/* Add/Edit Tool Modal */}
       {showAddToolModal && (
-        <AddVectorSearchToolModal
+        <AddToolModal
           onClose={() => {
             setShowAddToolModal(false);
             setEditingToolIndex(null);

@@ -6,6 +6,13 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/services/**/*.{js,ts}", // Include service files for dynamic classes
+  ],
+  safelist: [
+    // Credential type colors
+    "bg-emerald-600/20", "text-emerald-300", "border-emerald-500/40",
+    "bg-teal-600/20", "text-teal-300", "border-teal-500/40",
+    "bg-cyan-600/20", "text-cyan-300", "border-cyan-500/40",
   ],
   theme: {
     colors: {
@@ -15,6 +22,8 @@ const config: Config = {
       white: colors.white,
       gray: colors.gray,
       emerald: colors.emerald,
+      teal: colors.teal,
+      cyan: colors.cyan,
       indigo: colors.indigo,
       yellow: colors.yellow,
       blue: colors.blue,

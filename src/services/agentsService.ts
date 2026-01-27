@@ -45,7 +45,17 @@ export interface VectorSearchWithRerankingTool {
   topN?: number;
 }
 
-export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool;
+export interface DbReadTool {
+  type: "dbRead";
+  credentialId: number; // ID of stored credential with db_connection type
+  table: string;
+  name?: string; // Custom tool name (e.g., 'query_users'), defaults to 'query_{table}'
+  description?: string;
+  columns?: string[]; // Columns to expose to the agent
+  maxLimit?: number; // Max rows per query (1-1000, default 100)
+}
+
+export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool | DbReadTool;
 
 export interface AgentConfigDataV2 {
   systemPrompt: string;
