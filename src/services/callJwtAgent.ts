@@ -6,13 +6,13 @@ export async function callJwtAgent(
   sessionId: string,
   prompt: string,
   dispatch: React.Dispatch<Action>,
-  abortController?: AbortController
+  abortController?: AbortController,
 ) {
   console.log(
     "Starting JWT Agent call with sessionId:",
     sessionId,
     "prompt:",
-    prompt
+    prompt,
   );
 
   const resp = await fetch(
@@ -28,7 +28,7 @@ export async function callJwtAgent(
       }),
       credentials: "include",
       signal: abortController?.signal,
-    }
+    },
   );
 
   if (!resp.ok) {
@@ -68,7 +68,6 @@ export async function callJwtAgent(
       }
 
       let chunk = decoder.decode(value);
-      console.log("Raw chunk received:", chunk);
 
       try {
         const parsedChunk = JSON.parse(chunk);
@@ -78,11 +77,11 @@ export async function callJwtAgent(
           dispatch,
           aiMessageId,
           accMessage,
-          retrievalCalls
+          retrievalCalls,
         );
       } catch (e) {
         console.log(
-          "Failed to parse as single JSON, trying multi-chunk parsing..."
+          "Failed to parse as single JSON, trying multi-chunk parsing...",
         );
         let multiChunkAcc = "";
         let idx = 0;
@@ -121,7 +120,7 @@ export async function callJwtAgent(
                   dispatch,
                   aiMessageId,
                   accMessage,
-                  retrievalCalls
+                  retrievalCalls,
                 );
 
                 // Move to next character after the parsed JSON
@@ -161,7 +160,7 @@ function dispatchEventToState(
   dispatch: React.Dispatch<Action>,
   aiMessageId: string,
   accMessage: { content: string },
-  retrievalCalls: any[]
+  retrievalCalls: any[],
 ) {
   try {
     console.log("Processing event:", parsedChunk.event, parsedChunk);
@@ -199,7 +198,7 @@ function dispatchEventToState(
       // Handle retrieval calls if available
       console.log(
         "Chain end event - checking for retrieval calls:",
-        parsedChunk
+        parsedChunk,
       );
       console.log("Chain end event keys:", Object.keys(parsedChunk));
       if (parsedChunk.retrieval_calls) {
@@ -222,7 +221,7 @@ function dispatchEventToState(
           console.log("Retrieval calls dispatched to state");
           console.log(
             "Message should now have retrievalCalls:",
-            retrievalCallsData
+            retrievalCallsData,
           );
           console.log("Retrieval calls count:", retrievalCallsData.length);
         } catch (error) {
@@ -326,7 +325,7 @@ function dispatchEventToState(
     } else if (parsedChunk.event === "error") {
       try {
         console.log("Error event received:", parsedChunk);
-        
+
         const errorData = parsedChunk.data || {};
         const errorDetails = {
           error: errorData.error || "Unknown error",
@@ -343,7 +342,9 @@ function dispatchEventToState(
           payload: {
             id: aiMessageId,
             error: errorDetails,
-            content: accMessage.content || "Error occurred while processing your request.",
+            content:
+              accMessage.content ||
+              "Error occurred while processing your request.",
           },
         });
 

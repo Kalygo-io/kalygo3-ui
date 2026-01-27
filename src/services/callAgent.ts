@@ -7,7 +7,7 @@ export async function callAgent(
   sessionId: string,
   prompt: string,
   dispatch: React.Dispatch<Action>,
-  abortController?: AbortController
+  abortController?: AbortController,
 ) {
   console.log(
     "Starting Agent call with agentId:",
@@ -15,7 +15,7 @@ export async function callAgent(
     "sessionId:",
     sessionId,
     "prompt:",
-    prompt
+    prompt,
   );
 
   const resp = await fetch(
@@ -31,7 +31,7 @@ export async function callAgent(
       }),
       credentials: "include",
       signal: abortController?.signal,
-    }
+    },
   );
 
   if (!resp.ok) {
@@ -51,6 +51,10 @@ export async function callAgent(
     content: "",
   };
   let retrievalCalls: any[] = [];
+
+  // Accumulate tool calls from stream events
+  let accumulatedToolCalls: any[] = [];
+  let currentToolCall: any = null;
 
   // Create the AI message immediately so EDIT_MESSAGE never races ADD_MESSAGE
   dispatch({
@@ -80,21 +84,30 @@ export async function callAgent(
       }
 
       let chunk = decoder.decode(value);
-      console.log("Raw chunk received:", chunk);
+      // console.log("Raw chunk received:", chunk);
 
       try {
         const parsedChunk = JSON.parse(chunk);
         console.log("Parsed chunk:", parsedChunk);
-        dispatchEventToState(
+        const result = dispatchEventToState(
           parsedChunk,
           dispatch,
           aiMessageId,
           accMessage,
-          retrievalCalls
+          retrievalCalls,
+          accumulatedToolCalls,
+          currentToolCall,
         );
+        // Update currentToolCall reference if returned
+        if (result?.currentToolCall !== undefined) {
+          currentToolCall = result.currentToolCall;
+        }
+        if (result?.accumulatedToolCalls) {
+          accumulatedToolCalls = result.accumulatedToolCalls;
+        }
       } catch (e) {
         console.log(
-          "Failed to parse as single JSON, trying multi-chunk parsing..."
+          "Failed to parse as single JSON, trying multi-chunk parsing...",
         );
         let multiChunkAcc = "";
         let idx = 0;
@@ -128,13 +141,22 @@ export async function callAgent(
                 const parsedChunk = JSON.parse(multiChunkAcc.trim());
                 console.log("Parsed multi-chunk:", parsedChunk);
 
-                dispatchEventToState(
+                const result = dispatchEventToState(
                   parsedChunk,
                   dispatch,
                   aiMessageId,
                   accMessage,
-                  retrievalCalls
+                  retrievalCalls,
+                  accumulatedToolCalls,
+                  currentToolCall,
                 );
+                // Update currentToolCall reference if returned
+                if (result?.currentToolCall !== undefined) {
+                  currentToolCall = result.currentToolCall;
+                }
+                if (result?.accumulatedToolCalls) {
+                  accumulatedToolCalls = result.accumulatedToolCalls;
+                }
 
                 // Move to next character after the parsed JSON
                 chunk = chunk.substring(idx + 1);
@@ -173,8 +195,10 @@ function dispatchEventToState(
   dispatch: React.Dispatch<Action>,
   aiMessageId: string,
   accMessage: { content: string },
-  retrievalCalls: any[]
-) {
+  retrievalCalls: any[],
+  accumulatedToolCalls: any[],
+  currentToolCall: any,
+): { currentToolCall: any; accumulatedToolCalls: any[] } | void {
   try {
     console.log("Processing event:", parsedChunk.event, parsedChunk);
 
@@ -202,29 +226,30 @@ function dispatchEventToState(
       });
 
       // Handle tool calls if available (new schema) or retrieval calls (legacy)
-      console.log(
-        "Chain end event - checking for tool calls:",
-        parsedChunk
-      );
+      console.log("Chain end event - checking for tool calls:", parsedChunk);
       console.log("Chain end event keys:", Object.keys(parsedChunk));
-      
+      console.log("Accumulated tool calls so far:", accumulatedToolCalls);
+
       // Check multiple possible locations for toolCalls (new schema)
-      const toolCallsData = 
-        parsedChunk.toolCalls ||  // Direct property
-        parsedChunk.data?.toolCalls ||  // Nested in data
-        parsedChunk.tool_calls ||  // Snake case variant
-        parsedChunk.data?.tool_calls ||  // Snake case in data
+      const toolCallsData =
+        parsedChunk.toolCalls || // Direct property
+        parsedChunk.data?.toolCalls || // Nested in data
+        parsedChunk.tool_calls || // Snake case variant
+        parsedChunk.data?.tool_calls || // Snake case in data
         null;
 
       // Check for legacy retrieval_calls
-      const retrievalCallsData = 
+      const retrievalCallsData =
         parsedChunk.retrieval_calls ||
         parsedChunk.data?.retrieval_calls ||
         null;
 
       if (toolCallsData && Array.isArray(toolCallsData)) {
         try {
-          console.log("Tool calls found (new schema):", toolCallsData);
+          console.log(
+            "Tool calls found in chain_end (new schema):",
+            toolCallsData,
+          );
 
           dispatch({
             type: "EDIT_MESSAGE",
@@ -238,6 +263,24 @@ function dispatchEventToState(
           console.log("Tool calls count:", toolCallsData.length);
         } catch (error) {
           console.error("Error processing tool calls:", error);
+        }
+      } else if (accumulatedToolCalls.length > 0) {
+        // Use accumulated tool calls from on_tool_start/on_tool_end events
+        try {
+          console.log("Using accumulated tool calls:", accumulatedToolCalls);
+
+          dispatch({
+            type: "EDIT_MESSAGE",
+            payload: {
+              id: aiMessageId,
+              toolCalls: accumulatedToolCalls,
+            },
+          });
+
+          console.log("Accumulated tool calls dispatched to state");
+          console.log("Tool calls count:", accumulatedToolCalls.length);
+        } catch (error) {
+          console.error("Error processing accumulated tool calls:", error);
         }
       } else if (retrievalCallsData && Array.isArray(retrievalCallsData)) {
         try {
@@ -257,45 +300,168 @@ function dispatchEventToState(
           console.error("Error processing retrieval calls:", error);
         }
       } else {
-        console.log("No tool calls or retrieval calls found in chain end event");
+        console.log(
+          "No tool calls or retrieval calls found in chain end event",
+        );
         console.log("Available keys in parsedChunk:", Object.keys(parsedChunk));
       }
     } else if (parsedChunk.event === "on_tool_start") {
       try {
         console.log("Tool start event data:", parsedChunk);
-        const toolMessage = parsedChunk.data || "Tool starting...";
-        console.log("Setting current tool:", toolMessage);
+        console.log("Tool start event keys:", Object.keys(parsedChunk));
+        console.log("Tool start data property:", parsedChunk.data);
+
+        // Extract tool information from the event
+        // The structure may vary - check multiple possible locations
+        const toolName =
+          parsedChunk.name ||
+          parsedChunk.tool_name ||
+          parsedChunk.data?.name ||
+          parsedChunk.data?.tool_name ||
+          (typeof parsedChunk.data === "string" ? parsedChunk.data : null) ||
+          "unknown_tool";
+
+        const toolInput =
+          parsedChunk.input ||
+          parsedChunk.tool_input ||
+          parsedChunk.data?.input ||
+          parsedChunk.data?.tool_input ||
+          parsedChunk.data?.query ||
+          {};
+
+        // Create a new tool call entry
+        const newToolCall = {
+          toolType: "vectorSearch", // Default, may be updated
+          toolName: toolName,
+          input:
+            typeof toolInput === "object" ? toolInput : { query: toolInput },
+          output: null, // Will be populated on tool_end
+          startTime: Date.now(),
+        };
+
+        console.log("Created new tool call entry:", newToolCall);
 
         dispatch({
           type: "SET_CURRENT_TOOL",
-          payload: toolMessage,
+          payload: toolName,
         });
 
-        // Use a safer notification approach
-        console.log("🔧 Tool started:", toolMessage);
-        // You could also dispatch a custom notification action here if needed
-        // dispatch({ type: "ADD_NOTIFICATION", payload: { message: toolMessage, type: "info" } });
+        console.log("🔧 Tool started:", toolName);
+
+        return {
+          currentToolCall: newToolCall,
+          accumulatedToolCalls: accumulatedToolCalls,
+        };
       } catch (error) {
         console.error("Error handling tool start:", error, parsedChunk);
       }
     } else if (parsedChunk.event === "on_tool_end") {
       try {
         console.log("Tool end event data:", parsedChunk);
-        console.log("Clearing current tool");
+        console.log("Tool end event keys:", Object.keys(parsedChunk));
+        console.log("Current tool call:", currentToolCall);
 
-        dispatch({
-          type: "SET_CURRENT_TOOL",
-          payload: "",
-        });
+        // Extract tool output from the event
+        const toolOutput =
+          parsedChunk.output ||
+          parsedChunk.tool_output ||
+          parsedChunk.data?.output ||
+          parsedChunk.data?.tool_output ||
+          parsedChunk.data?.results ||
+          parsedChunk.data ||
+          {};
 
-        console.log("✅ Tool completed successfully");
+        console.log("Tool output extracted:", toolOutput);
+
+        // Complete the current tool call with output
+        if (currentToolCall) {
+          const completedToolCall = {
+            ...currentToolCall,
+            output:
+              typeof toolOutput === "object"
+                ? toolOutput
+                : { result: toolOutput },
+            endTime: Date.now(),
+          };
+
+          console.log("Completed tool call:", completedToolCall);
+
+          // Add to accumulated tool calls
+          const updatedToolCalls = [...accumulatedToolCalls, completedToolCall];
+
+          console.log("Updated accumulated tool calls:", updatedToolCalls);
+
+          // Dispatch to update UI with tool calls so far
+          dispatch({
+            type: "EDIT_MESSAGE",
+            payload: {
+              id: aiMessageId,
+              toolCalls: updatedToolCalls,
+            },
+          });
+
+          dispatch({
+            type: "SET_CURRENT_TOOL",
+            payload: "",
+          });
+
+          console.log("✅ Tool completed successfully");
+
+          return {
+            currentToolCall: null,
+            accumulatedToolCalls: updatedToolCalls,
+          };
+        } else {
+          // No current tool call, try to create one from the output
+          console.log("No current tool call, creating from output");
+
+          const toolName =
+            parsedChunk.name ||
+            parsedChunk.tool_name ||
+            parsedChunk.data?.name ||
+            "unknown_tool";
+
+          const newCompletedToolCall = {
+            toolType: "vectorSearch",
+            toolName: toolName,
+            input: {},
+            output:
+              typeof toolOutput === "object"
+                ? toolOutput
+                : { result: toolOutput },
+            endTime: Date.now(),
+          };
+
+          const updatedToolCalls = [
+            ...accumulatedToolCalls,
+            newCompletedToolCall,
+          ];
+
+          dispatch({
+            type: "EDIT_MESSAGE",
+            payload: {
+              id: aiMessageId,
+              toolCalls: updatedToolCalls,
+            },
+          });
+
+          dispatch({
+            type: "SET_CURRENT_TOOL",
+            payload: "",
+          });
+
+          return {
+            currentToolCall: null,
+            accumulatedToolCalls: updatedToolCalls,
+          };
+        }
       } catch (error) {
         console.error("Error handling tool end:", error, parsedChunk);
       }
     } else if (parsedChunk.event === "error") {
       try {
         console.log("Error event received:", parsedChunk);
-        
+
         const errorData = parsedChunk.data || {};
         const errorDetails = {
           error: errorData.error || "Unknown error",
@@ -312,7 +478,9 @@ function dispatchEventToState(
           payload: {
             id: aiMessageId,
             error: errorDetails,
-            content: accMessage.content || "Error occurred while processing your request.",
+            content:
+              accMessage.content ||
+              "Error occurred while processing your request.",
           },
         });
 
