@@ -9,10 +9,11 @@ import {
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { useCopyToClipboard } from "@/shared/hooks/use-copy-to-clipboard";
 
-// Tool call types for concierge chat
+// Tool call types for concierge chat - flexible to handle multiple formats
 interface VectorSearchResult {
   content?: string;
   score?: number;
+  chunk_id?: string;
   metadata?: {
     filename?: string;
     source?: string;
@@ -32,9 +33,12 @@ interface VectorSearchResult {
     upload_timestamp?: string;
     [key: string]: unknown;
   };
+  [key: string]: unknown;
 }
 
+// Flexible tool call type that can handle both v1 and v2 schemas
 interface ConciergeToolCall {
+  // V2 schema fields
   toolType?: string;
   toolName?: string;
   input?: {
@@ -50,12 +54,21 @@ interface ConciergeToolCall {
   };
   startTime?: number;
   endTime?: number;
+  // V1 schema fields (from Message.ToolCall)
+  name?: string;
+  query?: string;
+  namespace?: string;
+  index?: string;
+  results?: VectorSearchResult[];
+  // Allow any additional fields
+  [key: string]: unknown;
 }
 
 interface ConciergeToolCallsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  toolCalls?: ConciergeToolCall[];
+  // Accept any array type for flexibility
+  toolCalls?: ConciergeToolCall[] | unknown[];
 }
 
 // Type guards
@@ -229,10 +242,26 @@ export function ConciergeToolCallsDrawer({
                   Tool Calls ({toolCalls.length})
                 </h4>
 
-                {toolCalls.map((call, index) => {
+                {toolCalls.map((rawCall, index) => {
+                  // Cast to ConciergeToolCall to access properties
+                  const call = rawCall as ConciergeToolCall;
+                  
                   const duration = formatDuration(call.startTime, call.endTime);
-                  const results = call.output?.results || [];
-                  const isVectorSearch = call.toolType === "vectorSearch" || call.toolType === "vectorSearchWithReranking";
+                  
+                  // Get results from either v2 schema (output.results) or v1 schema (results)
+                  const results: VectorSearchResult[] = 
+                    call.output?.results || 
+                    call.results || 
+                    [];
+                  
+                  // Get tool name from either schema
+                  const toolName = call.toolName || call.name || "Unknown Tool";
+                  
+                  // Get tool type - check multiple sources
+                  const toolType = call.toolType || 
+                    (call.name?.includes("rerank") ? "vectorSearchWithReranking" : "vectorSearch");
+                  
+                  const isVectorSearch = toolType === "vectorSearch" || toolType === "vectorSearchWithReranking" || results.length > 0;
                   
                   return (
                     <div
@@ -251,7 +280,7 @@ export function ConciergeToolCallsDrawer({
                             <WrenchScrewdriverIcon className="w-5 h-5 text-purple-400" />
                           )}
                           <h3 className="text-lg font-medium text-white">
-                            {call.toolName || "Unknown Tool"}
+                            {toolName}
                           </h3>
                         </div>
                         <div className="flex items-center space-x-3">
@@ -294,18 +323,18 @@ export function ConciergeToolCallsDrawer({
                             Tool Type:
                           </span>
                           <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                            {formatToolType(call.toolType)}
+                            {formatToolType(toolType)}
                           </span>
                         </div>
                         
-                        {/* Query */}
-                        {call.input?.query && (
+                        {/* Query - check both schemas */}
+                        {(call.input?.query || call.query) && (
                           <div className="flex items-start space-x-2 mb-2">
                             <span className="text-purple-400 font-medium text-sm">
                               Query:
                             </span>
                             <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                              {call.input.query}
+                              {call.input?.query || call.query}
                             </span>
                           </div>
                         )}
@@ -322,26 +351,26 @@ export function ConciergeToolCallsDrawer({
                           </div>
                         )}
 
-                        {/* Namespace */}
-                        {call.output?.namespace && (
+                        {/* Namespace - check both schemas */}
+                        {(call.output?.namespace || call.namespace) && (
                           <div className="flex items-start space-x-2 mb-2">
                             <span className="text-purple-400 font-medium text-sm">
                               Namespace:
                             </span>
                             <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                              {call.output.namespace}
+                              {call.output?.namespace || call.namespace}
                             </span>
                           </div>
                         )}
 
-                        {/* Index */}
-                        {call.output?.index && (
+                        {/* Index - check both schemas */}
+                        {(call.output?.index || call.index) && (
                           <div className="flex items-start space-x-2">
                             <span className="text-purple-400 font-medium text-sm">
                               Index:
                             </span>
                             <span className="text-white text-sm bg-gray-800 p-2 rounded">
-                              {call.output.index}
+                              {call.output?.index || call.index}
                             </span>
                           </div>
                         )}

@@ -143,7 +143,7 @@ export const ConciergeChatMessage = memo(
           <ConciergeToolCallsDrawer
             isOpen={isDrawerOpen}
             onClose={() => setIsDrawerOpen(false)}
-            toolCalls={message.toolCalls || []}
+            toolCalls={(message.toolCalls || []) as unknown[]}
           />
 
           {/* Error Details Drawer */}
