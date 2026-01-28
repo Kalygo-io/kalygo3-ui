@@ -1,24 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { agentsService, Agent } from "@/services/agentsService";
+import { chatSessionService } from "@/services/chatSessionService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
   ChatBubbleLeftRightIcon,
   ArrowRightIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
-import { AgentChatInterface } from "./agent-chat-interface";
 
 export function AgentChatContainer() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(
-    searchParams.get("agent_id")
-  );
+  const [creatingSession, setCreatingSession] = useState<string | null>(null);
 
   useEffect(() => {
     loadAgents();
@@ -36,47 +33,20 @@ export function AgentChatContainer() {
     }
   };
 
-  const handleSelectAgent = (agentId: string) => {
-    setSelectedAgentId(agentId);
-    const url = new URL(window.location.href);
-    url.searchParams.set("agent_id", agentId);
-    window.history.replaceState({}, "", url.toString());
-  };
-
-  const handleStartChat = () => {
-    if (selectedAgentId) {
-      // Update URL to include agent_id - this will trigger the chat interface
-      const url = new URL(window.location.href);
-      url.searchParams.set("agent_id", selectedAgentId);
-      window.history.replaceState({}, "", url.toString());
-      setSelectedAgentId(selectedAgentId);
+  const handleSelectAgent = async (agent: Agent) => {
+    if (creatingSession) return; // Prevent double-clicks
+    
+    try {
+      setCreatingSession(agent.id);
+      // Create a new session for this agent
+      const newSession = await chatSessionService.createSession(parseInt(agent.id));
+      // Navigate to the chat page with the session ID
+      router.push(`/dashboard/agent-chat/${newSession.sessionId}`);
+    } catch (error: any) {
+      errorToast(error.message || "Failed to create chat session");
+      setCreatingSession(null);
     }
   };
-
-  // If agent is selected via URL param, show chat interface
-  const agentIdFromUrl = searchParams.get("agent_id");
-  useEffect(() => {
-    if (agentIdFromUrl && agentIdFromUrl !== selectedAgentId) {
-      setSelectedAgentId(agentIdFromUrl);
-    }
-  }, [agentIdFromUrl, selectedAgentId]);
-
-  // If an agent is selected, show the chat interface
-  if (selectedAgentId) {
-    // Import and render the chat interface component
-    // For now, we'll create a separate component for this
-    return (
-      <AgentChatInterface
-        agentId={selectedAgentId}
-        onBack={() => {
-          setSelectedAgentId(null);
-          const url = new URL(window.location.href);
-          url.searchParams.delete("agent_id");
-          window.history.replaceState({}, "", url.toString());
-        }}
-      />
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -122,11 +92,12 @@ export function AgentChatContainer() {
                 {agents.map((agent) => (
                   <button
                     key={agent.id}
-                    onClick={() => handleSelectAgent(agent.id)}
+                    onClick={() => handleSelectAgent(agent)}
+                    disabled={creatingSession !== null}
                     className={`p-4 rounded-lg border-2 transition-all text-left ${
-                      selectedAgentId === agent.id
+                      creatingSession === agent.id
                         ? "border-blue-500 bg-blue-600/20"
-                        : "border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-900/70"
+                        : "border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-900/70 disabled:opacity-50 disabled:cursor-not-allowed"
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -151,28 +122,15 @@ export function AgentChatContainer() {
                           </span>
                         )}
                       </div>
-                      <ArrowRightIcon
-                        className={`h-5 w-5 flex-shrink-0 ml-2 ${
-                          selectedAgentId === agent.id
-                            ? "text-blue-400"
-                            : "text-gray-500"
-                        }`}
-                      />
+                      {creatingSession === agent.id ? (
+                        <div className="h-5 w-5 flex-shrink-0 ml-2 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+                      ) : (
+                        <ArrowRightIcon className="h-5 w-5 flex-shrink-0 ml-2 text-gray-500" />
+                      )}
                     </div>
                   </button>
                 ))}
               </div>
-              {selectedAgentId && (
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={handleStartChat}
-                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
-                  >
-                    Start Chat
-                    <ArrowRightIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
