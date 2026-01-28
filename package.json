@@ -16,6 +16,7 @@
     "@stripe/stripe-js": "^8.4.0",
     "@tailwindcss/forms": "^0.5.7",
     "@tanstack/react-query": "^5.55.0",
+    "bufferutil": "^4.1.0",
     "next": "14.2.6",
     "react": "^18",
     "react-dom": "^18",
@@ -25,13 +26,16 @@
     "rehype-raw": "^7.0.0",
     "tailwind-merge": "^2.5.2",
     "usehooks-ts": "^3.1.0",
-    "uuid": "^10.0.0"
+    "utf-8-validate": "^6.0.6",
+    "uuid": "^10.0.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.6",
     "json-schema-to-typescript": "^15.0.4",

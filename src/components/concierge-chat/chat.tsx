@@ -5,19 +5,15 @@ import {
   ChatDispatchContext,
 } from "@/app/dashboard/concierge-chat/chat-session-context";
 import { ChatList } from "@/components/agent-chat/chat-list";
-import { ChatPanel } from "@/components/shared/chat/chat-panel";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
 import { PromptForm } from "@/components/concierge-chat/prompt-form";
+import { StreamingAudioPlayer } from "@/components/concierge-chat/streaming-audio-player";
 import { useScrollAnchor } from "@/shared/hooks/use-scroll-anchor";
 import { cn } from "@/shared/utils";
 import { useContext, useEffect, useState, useCallback, useRef } from "react";
 import { ContextualAside } from "@/components/agent-chat/contextual-aside";
 import { Agent } from "@/services/agentsService";
-import {
-  ChevronDownIcon,
-  SpeakerWaveIcon,
-  StopIcon,
-} from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export interface ChatProps extends React.ComponentProps<"div"> {
   agent?: Agent | null;
@@ -34,6 +30,7 @@ export function Chat({
 }: ChatProps) {
   const [input, setInput] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isAudioStreaming, setIsAudioStreaming] = useState(false);
   const chatState = useContext(ChatContext);
   const dispatch = useContext(ChatDispatchContext);
   const {
@@ -43,7 +40,12 @@ export function Chat({
     visibilityRef,
     isAtBottom,
   } = useScrollAnchor();
-  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Ref to the streaming audio player
+  const audioPlayerRef = useRef<{
+    addAudioChunk: (base64Audio: string) => void;
+    reset: () => void;
+  } | null>(null);
 
   // Check scroll position and update button visibility
   const checkScrollPosition = useCallback(() => {
@@ -94,26 +96,78 @@ export function Chat({
     scrollToBottom,
   ]);
 
-  // Handle audio events
-  const handleAudioEnded = () => {
-    dispatch?.({ type: "SET_AUDIO_PLAYING", payload: false });
-  };
+  // Queue for audio chunks that arrive before player is ready
+  const audioChunkQueueRef = useRef<string[]>([]);
 
-  const handleAudioPlay = () => {
-    dispatch?.({ type: "SET_AUDIO_PLAYING", payload: true });
-  };
-
-  const handleAudioPause = () => {
-    dispatch?.({ type: "SET_AUDIO_PLAYING", payload: false });
-  };
-
-  const handleStopAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+  // Handle audio chunk from streaming TTS
+  const handleAudioChunk = useCallback((base64Audio: string) => {
+    const player = (window as any).__streamingAudioPlayer;
+    if (player?.addAudioChunk) {
+      // Process any queued chunks first
+      while (audioChunkQueueRef.current.length > 0) {
+        const queuedChunk = audioChunkQueueRef.current.shift();
+        if (queuedChunk) player.addAudioChunk(queuedChunk);
+      }
+      player.addAudioChunk(base64Audio);
+    } else {
+      // Player not ready, queue the chunk
+      audioChunkQueueRef.current.push(base64Audio);
     }
+  }, []);
+
+  // Handle TTS stream start
+  const handleAudioStart = useCallback(() => {
+    console.log("Audio streaming started");
+    audioChunkQueueRef.current = [];
+    setIsAudioStreaming(true);
+    
+    // Reset the player for new stream
+    setTimeout(() => {
+      const player = (window as any).__streamingAudioPlayer;
+      if (player?.reset) {
+        player.reset();
+      }
+    }, 0);
+  }, []);
+
+  // Handle TTS stream end
+  const handleAudioEnd = useCallback(() => {
+    console.log("Audio streaming ended");
+    // Process any remaining queued chunks
+    const player = (window as any).__streamingAudioPlayer;
+    if (player?.addAudioChunk) {
+      while (audioChunkQueueRef.current.length > 0) {
+        const queuedChunk = audioChunkQueueRef.current.shift();
+        if (queuedChunk) player.addAudioChunk(queuedChunk);
+      }
+    }
+    setIsAudioStreaming(false);
+  }, []);
+
+  // Process queued chunks when player becomes available
+  useEffect(() => {
+    if (isAudioStreaming && audioChunkQueueRef.current.length > 0) {
+      const checkInterval = setInterval(() => {
+        const player = (window as any).__streamingAudioPlayer;
+        if (player?.addAudioChunk) {
+          while (audioChunkQueueRef.current.length > 0) {
+            const queuedChunk = audioChunkQueueRef.current.shift();
+            if (queuedChunk) player.addAudioChunk(queuedChunk);
+          }
+          clearInterval(checkInterval);
+        }
+      }, 50);
+      return () => clearInterval(checkInterval);
+    }
+  }, [isAudioStreaming]);
+
+  // Handle stop button in audio player
+  const handleAudioStop = useCallback(() => {
+    setIsAudioStreaming(false);
     dispatch?.({ type: "SET_AUDIO_PLAYING", payload: false });
-  };
+    // Also abort the main request if still running
+    dispatch?.({ type: "ABORT_CURRENT_REQUEST" });
+  }, [dispatch]);
 
   // Early return check AFTER all hooks
   if (!dispatch) {
@@ -133,18 +187,19 @@ export function Chat({
   return (
     <>
       {/* Floating Scroll to Bottom Button */}
-      <button
-        onClick={handleScrollToBottom}
-        className={cn(
-          "fixed bottom-6 z-40 p-2 rounded-full bg-gray-700/90 hover:bg-gray-600/90 border border-white/20 hover:border-white/30 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-sm",
-          "text-gray-300 hover:text-white",
-          "right-4 sm:right-6",
-          "opacity-100 translate-y-0 scale-100"
-        )}
-        title="Scroll to bottom"
-      >
-        <ChevronDownIcon className="w-4 h-4" />
-      </button>
+      {showScrollButton && (
+        <button
+          onClick={handleScrollToBottom}
+          className={cn(
+            "fixed bottom-6 z-40 p-2 rounded-full bg-gray-700/90 hover:bg-gray-600/90 border border-white/20 hover:border-white/30 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-sm",
+            "text-gray-300 hover:text-white",
+            "right-4 sm:right-6"
+          )}
+          title="Scroll to bottom"
+        >
+          <ChevronDownIcon className="w-4 h-4" />
+        </button>
+      )}
 
       <div className="h-full overflow-hidden flex flex-col">
         {/* Messages area */}
@@ -171,7 +226,7 @@ export function Chat({
                       Concierge Chat 🎙️
                     </h1>
                     <p className="text-center text-gray-400 mt-2">
-                      Your AI assistant with voice responses
+                      Your AI assistant with streaming voice responses
                     </p>
                   </>
                 }
@@ -184,55 +239,17 @@ export function Chat({
 
         {/* Fixed bottom panel with audio player and input */}
         <div className="fixed bottom-0 left-0 right-0 lg:left-72 bg-gradient-to-t from-black via-black to-transparent pt-8 pb-4 px-4 sm:px-6 lg:px-8">
-          {/* Audio Player - above the input */}
-          {(chatState.audioUrl || chatState.ttsLoading) && (
-            <div className="max-w-3xl mx-auto mb-4">
-              <div className="bg-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4">
-                <div className="flex items-center gap-3">
-                  <SpeakerWaveIcon
-                    className={cn(
-                      "h-5 w-5 flex-shrink-0",
-                      chatState.ttsLoading
-                        ? "text-purple-400 animate-pulse"
-                        : chatState.audioPlaying
-                        ? "text-purple-400"
-                        : "text-gray-400"
-                    )}
-                  />
-                  {chatState.ttsLoading ? (
-                    <div className="flex-1 flex items-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
-                      <span className="text-sm text-gray-400">
-                        Generating voice...
-                      </span>
-                    </div>
-                  ) : chatState.audioUrl ? (
-                    <div className="flex-1 flex items-center gap-3">
-                      <audio
-                        ref={audioRef}
-                        controls
-                        autoPlay
-                        className="flex-1 h-10"
-                        onEnded={handleAudioEnded}
-                        onPlay={handleAudioPlay}
-                        onPause={handleAudioPause}
-                        src={chatState.audioUrl}
-                      />
-                      {chatState.audioPlaying && (
-                        <button
-                          onClick={handleStopAudio}
-                          className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                          title="Stop audio"
-                        >
-                          <StopIcon className="h-4 w-4 text-white" />
-                        </button>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Streaming Audio Player - above the input */}
+          <div className="max-w-3xl mx-auto mb-4">
+            <StreamingAudioPlayer
+              isStreaming={isAudioStreaming || chatState.ttsLoading}
+              isPlaying={chatState.audioPlaying}
+              onPlayingChange={(playing) =>
+                dispatch({ type: "SET_AUDIO_PLAYING", payload: playing })
+              }
+              onStop={handleAudioStop}
+            />
+          </div>
 
           {/* Chat input */}
           <div className="max-w-3xl mx-auto">
@@ -240,7 +257,9 @@ export function Chat({
               sessionId={chatState.sessionId}
               input={input}
               setInput={setInput}
-              audioRef={audioRef}
+              onAudioChunk={handleAudioChunk}
+              onAudioStart={handleAudioStart}
+              onAudioEnd={handleAudioEnd}
             />
           </div>
         </div>
