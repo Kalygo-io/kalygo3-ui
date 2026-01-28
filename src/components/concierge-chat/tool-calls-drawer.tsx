@@ -177,8 +177,10 @@ export function ConciergeToolCallsDrawer({
   };
 
   // Calculate total chunks
-  const totalChunks = toolCalls.reduce((total, call) => {
-    return total + (call.output?.results?.length || 0);
+  const totalChunks = toolCalls.reduce<number>((total, rawCall) => {
+    const call = rawCall as ConciergeToolCall;
+    const results = call.output?.results || call.results;
+    return total + (results?.length || 0);
   }, 0);
 
   return (
