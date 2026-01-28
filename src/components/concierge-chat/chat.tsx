@@ -115,19 +115,21 @@ export function Chat({
     }
   }, []);
 
-  // Handle TTS stream start
+  // Handle TTS stream start - called BEFORE any audio chunks arrive
   const handleAudioStart = useCallback(() => {
     console.log("Audio streaming started");
-    audioChunkQueueRef.current = [];
-    setIsAudioStreaming(true);
     
-    // Reset the player for new stream
-    setTimeout(() => {
-      const player = (window as any).__streamingAudioPlayer;
-      if (player?.reset) {
-        player.reset();
-      }
-    }, 0);
+    // Clear the queue FIRST
+    audioChunkQueueRef.current = [];
+    
+    // Reset the player SYNCHRONOUSLY before any chunks arrive
+    const player = (window as any).__streamingAudioPlayer;
+    if (player?.reset) {
+      player.reset();
+    }
+    
+    // NOW set streaming state (this will cause player to render if not already)
+    setIsAudioStreaming(true);
   }, []);
 
   // Handle TTS stream end
@@ -145,20 +147,32 @@ export function Chat({
   }, []);
 
   // Process queued chunks when player becomes available
+  // This polls while streaming is active to handle timing issues
   useEffect(() => {
-    if (isAudioStreaming && audioChunkQueueRef.current.length > 0) {
-      const checkInterval = setInterval(() => {
-        const player = (window as any).__streamingAudioPlayer;
-        if (player?.addAudioChunk) {
-          while (audioChunkQueueRef.current.length > 0) {
-            const queuedChunk = audioChunkQueueRef.current.shift();
-            if (queuedChunk) player.addAudioChunk(queuedChunk);
-          }
-          clearInterval(checkInterval);
+    if (!isAudioStreaming) return;
+    
+    let attempts = 0;
+    const maxAttempts = 100; // 5 seconds max
+    
+    const checkInterval = setInterval(() => {
+      attempts++;
+      
+      const player = (window as any).__streamingAudioPlayer;
+      if (player?.addAudioChunk && audioChunkQueueRef.current.length > 0) {
+        console.log(`[Chat] Processing ${audioChunkQueueRef.current.length} queued audio chunks`);
+        while (audioChunkQueueRef.current.length > 0) {
+          const queuedChunk = audioChunkQueueRef.current.shift();
+          if (queuedChunk) player.addAudioChunk(queuedChunk);
         }
-      }, 50);
-      return () => clearInterval(checkInterval);
-    }
+      }
+      
+      // Stop polling if we've waited long enough and queue is empty
+      if (attempts > maxAttempts || (player && audioChunkQueueRef.current.length === 0)) {
+        clearInterval(checkInterval);
+      }
+    }, 50);
+    
+    return () => clearInterval(checkInterval);
   }, [isAudioStreaming]);
 
   // Handle stop button in audio player

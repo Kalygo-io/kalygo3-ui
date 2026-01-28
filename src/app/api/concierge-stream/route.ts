@@ -301,11 +301,25 @@ export async function POST(request: NextRequest) {
                         textBuffer = textBuffer.substring(completeText.length);
                       }
                     }
+                  } else if (parsed.event === "on_tool_start" || parsed.event === "on_tool_end") {
+                    // Forward tool events with full data object
+                    await sendEvent({
+                      type: "text",
+                      data: parsed.data,
+                      event: parsed.event,
+                    });
+                  } else if (parsed.event === "on_chain_end") {
+                    // Forward chain end with data
+                    await sendEvent({
+                      type: "text",
+                      data: parsed.data,
+                      event: parsed.event,
+                    });
                   } else if (parsed.event) {
                     // Forward other events to client
                     await sendEvent({
                       type: "text",
-                      data: parsed.data || "",
+                      data: parsed.data,
                       event: parsed.event,
                     });
                   }
