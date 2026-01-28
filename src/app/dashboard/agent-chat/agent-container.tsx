@@ -28,11 +28,11 @@ export function AgentContainer() {
     dispatch({ type: "SET_MESSAGES", payload: [] });
     dispatch({ type: "SET_SESSION_ID", payload: "" });
 
-    router.push("/dashboard/tokenizers");
+    router.push("/dashboard");
   }, [router]);
 
   const { createSession, getSession } = useChatSessions(
-    handleCurrentSessionDeleted
+    handleCurrentSessionDeleted,
   );
 
   // Cleanup effect to abort any ongoing requests when component unmounts
