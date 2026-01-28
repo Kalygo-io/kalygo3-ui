@@ -120,8 +120,9 @@ export function DashboardLayout({
     } else if (session.chatAppId === JWT_AGENT_CHAT_APP_ID) {
       router.push(`/dashboard/jwt-agent?session=${session.sessionId}`);
       setSidebarOpen(false);
-    } else if (session.chatAppId === KALYGO_AGENT_CHAT_APP_ID) {
-      router.push(`/dashboard/kalygo-agent?session=${session.sessionId}`);
+    } else if (session.chatAppId === KALYGO_AGENT_CHAT_APP_ID || session.chatAppId === "agent-chat") {
+      // Handle both "Kalygo Agent" and legacy "agent-chat" sessions
+      router.push(`/dashboard/agent-chat?session=${session.sessionId}`);
       setSidebarOpen(false);
     } else {
       errorToast(`Session ${session.chatAppId} is not supported yet`);
@@ -147,13 +148,16 @@ export function DashboardLayout({
 
     // Agent Chat page - show past sessions
     if (pathname.startsWith("/dashboard/agent-chat")) {
-      const kalygoSessions = sessions.filter(
-        (session) => session.chatAppId === KALYGO_AGENT_CHAT_APP_ID
+      // Include both "agent-chat" (legacy) and "Kalygo Agent" sessions
+      const agentChatSessions = sessions.filter(
+        (session) => 
+          session.chatAppId === KALYGO_AGENT_CHAT_APP_ID || 
+          session.chatAppId === "agent-chat"
       );
       sections.push({
         title: "Past Sessions",
         type: "sessions",
-        sessions: kalygoSessions,
+        sessions: agentChatSessions,
       });
       // Future: Add more sections here, e.g.:
       // sections.push({
