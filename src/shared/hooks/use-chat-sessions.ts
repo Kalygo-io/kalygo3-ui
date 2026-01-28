@@ -1,15 +1,18 @@
 import { useState, useCallback, useEffect } from "react";
 import { chatSessionService, ChatSession } from "@/services/chatSessionService";
 
-export function useChatSessions(onCurrentSessionDeleted?: () => void) {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [loading, setLoading] = useState(true);
+interface UseChatSessionsOptions {
+  enabled?: boolean;
+  onCurrentSessionDeleted?: () => void;
+}
 
-  useEffect(() => {
-    loadSessions();
-  }, []);
+export function useChatSessions(options: UseChatSessionsOptions = {}) {
+  const { enabled = true, onCurrentSessionDeleted } = options;
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [loading, setLoading] = useState(enabled);
 
   const loadSessions = useCallback(async () => {
+    if (!enabled) return;
     setLoading(true);
     try {
       const recent = await chatSessionService.getRecentSessions();
@@ -19,7 +22,13 @@ export function useChatSessions(onCurrentSessionDeleted?: () => void) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
+
+  useEffect(() => {
+    if (enabled) {
+      loadSessions();
+    }
+  }, [enabled, loadSessions]);
 
   const createSession = useCallback(async (agentId: number) => {
     const newSession = await chatSessionService.createSession(agentId);

@@ -31,9 +31,9 @@ export function AgentContainer() {
     router.push("/dashboard");
   }, [router]);
 
-  const { createSession, getSession } = useChatSessions(
-    handleCurrentSessionDeleted,
-  );
+  const { createSession, getSession } = useChatSessions({
+    onCurrentSessionDeleted: handleCurrentSessionDeleted,
+  });
 
   // Cleanup effect to abort any ongoing requests when component unmounts
   useEffect(() => {

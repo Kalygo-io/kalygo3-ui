@@ -58,9 +58,13 @@ export function DashboardLayout({
       router.push("/dashboard/tokenizers");
     }
   }, [currentSessionId, pathname, router]);
-  const { sessions, deleteSession, loading } = useChatSessions(
-    handleCurrentSessionDeleted,
-  );
+
+  // Only load chat sessions when on agent-chat pages
+  const isAgentChatPage = pathname.startsWith("/dashboard/agent-chat");
+  const { sessions, deleteSession, loading } = useChatSessions({
+    enabled: isAgentChatPage,
+    onCurrentSessionDeleted: handleCurrentSessionDeleted,
+  });
 
   const userNavigation = [
     {

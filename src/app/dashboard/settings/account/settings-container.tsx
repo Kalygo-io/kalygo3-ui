@@ -258,7 +258,7 @@ export function SettingsContainer() {
               <div className="flex items-center justify-between">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Email Notifications
+                    Newsletter Notifications
                   </label>
                   <p className="text-gray-400 text-sm">
                     Receive email updates about your account
