@@ -105,9 +105,32 @@ export async function callConciergeAgent(
                   },
                 });
               } else if (event.event === "on_tool_start") {
-                const toolName = event.data?.name || "unknown_tool";
-                const toolType = event.data?.toolType || "unknown";
-                const toolInput = event.data?.input || {};
+                // Extract tool information - check multiple possible locations
+                // (agent API may structure data differently)
+                const toolName =
+                  event.name ||
+                  event.tool_name ||
+                  event.data?.name ||
+                  event.data?.tool_name ||
+                  (typeof event.data === "string" ? event.data : null) ||
+                  "unknown_tool";
+
+                const toolInput =
+                  event.input ||
+                  event.tool_input ||
+                  event.data?.input ||
+                  event.data?.tool_input ||
+                  event.data?.query ||
+                  {};
+
+                const toolType =
+                  event.toolType ||
+                  event.tool_type ||
+                  event.data?.toolType ||
+                  event.data?.tool_type ||
+                  "unknown";
+
+                console.log("[Concierge] Tool start:", { toolName, toolType, toolInput });
 
                 currentToolCall = {
                   toolType,
@@ -119,7 +142,11 @@ export async function callConciergeAgent(
 
                 dispatch({ type: "SET_CURRENT_TOOL", payload: toolName });
               } else if (event.event === "on_tool_end") {
-                const toolOutput = event.data?.output || event.data || {};
+                const toolOutput =
+                  event.output ||
+                  event.data?.output ||
+                  event.data ||
+                  {};
 
                 if (currentToolCall) {
                   const completedToolCall = {

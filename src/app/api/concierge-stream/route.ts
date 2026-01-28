@@ -302,11 +302,18 @@ export async function POST(request: NextRequest) {
                       }
                     }
                   } else if (parsed.event === "on_tool_start" || parsed.event === "on_tool_end") {
-                    // Forward tool events with full data object
+                    // Forward tool events with ALL relevant fields from the original event
+                    // Tool info might be in: name, tool_name, data.name, data.tool_name
                     await sendEvent({
                       type: "text",
-                      data: parsed.data,
                       event: parsed.event,
+                      // Include all possible fields where tool info might be
+                      name: parsed.name,
+                      tool_name: parsed.tool_name,
+                      toolType: parsed.toolType || parsed.tool_type,
+                      input: parsed.input || parsed.tool_input,
+                      output: parsed.output,
+                      data: parsed.data,
                     });
                   } else if (parsed.event === "on_chain_end") {
                     // Forward chain end with data

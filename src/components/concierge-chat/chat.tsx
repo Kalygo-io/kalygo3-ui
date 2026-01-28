@@ -4,14 +4,14 @@ import {
   ChatContext,
   ChatDispatchContext,
 } from "@/app/dashboard/concierge-chat/chat-session-context";
-import { ChatList } from "@/components/agent-chat/chat-list";
+import { ConciergeChatList } from "@/components/concierge-chat/chat-list";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
 import { PromptForm } from "@/components/concierge-chat/prompt-form";
 import { StreamingAudioPlayer } from "@/components/concierge-chat/streaming-audio-player";
+import { ConciergeContextualAside } from "@/components/concierge-chat/contextual-aside";
 import { useScrollAnchor } from "@/shared/hooks/use-scroll-anchor";
 import { cn } from "@/shared/utils";
 import { useContext, useEffect, useState, useCallback, useRef } from "react";
-import { ContextualAside } from "@/components/agent-chat/contextual-aside";
 import { Agent } from "@/services/agentsService";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
@@ -226,10 +226,9 @@ export function Chat({
             ref={messagesRef}
           >
             {chatState.messages.length ? (
-              <ChatList
+              <ConciergeChatList
                 messages={chatState.messages}
                 isCompletionLoading={chatState.completionLoading}
-                // @ts-ignore
                 currentTool={chatState.currentTool}
               />
             ) : (
@@ -279,7 +278,7 @@ export function Chat({
         </div>
       </div>
 
-      <ContextualAside
+      <ConciergeContextualAside
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen?.(false)}
         agent={agent}
