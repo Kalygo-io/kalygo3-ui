@@ -1,4 +1,8 @@
-export async function registerAccount(email: string, password: string) {
+export async function registerAccount(
+  email: string,
+  password: string,
+  newsletterSubscribed: boolean = false
+) {
   console.log("registerAccount...");
   const resp = await fetch(
     `${process.env.NEXT_PUBLIC_AUTH_API_URL}/api/auth/create-account`,
@@ -10,6 +14,7 @@ export async function registerAccount(email: string, password: string) {
       body: JSON.stringify({
         email: email,
         password: password,
+        newsletter_subscribed: newsletterSubscribed,
       }),
     }
   );

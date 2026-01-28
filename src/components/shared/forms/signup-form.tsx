@@ -15,12 +15,13 @@ export const SignupForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
   const handleRegister = async (e: { preventDefault: () => void }) => {
     try {
       e.preventDefault();
       setIsLoading(true);
-      await registerAccount(email, password);
+      await registerAccount(email, password, newsletterSubscribed);
       console.log("after registerAccount...");
       await loginRequest(email, password);
       router.push("/dashboard");
@@ -88,6 +89,24 @@ export const SignupForm = () => {
               required
               className="bg-gray-900/50 w-full px-4 py-3 border border-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
             />
+          </div>
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                type="checkbox"
+                id="newsletter"
+                name="newsletter"
+                checked={newsletterSubscribed}
+                onChange={(e) => setNewsletterSubscribed(e.target.checked)}
+                className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 bg-gray-900/50 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+              />
+            </div>
+            <label
+              htmlFor="newsletter"
+              className="ml-3 text-sm text-gray-300 cursor-pointer select-none"
+            >
+              Subscribe to our newsletter for updates and announcements
+            </label>
           </div>
           <button
             type="submit"

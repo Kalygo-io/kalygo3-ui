@@ -20,7 +20,7 @@ import { StripePaymentForm } from "@/components/shared/stripe-payment-form";
 
 // Initialize Stripe
 const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
 );
 
 export function SettingsContainer() {
@@ -66,7 +66,7 @@ export function SettingsContainer() {
 
       // Remove from local state
       setPaymentMethods(
-        paymentMethods.filter((pm) => pm.id !== paymentMethodId)
+        paymentMethods.filter((pm) => pm.id !== paymentMethodId),
       );
 
       successToast("Payment method deleted successfully");
@@ -141,14 +141,6 @@ export function SettingsContainer() {
                   </p>
                 )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Password
-                </label>
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-                  Change Password
-                </button>
-              </div>
             </div>
           </div>
 
@@ -209,7 +201,7 @@ export function SettingsContainer() {
                                 Expires{" "}
                                 {formatExpiry(
                                   pm.card.exp_month,
-                                  pm.card.exp_year
+                                  pm.card.exp_year,
                                 )}
                               </span>
                               {pm.billing_details?.name && (
