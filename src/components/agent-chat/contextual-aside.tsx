@@ -264,8 +264,8 @@ export function ContextualAside({
                                     );
                                   }
 
-                                  // Database Read tool
-                                  if (tool.type === "dbRead") {
+                                  // Database Table Read tool
+                                  if (tool.type === "dbTableRead") {
                                     return (
                                       <div
                                         key={index}
@@ -274,7 +274,7 @@ export function ContextualAside({
                                         <div className="flex items-center space-x-2 mb-1">
                                           <CircleStackIcon className="w-4 h-4 text-green-400" />
                                           <span className="text-xs font-medium text-white">
-                                            Database Read
+                                            Database Table Read
                                           </span>
                                         </div>
                                         <div className="text-xs text-gray-300 space-y-1 pl-6">
@@ -313,8 +313,8 @@ export function ContextualAside({
                                     );
                                   }
 
-                                  // Database Write tool
-                                  if (tool.type === "dbWrite") {
+                                  // Database Table Write tool
+                                  if (tool.type === "dbTableWrite") {
                                     return (
                                       <div
                                         key={index}
@@ -323,7 +323,7 @@ export function ContextualAside({
                                         <div className="flex items-center space-x-2 mb-1">
                                           <PencilSquareIcon className="w-4 h-4 text-orange-400" />
                                           <span className="text-xs font-medium text-white">
-                                            Database Write
+                                            Database Table Write
                                           </span>
                                         </div>
                                         <div className="text-xs text-gray-300 space-y-1 pl-6">

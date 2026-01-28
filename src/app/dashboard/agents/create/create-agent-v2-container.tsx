@@ -84,19 +84,19 @@ export function CreateAgentV2Container() {
       // Check for duplicates based on tool type
       let isDuplicate = false;
       
-      if (tool.type === "dbRead") {
-        // For dbRead, check if same credentialId + table already exists
+      if (tool.type === "dbTableRead") {
+        // For dbTableRead, check if same credentialId + table already exists
         isDuplicate = tools.some(
           (existing) =>
-            existing.type === "dbRead" &&
+            existing.type === "dbTableRead" &&
             existing.credentialId === tool.credentialId &&
             existing.table === tool.table
         );
-      } else if (tool.type === "dbWrite") {
-        // For dbWrite, check if same credentialId + table already exists
+      } else if (tool.type === "dbTableWrite") {
+        // For dbTableWrite, check if same credentialId + table already exists
         isDuplicate = tools.some(
           (existing) =>
-            existing.type === "dbWrite" &&
+            existing.type === "dbTableWrite" &&
             existing.credentialId === tool.credentialId &&
             existing.table === tool.table
         );
@@ -236,8 +236,8 @@ export function CreateAgentV2Container() {
               <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
                 <div className="divide-y divide-gray-700/50">
                   {tools.map((tool, index) => {
-                    // Render dbRead tools
-                    if (tool.type === "dbRead") {
+                    // Render dbTableRead tools
+                    if (tool.type === "dbTableRead") {
                       const formatTableName = (name: string) =>
                         name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
@@ -305,8 +305,8 @@ export function CreateAgentV2Container() {
                       );
                     }
 
-                    // Render dbWrite tools
-                    if (tool.type === "dbWrite") {
+                    // Render dbTableWrite tools
+                    if (tool.type === "dbTableWrite") {
                       const formatTableName = (name: string) =>
                         name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
-import { ToolV2, DbReadTool, DbWriteTool } from "@/services/agentsService";
+import { ToolV2, DbTableReadTool, DbTableWriteTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { credentialService, Credential, CredentialType, formatServiceName } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -19,7 +19,7 @@ export function AddToolModal({
   initialTool,
 }: AddToolModalProps) {
   // Tool category selection
-  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbRead" | "dbWrite">("vectorSearch");
+  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite">("vectorSearch");
   
   // Vector search state
   const [vectorToolType, setVectorToolType] = useState<"vectorSearch" | "vectorSearchWithReranking">("vectorSearch");
@@ -60,15 +60,15 @@ export function AddToolModal({
     if (initialTool) {
       setDescription(initialTool.description || "");
       
-      if (initialTool.type === "dbRead") {
-        setToolCategory("dbRead");
+      if (initialTool.type === "dbTableRead") {
+        setToolCategory("dbTableRead");
         setSelectedCredentialId(initialTool.credentialId);
         setTableName(initialTool.table);
         setToolName(initialTool.name || "");
         setColumns(initialTool.columns?.join(", ") || "");
         setMaxLimit(initialTool.maxLimit || 100);
-      } else if (initialTool.type === "dbWrite") {
-        setToolCategory("dbWrite");
+      } else if (initialTool.type === "dbTableWrite") {
+        setToolCategory("dbTableWrite");
         setSelectedCredentialId(initialTool.credentialId);
         setTableName(initialTool.table);
         setToolName(initialTool.name || "");
@@ -152,7 +152,7 @@ export function AddToolModal({
 
     let tool: ToolV2;
 
-    if (toolCategory === "dbRead") {
+    if (toolCategory === "dbTableRead") {
       // DB Read tool validation
       if (!selectedCredentialId) {
         errorToast("Please select a database credential");
@@ -175,8 +175,8 @@ export function AddToolModal({
         ? columns.split(",").map((c) => c.trim()).filter((c) => c.length > 0)
         : undefined;
 
-      const dbTool: DbReadTool = {
-        type: "dbRead",
+      const dbTool: DbTableReadTool = {
+        type: "dbTableRead",
         credentialId: selectedCredentialId as number,
         table: tableName.trim(),
       };
@@ -195,7 +195,7 @@ export function AddToolModal({
       }
 
       tool = dbTool;
-    } else if (toolCategory === "dbWrite") {
+    } else if (toolCategory === "dbTableWrite") {
       // DB Write tool validation
       if (!selectedCredentialId) {
         errorToast("Please select a database credential");
@@ -237,8 +237,8 @@ export function AddToolModal({
         }
       }
 
-      const dbWriteTool: DbWriteTool = {
-        type: "dbWrite",
+      const dbWriteTool: DbTableWriteTool = {
+        type: "dbTableWrite",
         credentialId: selectedCredentialId as number,
         table: tableName.trim(),
         columns: columnsArray,
@@ -298,10 +298,10 @@ export function AddToolModal({
   const selectedCredential = dbCredentials.find((c) => c.id === selectedCredentialId);
   
   // Determine color theme based on tool category
-  const isDbTool = toolCategory === "dbRead" || toolCategory === "dbWrite";
-  const accentColor = toolCategory === "dbWrite" ? "orange" : toolCategory === "dbRead" ? "green" : "blue";
-  const ringClass = toolCategory === "dbWrite" ? "focus:ring-orange-500" : toolCategory === "dbRead" ? "focus:ring-green-500" : "focus:ring-blue-500";
-  const buttonClass = toolCategory === "dbWrite" ? "bg-orange-600 hover:bg-orange-700" : toolCategory === "dbRead" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700";
+  const isDbTool = toolCategory === "dbTableRead" || toolCategory === "dbTableWrite";
+  const accentColor = toolCategory === "dbTableWrite" ? "orange" : toolCategory === "dbTableRead" ? "green" : "blue";
+  const ringClass = toolCategory === "dbTableWrite" ? "focus:ring-orange-500" : toolCategory === "dbTableRead" ? "focus:ring-green-500" : "focus:ring-blue-500";
+  const buttonClass = toolCategory === "dbTableWrite" ? "bg-orange-600 hover:bg-orange-700" : toolCategory === "dbTableRead" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -358,18 +358,18 @@ export function AddToolModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setToolCategory("dbRead")}
+                  onClick={() => setToolCategory("dbTableRead")}
                   className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "dbRead"
+                    toolCategory === "dbTableRead"
                       ? "border-green-500 bg-green-500/10"
                       : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
                   }`}
                 >
                   <CircleStackIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "dbRead" ? "text-green-400" : "text-gray-500"
+                    toolCategory === "dbTableRead" ? "text-green-400" : "text-gray-500"
                   }`} />
                   <div className={`text-sm font-medium ${
-                    toolCategory === "dbRead" ? "text-green-300" : "text-gray-400"
+                    toolCategory === "dbTableRead" ? "text-green-300" : "text-gray-400"
                   }`}>
                     DB Read
                   </div>
@@ -379,18 +379,18 @@ export function AddToolModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setToolCategory("dbWrite")}
+                  onClick={() => setToolCategory("dbTableWrite")}
                   className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "dbWrite"
+                    toolCategory === "dbTableWrite"
                       ? "border-orange-500 bg-orange-500/10"
                       : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
                   }`}
                 >
                   <PencilSquareIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "dbWrite" ? "text-orange-400" : "text-gray-500"
+                    toolCategory === "dbTableWrite" ? "text-orange-400" : "text-gray-500"
                   }`} />
                   <div className={`text-sm font-medium ${
-                    toolCategory === "dbWrite" ? "text-orange-300" : "text-gray-400"
+                    toolCategory === "dbTableWrite" ? "text-orange-300" : "text-gray-400"
                   }`}>
                     DB Write
                   </div>
@@ -601,13 +601,13 @@ export function AddToolModal({
               {/* Selected Credential Info */}
               {selectedCredential && (
                 <div className={`rounded-lg p-4 ${
-                  toolCategory === "dbWrite" 
+                  toolCategory === "dbTableWrite" 
                     ? "bg-orange-900/20 border border-orange-700/50" 
                     : "bg-green-900/20 border border-green-700/50"
                 }`}>
                   <div className="flex items-start gap-3">
                     <CircleStackIcon className={`h-5 w-5 mt-0.5 ${
-                      toolCategory === "dbWrite" ? "text-orange-400" : "text-green-400"
+                      toolCategory === "dbTableWrite" ? "text-orange-400" : "text-green-400"
                     }`} />
                     <div>
                       <h4 className="text-sm font-medium text-white">
@@ -635,13 +635,13 @@ export function AddToolModal({
                   type="text"
                   value={tableName}
                   onChange={(e) => setTableName(e.target.value)}
-                  placeholder={toolCategory === "dbWrite" ? "e.g., leads, orders, contacts" : "e.g., users, orders, products"}
+                  placeholder={toolCategory === "dbTableWrite" ? "e.g., leads, orders, contacts" : "e.g., users, orders, products"}
                   className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass}`}
                   disabled={isEditing}
                   required
                 />
                 <p className="text-gray-400 text-xs mt-2">
-                  {toolCategory === "dbWrite" 
+                  {toolCategory === "dbTableWrite" 
                     ? "The database table to insert records into."
                     : "The database table the agent can query."}
                 </p>
@@ -658,10 +658,10 @@ export function AddToolModal({
                   onChange={(e) => setToolName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
                   placeholder={
                     tableName 
-                      ? toolCategory === "dbWrite" 
+                      ? toolCategory === "dbTableWrite" 
                         ? `insert_${tableName.toLowerCase()}` 
                         : `query_${tableName.toLowerCase()}`
-                      : toolCategory === "dbWrite"
+                      : toolCategory === "dbTableWrite"
                         ? "e.g., create_lead"
                         : "e.g., query_users"
                   }
@@ -669,34 +669,34 @@ export function AddToolModal({
                 />
                 <p className="text-gray-400 text-xs mt-2">
                   Optional custom name. Must be lowercase with underscores only.
-                  Defaults to &quot;{toolCategory === "dbWrite" ? "insert" : "query"}_{"{table}"}&quot;.
+                  Defaults to &quot;{toolCategory === "dbTableWrite" ? "insert" : "query"}_{"{table}"}&quot;.
                 </p>
               </div>
 
               {/* Columns */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {toolCategory === "dbWrite" ? "Writable Columns *" : "Allowed Columns"}
+                  {toolCategory === "dbTableWrite" ? "Writable Columns *" : "Allowed Columns"}
                 </label>
                 <input
                   type="text"
                   value={columns}
                   onChange={(e) => setColumns(e.target.value)}
-                  placeholder={toolCategory === "dbWrite" 
+                  placeholder={toolCategory === "dbTableWrite" 
                     ? "e.g., name, email, phone, notes" 
                     : "e.g., id, name, email, created_at"}
                   className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass} font-mono`}
-                  required={toolCategory === "dbWrite"}
+                  required={toolCategory === "dbTableWrite"}
                 />
                 <p className="text-gray-400 text-xs mt-2">
-                  {toolCategory === "dbWrite" 
+                  {toolCategory === "dbTableWrite" 
                     ? "Comma-separated list of columns the agent can write to. Required for security."
                     : "Comma-separated list of columns the agent can query and see. Leave empty to allow all."}
                 </p>
               </div>
 
               {/* DB Write specific: Required Columns and Inject Account ID */}
-              {toolCategory === "dbWrite" && (
+              {toolCategory === "dbTableWrite" && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -740,7 +740,7 @@ export function AddToolModal({
               )}
 
               {/* DB Read specific: Max Limit */}
-              {toolCategory === "dbRead" && (
+              {toolCategory === "dbTableRead" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Maximum Rows
@@ -770,9 +770,9 @@ export function AddToolModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={
-                toolCategory === "dbWrite"
+                toolCategory === "dbTableWrite"
                   ? "Describe what records this tool creates and when to use it..."
-                  : toolCategory === "dbRead" 
+                  : toolCategory === "dbTableRead" 
                     ? "Describe what data this table contains and what queries are useful..."
                     : "Describe what this knowledge base contains..."
               }

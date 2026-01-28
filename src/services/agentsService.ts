@@ -45,8 +45,8 @@ export interface VectorSearchWithRerankingTool {
   topN?: number;
 }
 
-export interface DbReadTool {
-  type: "dbRead";
+export interface DbTableReadTool {
+  type: "dbTableRead";
   credentialId: number; // ID of stored credential with db_connection type
   table: string;
   name?: string; // Custom tool name (e.g., 'query_users'), defaults to 'query_{table}'
@@ -55,8 +55,8 @@ export interface DbReadTool {
   maxLimit?: number; // Max rows per query (1-1000, default 100)
 }
 
-export interface DbWriteTool {
-  type: "dbWrite";
+export interface DbTableWriteTool {
+  type: "dbTableWrite";
   credentialId: number; // ID of stored credential with db_connection type
   table: string;
   name?: string; // Custom tool name (e.g., 'create_lead'), defaults to 'insert_{table}'
@@ -66,7 +66,7 @@ export interface DbWriteTool {
   injectAccountId?: boolean; // Auto-inject user's account_id into the record
 }
 
-export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool | DbReadTool | DbWriteTool;
+export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool | DbTableReadTool | DbTableWriteTool;
 
 export interface AgentConfigDataV2 {
   systemPrompt: string;

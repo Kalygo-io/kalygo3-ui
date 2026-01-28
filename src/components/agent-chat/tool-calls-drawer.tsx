@@ -12,8 +12,8 @@ import { ToolCall, RetrievalCall } from "@/ts/types/Message";
 import {
   VectorSearchToolCall,
   VectorSearchWithRerankingToolCall,
-  DbReadToolCall,
-  DbWriteToolCall,
+  DbTableReadToolCall,
+  DbTableWriteToolCall,
   VectorSearchResult,
   TextDocumentMetadata,
   QaMetadata,
@@ -40,21 +40,21 @@ function isVectorSearchToolCall(
 }
 
 function isVectorSearchWithRerankingToolCall(
-  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall
 ): call is VectorSearchWithRerankingToolCall {
   return call.toolType === "vectorSearchWithReranking";
 }
 
-function isDbReadToolCall(
-  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall
-): call is DbReadToolCall {
-  return call.toolType === "dbRead";
+function isDbTableReadToolCall(
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall
+): call is DbTableReadToolCall {
+  return call.toolType === "dbTableRead";
 }
 
-function isDbWriteToolCall(
-  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall
-): call is DbWriteToolCall {
-  return call.toolType === "dbWrite";
+function isDbTableWriteToolCall(
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall
+): call is DbTableWriteToolCall {
+  return call.toolType === "dbTableWrite";
 }
 
 interface ToolCallsDrawerProps {
@@ -62,7 +62,7 @@ interface ToolCallsDrawerProps {
   onClose: () => void;
   toolCalls?:
     | ToolCall[]
-    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall)[]; // Support both old and new schema
+    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall)[]; // Support both old and new schema
   retrievalCalls?: RetrievalCall[]; // Legacy retrieval calls
 }
 
@@ -215,14 +215,14 @@ export function ToolCallsDrawer({
   // Calculate total chunks/rows
   const totalChunks = allToolCalls.reduce((total, call) => {
     if (isV2Schema) {
-      // Check if it's a dbRead tool
-      if (isDbReadToolCall(call as any)) {
-        const dbCall = call as DbReadToolCall;
+      // Check if it's a dbTableRead tool
+      if (isDbTableReadToolCall(call as any)) {
+        const dbCall = call as DbTableReadToolCall;
         return total + (dbCall.output?.rows?.length || 0);
       }
-      // Check if it's a dbWrite tool
-      if (isDbWriteToolCall(call as any)) {
-        const dbWriteCall = call as DbWriteToolCall;
+      // Check if it's a dbTableWrite tool
+      if (isDbTableWriteToolCall(call as any)) {
+        const dbWriteCall = call as DbTableWriteToolCall;
         return total + (dbWriteCall.output?.success ? 1 : 0);
       }
       const v2Call = call as
@@ -301,11 +301,11 @@ export function ToolCallsDrawer({
                 </h4>
 
                 {allToolCalls.map((call, index) => {
-                  // Check for dbRead tool first (v2 schema)
-                  if (isV2Schema && isDbReadToolCall(call as any)) {
-                    const dbCall = call as DbReadToolCall;
+                  // Check for dbTableRead tool first (v2 schema)
+                  if (isV2Schema && isDbTableReadToolCall(call as any)) {
+                    const dbCall = call as DbTableReadToolCall;
                     return (
-                      <DbReadToolCallCard
+                      <DbTableReadToolCallCard
                         key={index}
                         index={index}
                         toolCall={dbCall}
@@ -316,11 +316,11 @@ export function ToolCallsDrawer({
                     );
                   }
 
-                  // Check for dbWrite tool (v2 schema)
-                  if (isV2Schema && isDbWriteToolCall(call as any)) {
-                    const dbWriteCall = call as DbWriteToolCall;
+                  // Check for dbTableWrite tool (v2 schema)
+                  if (isV2Schema && isDbTableWriteToolCall(call as any)) {
+                    const dbWriteCall = call as DbTableWriteToolCall;
                     return (
-                      <DbWriteToolCallCard
+                      <DbTableWriteToolCallCard
                         key={index}
                         index={index}
                         toolCall={dbWriteCall}
@@ -413,10 +413,10 @@ export function ToolCallsDrawer({
                                 ? "Vector Search"
                                 : toolType === "vectorSearchWithReranking"
                                 ? "Vector Search with Reranking"
-                                : toolType === "dbRead"
-                                ? "Database Query"
-                                : toolType === "dbWrite"
-                                ? "Database Write"
+                                : toolType === "dbTableRead"
+                                ? "Database Table Read"
+                                : toolType === "dbTableWrite"
+                                ? "Database Table Write"
                                 : toolType === "unknown"
                                 ? "Unknown Tool"
                                 : toolType}
@@ -755,22 +755,22 @@ export function ToolCallsDrawer({
   );
 }
 
-// Database Read Tool Call Card Component
-interface DbReadToolCallCardProps {
+// Database Table Read Tool Call Card Component
+interface DbTableReadToolCallCardProps {
   index: number;
-  toolCall: DbReadToolCall;
+  toolCall: DbTableReadToolCall;
   isExpanded: boolean;
   onToggleExpand: () => void;
   copyToClipboard: (text: string) => void;
 }
 
-function DbReadToolCallCard({
+function DbTableReadToolCallCard({
   index,
   toolCall,
   isExpanded,
   onToggleExpand,
   copyToClipboard,
-}: DbReadToolCallCardProps) {
+}: DbTableReadToolCallCardProps) {
   const rows = toolCall.output?.rows || [];
   const columns = toolCall.output?.columns || 
     (rows.length > 0 ? Object.keys(rows[0]) : []);
@@ -952,22 +952,22 @@ function DbReadToolCallCard({
   );
 }
 
-// Database Write Tool Call Card Component
-interface DbWriteToolCallCardProps {
+// Database Table Write Tool Call Card Component
+interface DbTableWriteToolCallCardProps {
   index: number;
-  toolCall: DbWriteToolCall;
+  toolCall: DbTableWriteToolCall;
   isExpanded: boolean;
   onToggleExpand: () => void;
   copyToClipboard: (text: string) => void;
 }
 
-function DbWriteToolCallCard({
+function DbTableWriteToolCallCard({
   index,
   toolCall,
   isExpanded,
   onToggleExpand,
   copyToClipboard,
-}: DbWriteToolCallCardProps) {
+}: DbTableWriteToolCallCardProps) {
   const tableName = toolCall.input?.table || toolCall.output?.table || "Unknown Table";
   const success = toolCall.output?.success ?? false;
   const insertedRecord = toolCall.output?.record;

@@ -20,7 +20,7 @@ export interface ChatMessageV2 {
   /**
    * Array of tool calls made during the generation of this message. Only present for AI messages. Each tool call has a different schema depending on the tool type.
    */
-  toolCalls?: (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall)[];
+  toolCalls?: (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall)[];
 }
 /**
  * Tool call for vector search (semantic retrieval)
@@ -205,13 +205,13 @@ export interface VectorSearchWithRerankingToolCall {
 }
 
 /**
- * Tool call for database read operations (querying structured data)
+ * Tool call for database table read operations (querying structured data)
  */
-export interface DbReadToolCall {
+export interface DbTableReadToolCall {
   /**
-   * The type of tool (dbRead)
+   * The type of tool (dbTableRead)
    */
-  toolType: "dbRead";
+  toolType: "dbTableRead";
   /**
    * The specific tool instance name (e.g., 'read_sessions', 'read_usage')
    */
@@ -271,13 +271,13 @@ export interface DbReadRow {
 }
 
 /**
- * Tool call for database write operations (inserting records)
+ * Tool call for database table write operations (inserting records)
  */
-export interface DbWriteToolCall {
+export interface DbTableWriteToolCall {
   /**
-   * The type of tool (dbWrite)
+   * The type of tool (dbTableWrite)
    */
-  toolType: "dbWrite";
+  toolType: "dbTableWrite";
   /**
    * The specific tool instance name (e.g., 'create_lead', 'insert_order')
    */

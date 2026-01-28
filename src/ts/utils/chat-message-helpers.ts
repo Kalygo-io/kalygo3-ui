@@ -1,8 +1,8 @@
 import {
   VectorSearchToolCall,
   VectorSearchWithRerankingToolCall,
-  DbReadToolCall,
-  DbWriteToolCall,
+  DbTableReadToolCall,
+  DbTableWriteToolCall,
   TextDocumentMetadata,
   QaMetadata,
 } from "@/ts/types/ChatMessage";
@@ -28,7 +28,7 @@ export function isQaMetadata(
 /**
  * Union type for all tool calls
  */
-export type AnyToolCall = VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbReadToolCall | DbWriteToolCall;
+export type AnyToolCall = VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall;
 
 /**
  * Type guard to check if tool call is VectorSearchToolCall
@@ -49,21 +49,21 @@ export function isVectorSearchWithRerankingToolCall(
 }
 
 /**
- * Type guard to check if tool call is DbReadToolCall
+ * Type guard to check if tool call is DbTableReadToolCall
  */
-export function isDbReadToolCall(
+export function isDbTableReadToolCall(
   call: AnyToolCall
-): call is DbReadToolCall {
-  return call.toolType === "dbRead";
+): call is DbTableReadToolCall {
+  return call.toolType === "dbTableRead";
 }
 
 /**
- * Type guard to check if tool call is DbWriteToolCall
+ * Type guard to check if tool call is DbTableWriteToolCall
  */
-export function isDbWriteToolCall(
+export function isDbTableWriteToolCall(
   call: AnyToolCall
-): call is DbWriteToolCall {
-  return call.toolType === "dbWrite";
+): call is DbTableWriteToolCall {
+  return call.toolType === "dbTableWrite";
 }
 
 /**
@@ -108,17 +108,17 @@ export function formatScore(score: number): string {
  * Get tool type display name
  */
 export function getToolTypeDisplayName(
-  toolType: "vectorSearch" | "vectorSearchWithReranking" | "dbRead" | "dbWrite" | "unknown" | string
+  toolType: "vectorSearch" | "vectorSearchWithReranking" | "dbTableRead" | "dbTableWrite" | "unknown" | string
 ): string {
   switch (toolType) {
     case "vectorSearch":
       return "Vector Search";
     case "vectorSearchWithReranking":
       return "Vector Search with Reranking";
-    case "dbRead":
-      return "Database Query";
-    case "dbWrite":
-      return "Database Write";
+    case "dbTableRead":
+      return "Database Table Read";
+    case "dbTableWrite":
+      return "Database Table Write";
     case "unknown":
       return "Unknown Tool";
     default:

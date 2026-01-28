@@ -200,7 +200,7 @@ function dispatchEventToState(
   currentToolCall: any,
 ): { currentToolCall: any; accumulatedToolCalls: any[] } | void {
   try {
-    console.log("Processing event:", parsedChunk.event, parsedChunk);
+    // console.log("Processing event:", parsedChunk.event, parsedChunk);
 
     // Only handle essential events to isolate the issue
     if (parsedChunk.event === "on_chat_model_start") {
