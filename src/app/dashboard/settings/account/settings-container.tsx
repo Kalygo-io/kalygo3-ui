@@ -261,7 +261,8 @@ export function SettingsContainer() {
                     Newsletter Notifications
                   </label>
                   <p className="text-gray-400 text-sm">
-                    Receive email updates about your account
+                    Receive interesting updates from our newsletter. Unsubscribe
+                    anytime.
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
