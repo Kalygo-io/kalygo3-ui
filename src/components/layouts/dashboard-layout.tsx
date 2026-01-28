@@ -24,7 +24,7 @@ import { navigation } from "@/config/navigation";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { logoutRequest } from "@/services/logoutRequest";
 import { useChatSessions } from "@/shared/hooks/use-chat-sessions";
-import { ChatAppSession } from "@/services/chatAppSessionService";
+import { ChatSession } from "@/services/chatSessionService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
   AGENTIC_RAG_CHAT_APP_ID,
@@ -49,7 +49,7 @@ export function DashboardLayout({
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   // Handle current session deletion
   const currentSessionId = searchParams.get("session");
@@ -59,7 +59,7 @@ export function DashboardLayout({
     }
   }, [currentSessionId, pathname, router]);
   const { sessions, deleteSession, loading } = useChatSessions(
-    handleCurrentSessionDeleted
+    handleCurrentSessionDeleted,
   );
 
   const userNavigation = [
@@ -82,7 +82,7 @@ export function DashboardLayout({
     navigation.forEach((item) => {
       if (item.children) {
         const isActive = item.children.some(
-          (child) => child.href && pathname.startsWith(child.href)
+          (child) => child.href && pathname.startsWith(child.href),
         );
         if (isActive) {
           newExpanded.add(item.name);
@@ -104,7 +104,7 @@ export function DashboardLayout({
     });
   };
 
-  const handleSessionClick = (session: ChatAppSession) => {
+  const handleSessionClick = (session: ChatSession) => {
     if (session.chatAppId === PERSISTENT_MEMORY_CHAT_APP_ID) {
       router.push(`/dashboard/persistent-memory?session=${session.sessionId}`);
       setSidebarOpen(false);
@@ -120,8 +120,17 @@ export function DashboardLayout({
     } else if (session.chatAppId === JWT_AGENT_CHAT_APP_ID) {
       router.push(`/dashboard/jwt-agent?session=${session.sessionId}`);
       setSidebarOpen(false);
-    } else if (session.chatAppId === KALYGO_AGENT_CHAT_APP_ID || session.chatAppId === "agent-chat") {
-      // Handle both "Kalygo Agent" and legacy "agent-chat" sessions
+    } else if (session.agentId !== null) {
+      // Sessions with an agent - navigate to agent chat with agent_id
+      router.push(
+        `/dashboard/agent-chat?agent_id=${session.agentId}&session=${session.sessionId}`,
+      );
+      setSidebarOpen(false);
+    } else if (
+      session.chatAppId === KALYGO_AGENT_CHAT_APP_ID ||
+      session.chatAppId === "agent-chat"
+    ) {
+      // Handle legacy "Kalygo Agent" and "agent-chat" sessions
       router.push(`/dashboard/agent-chat?session=${session.sessionId}`);
       setSidebarOpen(false);
     } else {
@@ -138,7 +147,7 @@ export function DashboardLayout({
   type SubMenuSection = {
     title: string;
     type: "sessions";
-    sessions: ChatAppSession[];
+    sessions: ChatSession[];
   };
 
   // Determine which sub-menu sections to show based on current pathname
@@ -148,11 +157,12 @@ export function DashboardLayout({
 
     // Agent Chat page - show past sessions
     if (pathname.startsWith("/dashboard/agent-chat")) {
-      // Include both "agent-chat" (legacy) and "Kalygo Agent" sessions
+      // Include sessions that have an agentId (new), or legacy chatAppId values
       const agentChatSessions = sessions.filter(
-        (session) => 
-          session.chatAppId === KALYGO_AGENT_CHAT_APP_ID || 
-          session.chatAppId === "agent-chat"
+        (session) =>
+          session.agentId !== null || // Sessions with an agent
+          session.chatAppId === KALYGO_AGENT_CHAT_APP_ID ||
+          session.chatAppId === "agent-chat",
       );
       sections.push({
         title: "Past Sessions",
@@ -226,14 +236,14 @@ export function DashboardLayout({
                           "w-full group flex items-center justify-between gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold cursor-pointer transition-colors duration-150",
                           expandedSections.has(item.name)
                             ? "text-white bg-blue-700"
-                            : "text-blue-200 hover:text-white hover:bg-blue-700"
+                            : "text-blue-200 hover:text-white hover:bg-blue-700",
                         )}
                       >
                         <span>{item.name}</span>
                         <ChevronRightIcon
                           className={classNames(
                             "h-4 w-4 transition-transform duration-200",
-                            expandedSections.has(item.name) ? "rotate-90" : ""
+                            expandedSections.has(item.name) ? "rotate-90" : "",
                           )}
                         />
                       </button>
@@ -253,7 +263,7 @@ export function DashboardLayout({
                                     child.href && pathname === child.href
                                       ? "bg-blue-700 text-white"
                                       : "text-blue-200 hover:text-white hover:bg-blue-700",
-                                    "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-medium cursor-pointer transition-colors duration-150"
+                                    "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-medium cursor-pointer transition-colors duration-150",
                                   )}
                                 >
                                   {child.name}
@@ -284,7 +294,7 @@ export function DashboardLayout({
                           ] === current
                           ? "bg-blue-700 text-white"
                           : "text-blue-200 hover:text-white hover:bg-blue-700",
-                        "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold cursor-pointer transition-colors duration-150"
+                        "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold cursor-pointer transition-colors duration-150",
                       )}
                     >
                       {item.name}
@@ -338,7 +348,12 @@ export function DashboardLayout({
                           >
                             <div className="flex-1 min-w-0">
                               <div className="font-medium truncate">
-                                {session.chatAppId}
+                                {session.title ||
+                                  (session.agentId
+                                    ? `Agent #${session.agentId}`
+                                    : null) ||
+                                  session.chatAppId ||
+                                  "Chat Session"}
                               </div>
                               <div className="text-xs text-gray-400 truncate">
                                 {new Date(session.createdAt).toLocaleString(
@@ -350,11 +365,8 @@ export function DashboardLayout({
                                     hour: "2-digit",
                                     minute: "2-digit",
                                     hour12: false,
-                                  }
+                                  },
                                 )}
-                              </div>
-                              <div className="text-xs text-gray-400 truncate">
-                                {session.sessionId}
                               </div>
                             </div>
                             <button
@@ -389,7 +401,7 @@ export function DashboardLayout({
                 }}
                 className={classNames(
                   "cursor-pointer text-blue-200 hover:text-white hover:bg-blue-700",
-                  "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors duration-150"
+                  "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors duration-150",
                 )}
               >
                 <ArrowLeftStartOnRectangleIcon

@@ -1,28 +1,29 @@
 import { Message } from "@/ts/types/Message";
 import { v4 as uuid } from "uuid";
 
-export interface ChatAppSession {
+export interface ChatSession {
   id: number;
   sessionId: string;
-  chatAppId: string;
+  chatAppId: string | null;
+  agentId: number | null;
   accountId: number;
   chatHistory: Message[];
   createdAt: string;
   title?: string;
 }
 
-export interface ChatAppSessionCreate {
+export interface ChatSessionCreate {
   chatAppId: string;
   title?: string;
 }
 
-class ChatAppSessionService {
+class ChatSessionService {
   private MAX_SESSIONS = 10;
 
   async getSessions(
     limit: number = 50,
-    offset: number = 0
-  ): Promise<ChatAppSession[]> {
+    offset: number = 0,
+  ): Promise<ChatSession[]> {
     try {
       const params = new URLSearchParams();
       params.append("limit", limit.toString());
@@ -31,38 +32,37 @@ class ChatAppSessionService {
       const resp = await fetch(
         `${
           process.env.NEXT_PUBLIC_AI_API_URL
-        }/api/chat-app-sessions/sessions?${params.toString()}`,
+        }/api/chat-sessions/sessions?${params.toString()}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
-        }
+        },
       );
 
       if (!resp.ok) {
         const errorText = await resp.text();
         console.error("Failed to get sessions:", resp.status, errorText);
         throw new Error(
-          `Failed to get sessions: ${resp.status} - ${errorText}`
+          `Failed to get sessions: ${resp.status} - ${errorText}`,
         );
       }
 
       const sessionsData = await resp.json();
 
       // Transform the API response to match our interface
-      const sessions: ChatAppSession[] = sessionsData.map(
-        (sessionData: any) => ({
-          id: sessionData.id,
-          sessionId: sessionData.sessionId,
-          chatAppId: sessionData.chatAppId,
-          accountId: sessionData.accountId,
-          createdAt: sessionData.createdAt,
-          title: sessionData.title,
-          chatHistory: [], // Sessions list doesn't include messages
-        })
-      );
+      const sessions: ChatSession[] = sessionsData.map((sessionData: any) => ({
+        id: sessionData.id,
+        sessionId: sessionData.sessionId,
+        chatAppId: sessionData.chatAppId,
+        agentId: sessionData.agentId,
+        accountId: sessionData.accountId,
+        createdAt: sessionData.createdAt,
+        title: sessionData.title,
+        chatHistory: [], // Sessions list doesn't include messages
+      }));
 
       return sessions;
     } catch (error) {
@@ -81,22 +81,22 @@ class ChatAppSessionService {
   //   }
   // }
 
-  async getRecentSessions(): Promise<ChatAppSession[]> {
+  async getRecentSessions(): Promise<ChatSession[]> {
     const sessions = await this.getSessions();
     return sessions.slice(0, this.MAX_SESSIONS);
   }
 
-  async getSession(id: string): Promise<ChatAppSession | null> {
+  async getSession(id: string): Promise<ChatSession | null> {
     try {
       const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-app-sessions/sessions/${id}`,
+        `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions/${id}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
-        }
+        },
       );
 
       if (!resp.ok) {
@@ -113,10 +113,11 @@ class ChatAppSessionService {
       // Transform the API response to match our interface
       // Note: messages from the backend should follow the chat-message schema
       // and include fields like role, content, and toolCalls (for AI messages)
-      const session: ChatAppSession = {
+      const session: ChatSession = {
         id: sessionData.id,
         sessionId: sessionData.sessionId,
         chatAppId: sessionData.chatAppId,
+        agentId: sessionData.agentId,
         accountId: sessionData.accountId,
         createdAt: sessionData.createdAt,
         title: sessionData.title,
@@ -130,15 +131,15 @@ class ChatAppSessionService {
     }
   }
 
-  async createSession(appId: string, title?: string): Promise<ChatAppSession> {
+  async createSession(appId: string, title?: string): Promise<ChatSession> {
     try {
-      const sessionData: ChatAppSessionCreate = {
+      const sessionData: ChatSessionCreate = {
         chatAppId: appId,
         title: title,
       };
 
       const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-app-sessions/sessions`,
+        `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions`,
         {
           method: "POST",
           headers: {
@@ -146,18 +147,18 @@ class ChatAppSessionService {
           },
           body: JSON.stringify(sessionData),
           credentials: "include",
-        }
+        },
       );
 
       if (!resp.ok) {
         const errorText = await resp.text();
         console.error("Failed to create session:", resp.status, errorText);
         throw new Error(
-          `Failed to create session: ${resp.status} - ${errorText}`
+          `Failed to create session: ${resp.status} - ${errorText}`,
         );
       }
 
-      const session: ChatAppSession = await resp.json();
+      const session: ChatSession = await resp.json();
       return session;
     } catch (error) {
       console.error("Error creating chat app session:", error);
@@ -188,14 +189,14 @@ class ChatAppSessionService {
   async deleteSession(sessionId: string): Promise<void> {
     try {
       const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-app-sessions/sessions/${sessionId}`,
+        `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions/${sessionId}`,
         {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
-        }
+        },
       );
 
       if (!resp.ok) {
@@ -205,7 +206,7 @@ class ChatAppSessionService {
         const errorText = await resp.text();
         console.error("Failed to delete session:", resp.status, errorText);
         throw new Error(
-          `Failed to delete session: ${resp.status} - ${errorText}`
+          `Failed to delete session: ${resp.status} - ${errorText}`,
         );
       }
 
@@ -236,4 +237,4 @@ class ChatAppSessionService {
   // }
 }
 
-export const chatAppSessionService = new ChatAppSessionService();
+export const chatSessionService = new ChatSessionService();

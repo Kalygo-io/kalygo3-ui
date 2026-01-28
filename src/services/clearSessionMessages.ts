@@ -1,6 +1,6 @@
 /**
  * Clear all messages from a session
- * DELETE /api/chat-app-sessions/sessions/{session_id}/messages
+ * DELETE /api/chat-sessions/sessions/{session_id}/messages
  *
  * This endpoint:
  * - Clears all messages from the specified chat session
@@ -15,7 +15,7 @@ export async function clearSessionMessages(sessionId: string): Promise<void> {
   }
 
   const resp = await fetch(
-    `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-app-sessions/sessions/${sessionId}/messages`,
+    `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions/${sessionId}/messages`,
     {
       method: "DELETE",
       headers: {
