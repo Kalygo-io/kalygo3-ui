@@ -121,17 +121,15 @@ export function DashboardLayout({
       router.push(`/dashboard/jwt-agent?session=${session.sessionId}`);
       setSidebarOpen(false);
     } else if (session.agentId !== null) {
-      // Sessions with an agent - navigate to agent chat with agent_id
-      router.push(
-        `/dashboard/agent-chat?agent_id=${session.agentId}&session=${session.sessionId}`,
-      );
+      // Sessions with an agent - navigate to agent chat session page
+      router.push(`/dashboard/agent-chat/${session.sessionId}`);
       setSidebarOpen(false);
     } else if (
       session.chatAppId === KALYGO_AGENT_CHAT_APP_ID ||
       session.chatAppId === "agent-chat"
     ) {
       // Handle legacy "Kalygo Agent" and "agent-chat" sessions
-      router.push(`/dashboard/agent-chat?session=${session.sessionId}`);
+      router.push(`/dashboard/agent-chat/${session.sessionId}`);
       setSidebarOpen(false);
     } else {
       errorToast(`Session ${session.chatAppId} is not supported yet`);
