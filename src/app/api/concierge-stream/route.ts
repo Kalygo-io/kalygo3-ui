@@ -358,14 +358,15 @@ export async function POST(request: NextRequest) {
 
       // Wait for audio to complete (with timeout)
       let waitCount = 0;
-      while (ws && ws.readyState === WebSocket.OPEN && waitCount < 300) {
+      const wsInstance = ws as WebSocket | null;
+      while (wsInstance && wsInstance.readyState === WebSocket.OPEN && waitCount < 300) {
         await new Promise((resolve) => setTimeout(resolve, 100));
         waitCount++;
       }
 
       // Close WebSocket if still open
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
+      if (wsInstance && wsInstance.readyState === WebSocket.OPEN) {
+        wsInstance.close();
       }
     } catch (error) {
       console.error("Concierge stream error:", error);
