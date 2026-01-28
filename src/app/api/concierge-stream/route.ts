@@ -10,8 +10,13 @@ const MIN_BUFFER_SIZE = 80;
 
 interface StreamEvent {
   type: "text" | "audio" | "text_done" | "audio_done" | "error";
-  data?: string;
+  data?: unknown;
   event?: string;
+  // Tool event fields
+  toolCalls?: unknown[];
+  retrieval_calls?: unknown[];
+  // Allow any additional fields from the agent API
+  [key: string]: unknown;
 }
 
 /**
