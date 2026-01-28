@@ -99,9 +99,12 @@ export function ConciergeToolCallsDrawer({
       
       // Expand all chunks
       const allChunkKeys = new Set<string>();
-      toolCalls.forEach((call, toolCallIndex) => {
-        if (call.output?.results) {
-          call.output.results.forEach((_, chunkIndex) => {
+      toolCalls.forEach((rawCall, toolCallIndex) => {
+        const call = rawCall as ConciergeToolCall;
+        // Check both v1 and v2 schema locations for results
+        const results = call.output?.results || call.results;
+        if (results) {
+          results.forEach((_, chunkIndex) => {
             allChunkKeys.add(`${toolCallIndex}-${chunkIndex}`);
           });
         }
