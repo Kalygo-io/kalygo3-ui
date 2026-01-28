@@ -273,6 +273,9 @@ export async function POST(request: NextRequest) {
                 try {
                   const parsed = JSON.parse(jsonStr);
                   
+                  // Log ALL events to understand the data flow
+                  console.log(`[Concierge Server] Event: ${parsed.event}`, JSON.stringify(parsed).substring(0, 500));
+                  
                   // Handle different event types
                   if (parsed.event === "on_chat_model_stream" && parsed.data) {
                     const textChunk = parsed.data;
@@ -302,25 +305,30 @@ export async function POST(request: NextRequest) {
                       }
                     }
                   } else if (parsed.event === "on_tool_start" || parsed.event === "on_tool_end") {
-                    // Forward tool events with ALL relevant fields from the original event
-                    // Tool info might be in: name, tool_name, data.name, data.tool_name
+                    // Forward the ENTIRE parsed object as-is to preserve all fields
+                    // This ensures we don't lose any data in translation
+                    console.log(`[Concierge Server] Tool event: ${parsed.event}`, JSON.stringify(parsed).substring(0, 1000));
+                    
+                    // Send the full parsed object, spread all fields
                     await sendEvent({
                       type: "text",
                       event: parsed.event,
-                      // Include all possible fields where tool info might be
-                      name: parsed.name,
-                      tool_name: parsed.tool_name,
-                      toolType: parsed.toolType || parsed.tool_type,
-                      input: parsed.input || parsed.tool_input,
-                      output: parsed.output,
-                      data: parsed.data,
+                      ...parsed, // Spread all fields from the original event
                     });
                   } else if (parsed.event === "on_chain_end") {
-                    // Forward chain end with data
+                    // Forward chain end with ALL data including toolCalls
+                    // The toolCalls array contains the actual vector search results
+                    console.log("[Concierge Server] Chain end - toolCalls:", parsed.toolCalls ? "present" : "not present");
+                    console.log("[Concierge Server] Chain end - data.toolCalls:", parsed.data?.toolCalls ? "present" : "not present");
+                    
                     await sendEvent({
                       type: "text",
-                      data: parsed.data,
                       event: parsed.event,
+                      data: parsed.data,
+                      // Include toolCalls - check multiple locations
+                      toolCalls: parsed.toolCalls || parsed.data?.toolCalls || parsed.tool_calls || parsed.data?.tool_calls,
+                      // Include retrieval_calls for legacy support
+                      retrieval_calls: parsed.retrieval_calls || parsed.data?.retrieval_calls,
                     });
                   } else if (parsed.event) {
                     // Forward other events to client

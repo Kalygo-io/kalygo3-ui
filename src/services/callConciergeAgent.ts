@@ -105,8 +105,9 @@ export async function callConciergeAgent(
                   },
                 });
               } else if (event.event === "on_tool_start") {
-                // Extract tool information - check multiple possible locations
-                // (agent API may structure data differently)
+                console.log("[Concierge] Tool start - raw event:", JSON.stringify(event));
+                
+                // Extract tool information - check ALL possible locations
                 const toolName =
                   event.name ||
                   event.tool_name ||
@@ -115,13 +116,18 @@ export async function callConciergeAgent(
                   (typeof event.data === "string" ? event.data : null) ||
                   "unknown_tool";
 
-                const toolInput =
+                // For input, check various locations and also check if the entire event data is the input
+                let toolInput =
                   event.input ||
                   event.tool_input ||
                   event.data?.input ||
                   event.data?.tool_input ||
-                  event.data?.query ||
                   {};
+                
+                // If input has a query, use it; otherwise check if data itself has query
+                if (!toolInput.query && event.data?.query) {
+                  toolInput = { query: event.data.query, ...toolInput };
+                }
 
                 const toolType =
                   event.toolType ||
@@ -130,7 +136,7 @@ export async function callConciergeAgent(
                   event.data?.tool_type ||
                   "unknown";
 
-                console.log("[Concierge] Tool start:", { toolName, toolType, toolInput });
+                console.log("[Concierge] Tool start - extracted:", { toolName, toolType, toolInput });
 
                 currentToolCall = {
                   toolType,
@@ -142,11 +148,43 @@ export async function callConciergeAgent(
 
                 dispatch({ type: "SET_CURRENT_TOOL", payload: toolName });
               } else if (event.event === "on_tool_end") {
-                const toolOutput =
-                  event.output ||
-                  event.data?.output ||
-                  event.data ||
-                  {};
+                console.log("[Concierge] Tool end - raw event:", JSON.stringify(event));
+                
+                // Extract tool output - check ALL possible locations
+                // The agent API may return results in various structures
+                let toolOutput: any = null;
+                
+                // Check for output/results at top level
+                if (event.output) {
+                  toolOutput = event.output;
+                } else if (event.results) {
+                  toolOutput = { results: event.results };
+                } else if (event.tool_output) {
+                  toolOutput = event.tool_output;
+                }
+                // Check in data object
+                else if (event.data) {
+                  if (event.data.output) {
+                    toolOutput = event.data.output;
+                  } else if (event.data.results) {
+                    toolOutput = { results: event.data.results };
+                  } else if (event.data.tool_output) {
+                    toolOutput = event.data.tool_output;
+                  } else if (Array.isArray(event.data)) {
+                    // Data itself might be the results array
+                    toolOutput = { results: event.data };
+                  } else if (typeof event.data === "object") {
+                    // Data might be the output object itself
+                    toolOutput = event.data;
+                  }
+                }
+                
+                // Fallback
+                if (!toolOutput) {
+                  toolOutput = {};
+                }
+
+                console.log("[Concierge] Tool end - extracted output:", toolOutput);
 
                 if (currentToolCall) {
                   const completedToolCall = {
@@ -154,6 +192,9 @@ export async function callConciergeAgent(
                     output: typeof toolOutput === "object" ? toolOutput : { result: toolOutput },
                     endTime: Date.now(),
                   };
+                  
+                  console.log("[Concierge] Completed tool call:", completedToolCall);
+                  
                   accumulatedToolCalls = [...accumulatedToolCalls, completedToolCall];
                   dispatch({
                     type: "EDIT_MESSAGE",
@@ -166,8 +207,10 @@ export async function callConciergeAgent(
                 }
                 dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
               } else if (event.event === "on_chain_end") {
+                console.log("[Concierge] Chain end - raw event:", event);
+                
                 // Final content
-                if (event.data) {
+                if (event.data && typeof event.data === "string") {
                   dispatch({
                     type: "EDIT_MESSAGE",
                     payload: {
@@ -176,12 +219,47 @@ export async function callConciergeAgent(
                     },
                   });
                 }
-                if (accumulatedToolCalls.length > 0) {
+                
+                // Check for toolCalls in the chain_end event - this is where vector search results come!
+                const toolCallsFromChainEnd = 
+                  event.toolCalls || 
+                  event.tool_calls || 
+                  event.data?.toolCalls ||
+                  event.data?.tool_calls ||
+                  null;
+                
+                console.log("[Concierge] Chain end - toolCalls found:", toolCallsFromChainEnd ? toolCallsFromChainEnd.length : 0);
+                
+                if (toolCallsFromChainEnd && Array.isArray(toolCallsFromChainEnd) && toolCallsFromChainEnd.length > 0) {
+                  console.log("[Concierge] Chain end - using toolCalls from chain_end event:", toolCallsFromChainEnd);
+                  dispatch({
+                    type: "EDIT_MESSAGE",
+                    payload: {
+                      id: aiMessageId,
+                      toolCalls: toolCallsFromChainEnd,
+                    },
+                  });
+                } else if (accumulatedToolCalls.length > 0) {
+                  // Fall back to accumulated tool calls from on_tool_start/on_tool_end
+                  console.log("[Concierge] Chain end - using accumulated tool calls:", accumulatedToolCalls);
                   dispatch({
                     type: "EDIT_MESSAGE",
                     payload: {
                       id: aiMessageId,
                       toolCalls: accumulatedToolCalls,
+                    },
+                  });
+                }
+                
+                // Check for legacy retrieval_calls
+                const retrievalCalls = event.retrieval_calls || event.data?.retrieval_calls;
+                if (retrievalCalls && Array.isArray(retrievalCalls) && retrievalCalls.length > 0) {
+                  console.log("[Concierge] Chain end - retrieval_calls found:", retrievalCalls);
+                  dispatch({
+                    type: "EDIT_MESSAGE",
+                    payload: {
+                      id: aiMessageId,
+                      retrievalCalls: retrievalCalls,
                     },
                   });
                 }
