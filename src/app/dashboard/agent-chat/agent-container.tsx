@@ -54,17 +54,15 @@ export function AgentContainer() {
         } else if (session) {
           // Session exists but has no messages, this is fine
         } else {
-          const newSession = await createSession(KALYGO_AGENT_CHAT_APP_ID);
-          const url = new URL(window.location.href);
-          url.searchParams.set("session", newSession.sessionId);
-          window.history.replaceState({}, "", url.toString());
+          // TODO: This component is deprecated - use AgentChatContainer instead
+          // Session creation now requires agentId
+          console.warn("AgentContainer: Session not found, but no agentId available to create one");
         }
       } else if (!sessionCreatedRef.current) {
         sessionCreatedRef.current = true;
-        const newSession = await createSession(KALYGO_AGENT_CHAT_APP_ID);
-        const url = new URL(window.location.href);
-        url.searchParams.set("session", newSession.sessionId);
-        window.history.replaceState({}, "", url.toString());
+        // TODO: This component is deprecated - use AgentChatContainer instead
+        // Session creation now requires agentId
+        console.warn("AgentContainer: No session, but no agentId available to create one");
       }
     }
 

@@ -95,8 +95,7 @@ export function AgentChatInterface({
           // Session exists but has no messages, this is fine
         } else {
           // Create a new session associated with this agent
-          // TODO: Update createSession to accept agentId when API supports it
-          const newSession = await createSession("agent-chat"); // Placeholder app ID
+          const newSession = await createSession(parseInt(agentId));
           const url = new URL(window.location.href);
           url.searchParams.set("session", newSession.sessionId);
           window.history.replaceState({}, "", url.toString());
@@ -104,8 +103,7 @@ export function AgentChatInterface({
       } else if (!sessionCreatedRef.current) {
         sessionCreatedRef.current = true;
         // Create a new session associated with this agent
-        // TODO: Update createSession to accept agentId when API supports it
-        const newSession = await createSession("agent-chat"); // Placeholder app ID
+        const newSession = await createSession(parseInt(agentId));
         const url = new URL(window.location.href);
         url.searchParams.set("session", newSession.sessionId);
         window.history.replaceState({}, "", url.toString());
