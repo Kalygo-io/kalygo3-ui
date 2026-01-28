@@ -77,7 +77,11 @@ jobs:
 
       - name: Build and Push Container
         run: |-
-          docker build -t "${{ env.ARTIFACTORY_URL }}:${{ github.sha }}" ./
+          docker build \
+            --build-arg NEXT_PUBLIC_AUTH_API_URL=${{ secrets.NEXT_PUBLIC_AUTH_API_URL }} \
+            --build-arg NEXT_PUBLIC_AI_API_URL=${{ secrets.NEXT_PUBLIC_AI_API_URL }} \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
+            -t "${{ env.ARTIFACTORY_URL }}:${{ github.sha }}" ./
           docker push "${{ env.ARTIFACTORY_URL }}:${{ github.sha }}"
 
       # END - Docker auth and build
@@ -89,7 +93,8 @@ jobs:
             --image ${{ env.ARTIFACTORY_URL }}:${{ github.sha }} \
             --platform managed \
             --region $SERVICE_REGION \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-env-vars "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}"
 
       # If required, use the Cloud Run url output in later steps
       - name: Show Output
