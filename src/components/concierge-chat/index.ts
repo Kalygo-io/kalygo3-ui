@@ -1,2 +1,9 @@
 export { Chat } from "./chat";
 export { PromptForm } from "./prompt-form";
+export { StreamingAudioPlayer } from "./streaming-audio-player";
+export { ConciergeChatList } from "./chat-list";
+export { ConciergeChatMessage } from "./chat-message";
+export { ConciergeToolCallsDrawer } from "./tool-calls-drawer";
+export { ConciergeErrorDetailsDrawer } from "./error-details-drawer";
+export { ConciergeContextualAside } from "./contextual-aside";
+export { ToolStatus } from "./tool-status";
