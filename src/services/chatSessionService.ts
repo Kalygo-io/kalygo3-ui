@@ -13,7 +13,7 @@ export interface ChatSession {
 }
 
 export interface ChatSessionCreate {
-  chatAppId: string;
+  agentId: number;
   title?: string;
 }
 
@@ -131,10 +131,10 @@ class ChatSessionService {
     }
   }
 
-  async createSession(appId: string, title?: string): Promise<ChatSession> {
+  async createSession(agentId: number, title?: string): Promise<ChatSession> {
     try {
       const sessionData: ChatSessionCreate = {
-        chatAppId: appId,
+        agentId: agentId,
         title: title,
       };
 

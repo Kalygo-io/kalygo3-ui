@@ -21,8 +21,8 @@ export function useChatSessions(onCurrentSessionDeleted?: () => void) {
     }
   }, []);
 
-  const createSession = useCallback(async (appId: string) => {
-    const newSession = await chatSessionService.createSession(appId);
+  const createSession = useCallback(async (agentId: number) => {
+    const newSession = await chatSessionService.createSession(agentId);
     return newSession;
   }, []);
 
