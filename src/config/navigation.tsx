@@ -31,6 +31,11 @@ export const navigation: NavigationItem[] = [
         enabled: true,
       },
       {
+        name: "Concierge Chat",
+        href: "/dashboard/concierge-chat",
+        enabled: true,
+      },
+      {
         name: "Vector Stores",
         href: "/dashboard/vector-stores",
         enabled: true,
