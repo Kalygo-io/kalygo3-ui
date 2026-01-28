@@ -64,6 +64,7 @@ export interface DbTableWriteTool {
   columns: string[]; // Columns that can be written (required)
   requiredColumns?: string[]; // Columns that must be provided when inserting
   injectAccountId?: boolean; // Auto-inject user's account_id into the record
+  injectChatSessionId?: boolean; // Auto-inject chat session UUID into the record
 }
 
 export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool | DbTableReadTool | DbTableWriteTool;

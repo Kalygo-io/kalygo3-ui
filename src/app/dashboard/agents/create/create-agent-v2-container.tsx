@@ -354,6 +354,11 @@ export function CreateAgentV2Container() {
                                     + Auto-inject account_id
                                   </p>
                                 )}
+                                {tool.injectChatSessionId && (
+                                  <p className="text-xs text-orange-400">
+                                    + Auto-inject chat_session_id
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2 ml-4">

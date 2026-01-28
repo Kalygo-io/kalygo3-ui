@@ -41,6 +41,7 @@ export function AddToolModal({
   // DB Write specific
   const [requiredColumns, setRequiredColumns] = useState("");
   const [injectAccountId, setInjectAccountId] = useState(false);
+  const [injectChatSessionId, setInjectChatSessionId] = useState(false);
   
   // Shared state
   const [description, setDescription] = useState("");
@@ -75,6 +76,7 @@ export function AddToolModal({
         setColumns(initialTool.columns.join(", "));
         setRequiredColumns(initialTool.requiredColumns?.join(", ") || "");
         setInjectAccountId(initialTool.injectAccountId || false);
+        setInjectChatSessionId(initialTool.injectChatSessionId || false);
       } else {
         setToolCategory("vectorSearch");
         setVectorToolType(initialTool.type);
@@ -255,6 +257,9 @@ export function AddToolModal({
       }
       if (injectAccountId) {
         dbWriteTool.injectAccountId = true;
+      }
+      if (injectChatSessionId) {
+        dbWriteTool.injectChatSessionId = true;
       }
 
       tool = dbWriteTool;
@@ -733,6 +738,28 @@ export function AddToolModal({
                       <p className="text-gray-400 text-xs mt-1">
                         Automatically set the <code className="text-orange-400">account_id</code> column to the 
                         authenticated user&apos;s account. Enable this if the table has an account_id column.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Inject Chat Session ID */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center h-6">
+                      <input
+                        type="checkbox"
+                        id="injectChatSessionId"
+                        checked={injectChatSessionId}
+                        onChange={(e) => setInjectChatSessionId(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-600 bg-gray-900 text-orange-500 focus:ring-orange-500 focus:ring-offset-gray-800"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="injectChatSessionId" className="text-sm font-medium text-gray-300 cursor-pointer">
+                        Auto-inject Chat Session ID
+                      </label>
+                      <p className="text-gray-400 text-xs mt-1">
+                        Automatically set the <code className="text-orange-400">chat_session_id</code> column to the 
+                        current chat session&apos;s UUID. Enable this to track which conversation generated the record.
                       </p>
                     </div>
                   </div>

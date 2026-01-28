@@ -356,6 +356,11 @@ export function ContextualAside({
                                               <span className="text-orange-400">+ Auto-inject account_id</span>
                                             </div>
                                           )}
+                                          {tool.injectChatSessionId && (
+                                            <div>
+                                              <span className="text-orange-400">+ Auto-inject chat_session_id</span>
+                                            </div>
+                                          )}
                                           {tool.description && (
                                             <div>
                                               <span className="text-gray-400">Description: </span>

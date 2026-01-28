@@ -541,6 +541,11 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                                         + account_id
                                       </div>
                                     )}
+                                    {tool.injectChatSessionId && (
+                                      <div className="text-xs text-orange-400">
+                                        + chat_session_id
+                                      </div>
+                                    )}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-right">
