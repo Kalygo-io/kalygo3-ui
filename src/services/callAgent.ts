@@ -2,12 +2,34 @@ import { Action } from "@/app/dashboard/agent-chat/chat-session-reducer";
 import { nanoid } from "@/shared/utils";
 import React from "react";
 
+// PDF attachment options
+export interface PdfAttachment {
+  file: File;
+  useVision?: boolean; // false = text extraction (default), true = vision mode
+}
+
+// Helper to convert File to base64
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      // Remove the data URL prefix to get raw base64
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+  });
+}
+
 export async function callAgent(
   agentId: string,
   sessionId: string,
   prompt: string,
   dispatch: React.Dispatch<Action>,
   abortController?: AbortController,
+  pdfAttachment?: PdfAttachment,
 ) {
   console.log(
     "Starting Agent call with agentId:",
@@ -16,7 +38,31 @@ export async function callAgent(
     sessionId,
     "prompt:",
     prompt,
+    "pdfAttachment:",
+    pdfAttachment ? pdfAttachment.file.name : "none",
   );
+
+  // Build request body
+  const requestBody: Record<string, any> = {
+    sessionId: sessionId,
+    prompt: prompt,
+  };
+
+  // Add PDF if attached
+  if (pdfAttachment) {
+    const pdfBase64 = await fileToBase64(pdfAttachment.file);
+    requestBody.pdf = pdfBase64;
+    requestBody.pdfFilename = pdfAttachment.file.name;
+    requestBody.pdfUseVision = pdfAttachment.useVision ?? false;
+    console.log(
+      "PDF attached:",
+      pdfAttachment.file.name,
+      "size:",
+      pdfAttachment.file.size,
+      "useVision:",
+      requestBody.pdfUseVision,
+    );
+  }
 
   const resp = await fetch(
     `${process.env.NEXT_PUBLIC_AI_API_URL}/api/agents/${encodeURIComponent(agentId)}/completion`,
@@ -25,10 +71,7 @@ export async function callAgent(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        sessionId: sessionId,
-        prompt: prompt,
-      }),
+      body: JSON.stringify(requestBody),
       credentials: "include",
       signal: abortController?.signal,
     },

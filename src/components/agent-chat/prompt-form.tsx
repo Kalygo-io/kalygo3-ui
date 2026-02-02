@@ -8,7 +8,7 @@ import {
 } from "@/app/dashboard/agent-chat/chat-session-context";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { nanoid } from "@/shared/utils";
-import { callAgent } from "@/services/callAgent";
+import { callAgent, PdfAttachment } from "@/services/callAgent";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import {
   StopIcon,
@@ -30,7 +30,7 @@ export function PromptForm({
   const { formRef, onKeyDown } = useEnterSubmit();
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [attachedFiles, setAttachedFiles] = React.useState<File[]>([]);
+  const [attachedFile, setAttachedFile] = React.useState<File | null>(null);
 
   const dispatch = React.useContext(ChatDispatchContext);
   const chatState = React.useContext(ChatContext);
@@ -61,11 +61,11 @@ export function PromptForm({
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      const pdfFiles = Array.from(files).filter(
-        (file) => file.type === "application/pdf"
-      );
-      setAttachedFiles((prev) => [...prev, ...pdfFiles]);
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type === "application/pdf") {
+        setAttachedFile(file);
+      }
     }
     // Reset input so the same file can be selected again
     if (fileInputRef.current) {
@@ -73,8 +73,8 @@ export function PromptForm({
     }
   };
 
-  const handleRemoveFile = (index: number) => {
-    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveFile = () => {
+    setAttachedFile(null);
   };
 
   const handleAttachClick = () => {
@@ -97,9 +97,9 @@ export function PromptForm({
           e.preventDefault();
 
           setInput("");
-          const filesToSend = [...attachedFiles];
-          setAttachedFiles([]);
-          if ((!prompt && filesToSend.length === 0) || isRequestInFlight) return;
+          const fileToSend = attachedFile;
+          setAttachedFile(null);
+          if ((!prompt && !fileToSend) || isRequestInFlight) return;
 
           if (!dispatch) {
             throw new Error("ChatDispatchContext is not available");
@@ -114,11 +114,16 @@ export function PromptForm({
           const abortController = new AbortController();
           dispatch({ type: "SET_CURRENT_REQUEST", payload: abortController });
 
+          // Build message content with PDF indicator if attached
+          const messageContent = fileToSend
+            ? `${prompt}\n\n📎 Attached: ${fileToSend.name}`
+            : prompt;
+
           dispatch({
             type: "ADD_MESSAGE",
             payload: {
               id: humanMessageId,
-              content: prompt,
+              content: messageContent,
               role: "human",
               error: null,
             },
@@ -134,7 +139,13 @@ export function PromptForm({
           if (!agentId) {
             throw new Error("Agent ID is required");
           }
-          await callAgent(agentId, sessionId, prompt, dispatch, abortController);
+          
+          // Prepare PDF attachment if present
+          const pdfAttachment: PdfAttachment | undefined = fileToSend
+            ? { file: fileToSend, useVision: false }
+            : undefined;
+          
+          await callAgent(agentId, sessionId, prompt, dispatch, abortController, pdfAttachment);
 
           dispatch({
             type: "SET_COMPLETION_LOADING",
@@ -170,35 +181,29 @@ export function PromptForm({
         ref={fileInputRef}
         onChange={handleFileSelect}
         accept=".pdf,application/pdf"
-        multiple
         className="hidden"
       />
 
-      {/* Attached files display */}
-      {attachedFiles.length > 0 && (
+      {/* Attached file display */}
+      {attachedFile && (
         <div className="mb-2 flex flex-wrap gap-2">
-          {attachedFiles.map((file, index) => (
-            <div
-              key={`${file.name}-${index}`}
-              className="flex items-center gap-2 bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-1.5 text-sm"
+          <div className="flex items-center gap-2 bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-1.5 text-sm">
+            <DocumentIcon className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <span className="text-gray-200 truncate max-w-[200px]" title={attachedFile.name}>
+              {attachedFile.name}
+            </span>
+            <span className="text-gray-400 text-xs">
+              ({formatFileSize(attachedFile.size)})
+            </span>
+            <button
+              type="button"
+              onClick={handleRemoveFile}
+              className="text-gray-400 hover:text-red-400 transition-colors p-0.5"
+              title="Remove file"
             >
-              <DocumentIcon className="w-4 h-4 text-red-400 flex-shrink-0" />
-              <span className="text-gray-200 truncate max-w-[150px]" title={file.name}>
-                {file.name}
-              </span>
-              <span className="text-gray-400 text-xs">
-                ({formatFileSize(file.size)})
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemoveFile(index)}
-                className="text-gray-400 hover:text-red-400 transition-colors p-0.5"
-                title="Remove file"
-              >
-                <XMarkIcon className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -246,7 +251,7 @@ export function PromptForm({
           ) : (
             <button
               type="submit"
-              disabled={(!input.trim() && attachedFiles.length === 0) || isRequestInFlight}
+              disabled={(!input.trim() && !attachedFile) || isRequestInFlight}
               className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white transition-colors"
               title="Send message"
             >
