@@ -13,9 +13,7 @@ import { cn } from "@/shared/utils";
 import { useContext, useEffect, useState, useCallback } from "react";
 // ContextualAside removed - can be added later if needed
 // import { ContextualAside } from "./contextual-aside";
-import {
-  ChevronDownIcon,
-} from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ContextualAside } from "./contextual-aside";
 import { Agent } from "@/services/agentsService";
 
@@ -25,12 +23,19 @@ export interface ChatProps extends React.ComponentProps<"div"> {
   setIsDrawerOpen?: (open: boolean) => void;
 }
 
-export function Chat({ id, className, agent, isDrawerOpen = false, setIsDrawerOpen }: ChatProps) {
+export function Chat({
+  id,
+  className,
+  agent,
+  isDrawerOpen = false,
+  setIsDrawerOpen,
+}: ChatProps) {
   const [input, setInput] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);
   const chatState = useContext(ChatContext);
   const dispatch = useContext(ChatDispatchContext);
-  const { messagesRef, scrollRef, scrollToBottom, visibilityRef, isAtBottom } = useScrollAnchor();
+  const { messagesRef, scrollRef, scrollToBottom, visibilityRef, isAtBottom } =
+    useScrollAnchor();
 
   // Check scroll position and update button visibility
   const checkScrollPosition = useCallback(() => {
@@ -65,20 +70,30 @@ export function Chat({ id, className, agent, isDrawerOpen = false, setIsDrawerOp
 
   // Auto-scroll to bottom when messages are streaming and user is at bottom
   useEffect(() => {
-    if (chatState.messages.length > 0 && (isAtBottom || chatState.completionLoading)) {
+    if (
+      chatState.messages.length > 0 &&
+      (isAtBottom || chatState.completionLoading)
+    ) {
       // Small delay to ensure DOM has updated
       const timer = setTimeout(() => {
         scrollToBottom();
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [chatState.messages, chatState.completionLoading, isAtBottom, scrollToBottom]);
+  }, [
+    chatState.messages,
+    chatState.completionLoading,
+    isAtBottom,
+    scrollToBottom,
+  ]);
 
   // Early return check AFTER all hooks
   if (!dispatch) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-400">Chat context is not available. Please refresh the page.</div>
+        <div className="text-red-400">
+          Chat context is not available. Please refresh the page.
+        </div>
       </div>
     );
   }
@@ -89,7 +104,6 @@ export function Chat({ id, className, agent, isDrawerOpen = false, setIsDrawerOp
 
   return (
     <>
-
       {/* Floating Scroll to Bottom Button - Integrated with input area */}
       <button
         onClick={handleScrollToBottom}
@@ -99,7 +113,7 @@ export function Chat({ id, className, agent, isDrawerOpen = false, setIsDrawerOp
           // Responsive positioning - further from edge on mobile, closer on desktop
           "right-4 sm:right-6",
           // Temporarily always visible for testing
-          "opacity-100 translate-y-0 scale-100"
+          "opacity-100 translate-y-0 scale-100",
           // showScrollButton
           //   ? "opacity-100 translate-y-0 scale-100"
           //   : "opacity-0 translate-y-2 scale-95 pointer-events-none"
@@ -110,7 +124,10 @@ export function Chat({ id, className, agent, isDrawerOpen = false, setIsDrawerOp
       </button>
 
       <div className="h-full overflow-hidden">
-        <div className="h-full overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 custom-scrollbar" ref={scrollRef}>
+        <div
+          className="h-full overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 custom-scrollbar"
+          ref={scrollRef}
+        >
           <div
             className={cn("pb-[200px] chat-messages-fade", className)}
             ref={messagesRef}
@@ -125,11 +142,27 @@ export function Chat({ id, className, agent, isDrawerOpen = false, setIsDrawerOp
             ) : (
               <EmptyScreen
                 content={
-                  <>
-                    <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
-                      Agent Chat 🧿
-                    </h1>
-                  </>
+                  agent && agent.name === "Cable Label Agent" ? (
+                    <>
+                      <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
+                        Cable Label Chat 🧿
+                      </h1>
+                      <p className="text-center text-gray-400 mt-2">
+                        Drop your rider in below and let the AI help generate
+                        the labels (.pdf)
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
+                        Agent Chat 🧿
+                      </h1>
+                      <p className="text-center text-gray-400 mt-2">
+                        Drop your rider in below and let the AI help generate
+                        the labels (.pdf)
+                      </p>
+                    </>
+                  )
                 }
               />
             )}

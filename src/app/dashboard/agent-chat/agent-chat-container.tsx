@@ -35,11 +35,13 @@ export function AgentChatContainer() {
 
   const handleSelectAgent = async (agent: Agent) => {
     if (creatingSession) return; // Prevent double-clicks
-    
+
     try {
       setCreatingSession(agent.id);
       // Create a new session for this agent
-      const newSession = await chatSessionService.createSession(parseInt(agent.id));
+      const newSession = await chatSessionService.createSession(
+        parseInt(agent.id),
+      );
       // Navigate to the chat page with the session ID
       router.push(`/dashboard/agent-chat/${newSession.sessionId}`);
     } catch (error: any) {
