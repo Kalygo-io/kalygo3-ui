@@ -17,6 +17,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Prompts",
+    href: "/dashboard/prompts",
+    enabled: true,
+  },
+  {
     name: "Playground",
     enabled: true,
     children: [
