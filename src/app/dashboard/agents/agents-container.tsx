@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { agentsService, Agent, getAgentVersion } from "@/services/agentsService";
+import { agentsService, Agent, getAgentVersion, getAgentModelConfig } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { ArrowRightIcon, PlusIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 
@@ -48,6 +48,10 @@ export function AgentsContainer() {
     router.push("/dashboard/agents/create-v2");
   };
 
+  const handleCreateV3 = () => {
+    router.push("/dashboard/agents/create-v3");
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -74,7 +78,7 @@ export function AgentsContainer() {
             <ChevronDownIcon className="h-4 w-4" />
           </button>
           {showCreateMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-10">
+            <div className="absolute right-0 mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden z-10">
               <button
                 onClick={handleCreateV1}
                 className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors text-white"
@@ -86,13 +90,20 @@ export function AgentsContainer() {
                 onClick={handleCreateV2}
                 className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors text-white border-t border-gray-700"
               >
+                <div className="font-medium">Create Agent v2</div>
+                <div className="text-xs text-gray-400 mt-1">Enhanced tools (default model)</div>
+              </button>
+              <button
+                onClick={handleCreateV3}
+                className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors text-white border-t border-gray-700"
+              >
                 <div className="font-medium flex items-center gap-2">
-                  Create Agent v2
+                  Create Agent v3
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-600/20 text-blue-300 border border-blue-500/40">
                     Recommended
                   </span>
                 </div>
-                <div className="text-xs text-gray-400 mt-1">New schema with enhanced tools</div>
+                <div className="text-xs text-gray-400 mt-1">Model selection + enhanced tools</div>
               </button>
             </div>
           )}
@@ -106,7 +117,7 @@ export function AgentsContainer() {
           <p className="text-gray-500 text-sm mb-6">
             You don&apos;t have any agents yet. Create one to get started.
           </p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex gap-3 justify-center flex-wrap">
             <button
               onClick={handleCreateV1}
               className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
@@ -116,10 +127,17 @@ export function AgentsContainer() {
             </button>
             <button
               onClick={handleCreateV2}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
+              className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
             >
               <PlusIcon className="h-5 w-5" />
               Create Agent v2
+            </button>
+            <button
+              onClick={handleCreateV3}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create Agent v3
             </button>
           </div>
         </div>
@@ -146,7 +164,9 @@ function AgentCard({
   onViewDetails: () => void;
 }) {
   const version = getAgentVersion(agent);
-  const isV2 = version === 2;
+  const modelConfig = getAgentModelConfig(agent);
+  const isV3 = version === 3;
+  const isModern = version >= 2;
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 transition-all duration-200 hover:shadow-lg hover:border-gray-600/50 flex flex-col">
@@ -155,7 +175,9 @@ function AgentCard({
           <h3 className="text-xl font-semibold text-white">{agent.name}</h3>
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-              isV2
+              isV3
+                ? "bg-green-600/20 text-green-300 border border-green-500/40"
+                : isModern
                 ? "bg-blue-600/20 text-blue-300 border border-blue-500/40"
                 : "bg-gray-700/50 text-gray-400 border border-gray-600/40"
             }`}
@@ -167,6 +189,9 @@ function AgentCard({
           <p className="text-sm text-gray-400 mb-4">{agent.description}</p>
         )}
         <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+          <span className="px-2 py-1 bg-gray-700/50 rounded capitalize">
+            {modelConfig.provider}: {modelConfig.model}
+          </span>
           {agent.status && (
             <span className="px-2 py-1 bg-gray-700/50 rounded">
               Status: {agent.status}

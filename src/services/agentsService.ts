@@ -81,11 +81,61 @@ export interface AgentConfigV2 {
 }
 
 // ============================================================================
+// V3 Schema Types (Model Configuration)
+// ============================================================================
+
+export type ModelProvider = "openai" | "anthropic" | "ollama";
+
+export interface ModelConfig {
+  provider: ModelProvider;
+  model: string;
+}
+
+export interface AgentConfigDataV3 {
+  systemPrompt: string;
+  model?: ModelConfig;
+  tools?: ToolV2[];
+}
+
+export interface AgentConfigV3 {
+  schema: "agent_config";
+  version: 3;
+  data: AgentConfigDataV3;
+}
+
+// Available models by provider
+export const AVAILABLE_MODELS: Record<ModelProvider, { value: string; label: string }[]> = {
+  openai: [
+    { value: "gpt-5.1", label: "GPT-5.1 (Latest)" },
+    { value: "gpt-4o-mini", label: "GPT-4o Mini (Fast, Cost-effective)" },
+    { value: "gpt-4o", label: "GPT-4o (Most Capable)" },
+    { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+    { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (Legacy)" },
+  ],
+  anthropic: [
+    { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (Recommended)" },
+    { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku (Fast)" },
+    { value: "claude-3-opus-20240229", label: "Claude 3 Opus (Most Capable)" },
+  ],
+  ollama: [
+    { value: "llama3.2", label: "Llama 3.2" },
+    { value: "llama3.1", label: "Llama 3.1" },
+    { value: "mistral", label: "Mistral" },
+    { value: "codellama", label: "Code Llama" },
+  ],
+};
+
+export const DEFAULT_MODEL: ModelConfig = {
+  provider: "openai",
+  model: "gpt-4o-mini",
+};
+
+// ============================================================================
 // Union Types
 // ============================================================================
 
-export type AgentConfig = AgentConfigV1 | AgentConfigV2;
-export type AgentConfigData = AgentConfigDataV1 | AgentConfigDataV2;
+export type AgentConfig = AgentConfigV1 | AgentConfigV2 | AgentConfigV3;
+export type AgentConfigData = AgentConfigDataV1 | AgentConfigDataV2 | AgentConfigDataV3;
 export type KnowledgeBase = KnowledgeBaseV1; // Keep for backwards compatibility
 
 export interface Agent {
@@ -116,6 +166,13 @@ export interface UpdateAgentRequest {
 // ============================================================================
 
 /**
+ * Type guard to check if agent config is V3
+ */
+export function isAgentConfigV3(config: AgentConfig | undefined): config is AgentConfigV3 {
+  return config?.version === 3;
+}
+
+/**
  * Type guard to check if agent config is V2
  */
 export function isAgentConfigV2(config: AgentConfig | undefined): config is AgentConfigV2 {
@@ -132,8 +189,20 @@ export function isAgentConfigV1(config: AgentConfig | undefined): config is Agen
 /**
  * Get the agent schema version
  */
-export function getAgentVersion(agent: Agent): 1 | 2 {
-  return agent.config?.version === 2 ? 2 : 1;
+export function getAgentVersion(agent: Agent): 1 | 2 | 3 {
+  if (agent.config?.version === 3) return 3;
+  if (agent.config?.version === 2) return 2;
+  return 1;
+}
+
+/**
+ * Get model config from agent, returns default if not specified
+ */
+export function getAgentModelConfig(agent: Agent): ModelConfig {
+  if (isAgentConfigV3(agent.config) && agent.config.data.model) {
+    return agent.config.data.model;
+  }
+  return DEFAULT_MODEL;
 }
 
 /**

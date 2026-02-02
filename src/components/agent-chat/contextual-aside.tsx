@@ -8,9 +8,10 @@ import {
   CircleStackIcon,
   PencilSquareIcon,
   MagnifyingGlassIcon,
+  CpuChipIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
-import { Agent, KnowledgeBase, isAgentConfigV1, ToolV2 } from "@/services/agentsService";
+import { Agent, KnowledgeBase, isAgentConfigV1, isAgentConfigV3, ToolV2, getAgentModelConfig } from "@/services/agentsService";
 
 interface ContextualAsideProps {
   isOpen: boolean;
@@ -136,9 +137,16 @@ export function ContextualAside({
                 {/* Agent Config */}
                 {agent.config && (
                   <div className="space-y-3">
-                    <h4 className="text-md font-semibold text-white">
-                      Agent Config v{agent.config.version}:
-                    </h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-md font-semibold text-white">
+                        Agent Config v{agent.config.version}:
+                      </h4>
+                      {agent.config.version === 3 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-600/20 text-green-300 border border-green-500/40">
+                          Latest
+                        </span>
+                      )}
+                    </div>
 
                     {/* System Prompt */}
                     {agent.config.data?.systemPrompt && (
@@ -151,6 +159,34 @@ export function ContextualAside({
                             <pre className="whitespace-pre-wrap font-sans">
                               {agent.config.data.systemPrompt}
                             </pre>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Model Configuration (V3 only) */}
+                    {isAgentConfigV3(agent.config) && (
+                      <div className="bg-gray-800/50 rounded-lg p-3">
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <CpuChipIcon className="w-4 h-4 text-green-400" />
+                            <span className="text-xs text-gray-400">Model</span>
+                          </div>
+                          <div className="bg-gray-900/50 p-2 rounded border border-green-700/30">
+                            <div className="text-xs text-gray-300 space-y-1">
+                              <div>
+                                <span className="text-gray-400">Provider: </span>
+                                <span className="text-white capitalize">
+                                  {getAgentModelConfig(agent).provider}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-400">Model: </span>
+                                <span className="text-green-400 font-mono">
+                                  {getAgentModelConfig(agent).model}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
