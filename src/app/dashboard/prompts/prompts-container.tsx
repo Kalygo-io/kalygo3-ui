@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
+import { promptsService, Prompt } from "@/services/promptsService";
 import {
   PlusIcon,
   DocumentTextIcon,
@@ -12,16 +13,6 @@ import {
   ClipboardDocumentIcon,
   EyeIcon,
 } from "@heroicons/react/24/outline";
-
-// Placeholder type - will be replaced when API is integrated
-export interface Prompt {
-  id: string;
-  name: string;
-  description?: string;
-  content: string;
-  created_at?: string;
-  updated_at?: string;
-}
 
 export function PromptsContainer() {
   const router = useRouter();
@@ -37,12 +28,8 @@ export function PromptsContainer() {
   const loadPrompts = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const data = await promptsService.listPrompts();
-      // setPrompts(data);
-      
-      // Placeholder data for scaffolding
-      setPrompts([]);
+      const data = await promptsService.listPrompts();
+      setPrompts(data);
     } catch (error: any) {
       errorToast(error.message || "Failed to load prompts");
     } finally {
@@ -59,11 +46,11 @@ export function PromptsContainer() {
     setShowPreviewModal(true);
   };
 
-  const handleEditPrompt = (promptId: string) => {
+  const handleEditPrompt = (promptId: number) => {
     router.push(`/dashboard/prompts/${promptId}/edit`);
   };
 
-  const handleDeletePrompt = async (promptId: string, promptName: string) => {
+  const handleDeletePrompt = async (promptId: number, promptName: string) => {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${promptName}"? This action cannot be undone.`
     );
@@ -71,8 +58,7 @@ export function PromptsContainer() {
     if (!confirmed) return;
 
     try {
-      // TODO: Replace with actual API call
-      // await promptsService.deletePrompt(promptId);
+      await promptsService.deletePrompt(promptId);
       setPrompts(prompts.filter((p) => p.id !== promptId));
       successToast(`Prompt "${promptName}" deleted successfully`);
     } catch (error: any) {

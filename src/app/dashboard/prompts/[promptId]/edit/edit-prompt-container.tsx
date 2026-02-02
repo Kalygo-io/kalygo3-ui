@@ -1,21 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
-import { promptsService } from "@/services/promptsService";
-import {
-  ArrowLeftIcon,
-  DocumentTextIcon,
-} from "@heroicons/react/24/outline";
+import { promptsService, Prompt } from "@/services/promptsService";
+import { ArrowLeftIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 
-export function CreatePromptContainer() {
+export function EditPromptContainer({ promptId }: { promptId: string }) {
   const router = useRouter();
+  const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadPrompt();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promptId]);
+
+  const loadPrompt = async () => {
+    try {
+      setLoading(true);
+      const data = await promptsService.getPrompt(parseInt(promptId, 10));
+      setPrompt(data);
+      setName(data.name);
+      setDescription(data.description || "");
+      setContent(data.content);
+    } catch (error: any) {
+      errorToast(error.message || "Failed to load prompt");
+      router.push("/dashboard/prompts");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,16 +53,16 @@ export function CreatePromptContainer() {
     try {
       setSubmitting(true);
 
-      await promptsService.createPrompt({
+      await promptsService.updatePrompt(parseInt(promptId, 10), {
         name: name.trim(),
         description: description.trim() || undefined,
         content: content.trim(),
       });
 
-      successToast("Prompt created successfully");
+      successToast("Prompt updated successfully");
       router.push("/dashboard/prompts");
     } catch (error: any) {
-      errorToast(error.message || "Failed to create prompt");
+      errorToast(error.message || "Failed to update prompt");
     } finally {
       setSubmitting(false);
     }
@@ -51,6 +71,22 @@ export function CreatePromptContainer() {
   const handleCancel = () => {
     router.push("/dashboard/prompts");
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400">Loading prompt...</div>
+      </div>
+    );
+  }
+
+  if (!prompt) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-400">Prompt not found</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -63,14 +99,14 @@ export function CreatePromptContainer() {
           <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
         </button>
         <div>
-          <h1 className="text-4xl font-semibold text-white">Create Prompt</h1>
+          <h1 className="text-4xl font-semibold text-white">Edit Prompt</h1>
           <p className="text-sm text-gray-400 mt-1">
-            Create a new prompt template
+            Update your prompt template
           </p>
         </div>
       </div>
 
-      {/* Create Form */}
+      {/* Edit Form */}
       <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Prompt Name */}
@@ -117,9 +153,7 @@ export function CreatePromptContainer() {
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Enter your prompt template here...
-
-You can use placeholders like {{variable}} for dynamic content."
+              placeholder="Enter your prompt template here..."
               rows={12}
               required
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
@@ -166,7 +200,7 @@ You can use placeholders like {{variable}} for dynamic content."
               disabled={submitting}
               className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
             >
-              {submitting ? "Creating..." : "Create Prompt"}
+              {submitting ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
