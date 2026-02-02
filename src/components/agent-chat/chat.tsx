@@ -145,7 +145,7 @@ export function Chat({
                   agent && agent.name === "Cable Label Agent" ? (
                     <>
                       <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
-                        Cable Label Chat 🧿
+                        Cable Label Chat ➰
                       </h1>
                       <p className="text-center text-gray-400 mt-2">
                         Drop your rider in below and let the AI help generate
