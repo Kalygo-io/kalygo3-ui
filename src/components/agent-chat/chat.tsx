@@ -158,8 +158,7 @@ export function Chat({
                         Agent Chat 🧿
                       </h1>
                       <p className="text-center text-gray-400 mt-2">
-                        Drop your rider in below and let the AI help generate
-                        the labels (.pdf)
+                        Send message to your agent and get a response.
                       </p>
                     </>
                   )
