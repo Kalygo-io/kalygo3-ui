@@ -65,7 +65,7 @@ export async function callAgent(
   }
 
   const resp = await fetch(
-    `${process.env.NEXT_PUBLIC_AI_API_URL}/api/agents/${encodeURIComponent(agentId)}/completion`,
+    `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/agents/${encodeURIComponent(agentId)}/completion`,
     {
       method: "POST",
       headers: {
