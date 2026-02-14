@@ -64,6 +64,11 @@ export async function callAgent(
     );
   }
 
+  console.log(
+    "process.env.NEXT_PUBLIC_COMPLETION_API_URL",
+    process.env.NEXT_PUBLIC_COMPLETION_API_URL,
+  );
+
   const resp = await fetch(
     `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/agents/${encodeURIComponent(agentId)}/completion`,
     {
