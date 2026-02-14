@@ -81,6 +81,7 @@ jobs:
             --build-arg NEXT_PUBLIC_AUTH_API_URL=${{ secrets.NEXT_PUBLIC_AUTH_API_URL }} \
             --build-arg NEXT_PUBLIC_AI_API_URL=${{ secrets.NEXT_PUBLIC_AI_API_URL }} \
             --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }} \
+            --build-arg NEXT_PUBLIC_COMPLETION_API_URL=${{ secrets.NEXT_PUBLIC_COMPLETION_API_URL }} \
             -t "${{ env.ARTIFACTORY_URL }}:${{ github.sha }}" ./
           docker push "${{ env.ARTIFACTORY_URL }}:${{ github.sha }}"
 
