@@ -147,6 +147,7 @@ export interface Agent {
   updated_at?: string;
   status?: string;
   owner_id?: number;
+  owned?: boolean; // true if current account owns this agent, false if shared via group
   config?: AgentConfig; // Agent configuration (V1 or V2)
   [key: string]: any; // Allow for additional properties
 }

@@ -32,6 +32,7 @@ import {
 } from "@/services/vectorStoresService";
 import { AddKnowledgeBaseModal } from "../agents/create/add-knowledge-base-modal";
 import { KnowledgeBaseChip } from "../agents/create/knowledge-base-chip";
+import { AgentSharingPanel } from "@/components/agent-sharing/agent-sharing-panel";
 
 export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
   const router = useRouter();
@@ -227,6 +228,9 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
     ? knowledgeBases[editingKnowledgeBaseIndex] 
     : null;
 
+  // Ownership: default to true for backwards compat
+  const isOwner = agent.owned !== false;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -238,19 +242,28 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
           >
             <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
           </button>
-          <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
+            {!isOwner && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600/20 text-indigo-300 border border-indigo-500/40">
+                Shared with you
+              </span>
+            )}
+          </div>
         </div>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Delete agent"
-        >
-          <TrashIcon className="h-5 w-5" />
-          <span className="text-sm font-medium">
-            {deleting ? "Deleting..." : "Delete"}
-          </span>
-        </button>
+        {isOwner && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Delete agent"
+          >
+            <TrashIcon className="h-5 w-5" />
+            <span className="text-sm font-medium">
+              {deleting ? "Deleting..." : "Delete"}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Basic Information */}
@@ -497,17 +510,24 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
           </div>
         </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors duration-200"
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
+        {/* Save Button (owners only) */}
+        {isOwner && (
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors duration-200"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
       </form>
+
+      {/* Sharing Panel (owners only) */}
+      {isOwner && agentId && (
+        <AgentSharingPanel agentId={agentId} />
+      )}
 
       {/* Add/Edit Knowledge Base Modal */}
       {showKnowledgeBaseModal && (
