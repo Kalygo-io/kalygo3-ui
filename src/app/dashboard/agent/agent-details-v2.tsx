@@ -332,8 +332,9 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 required
+                disabled={!isOwner}
               />
             </div>
 
@@ -347,8 +348,9 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                 onChange={(e) => setSystemPrompt(e.target.value)}
                 placeholder="Enter the system prompt for this agent..."
                 rows={6}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                 required
+                disabled={!isOwner}
               />
               <p className="text-gray-400 text-xs mt-2">
                 The system prompt that defines the agent&apos;s behavior and personality.
@@ -361,17 +363,19 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                 <label className="block text-sm font-medium text-gray-300">
                   Tools
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingToolIndex(null);
-                    setShowAddToolModal(true);
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Add Tool
-                </button>
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingToolIndex(null);
+                      setShowAddToolModal(true);
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add Tool
+                  </button>
+                )}
               </div>
 
               {tools.length === 0 ? (
@@ -379,7 +383,7 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                   <p className="text-gray-400 text-sm mb-4">
                     No tools added yet
                   </p>
-                  <button
+                  {isOwner && <button
                     type="button"
                     onClick={() => {
                       setEditingToolIndex(null);
@@ -389,7 +393,7 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                   >
                     <PlusIcon className="h-4 w-4" />
                     Add Your First Tool
-                  </button>
+                  </button>}
                 </div>
               ) : (
                 <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
@@ -409,9 +413,11 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             Settings
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Actions
-                          </th>
+                          {isOwner && (
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          )}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700/50">
@@ -468,28 +474,30 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                                     Max: {tool.maxLimit || 100} rows
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleEditTool(index)}
-                                      className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
-                                      title="Edit tool"
-                                      aria-label="Edit tool"
-                                    >
-                                      <PencilIcon className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveTool(index)}
-                                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                      title="Remove tool"
-                                      aria-label="Remove tool"
-                                    >
-                                      <TrashIcon className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </td>
+                                {isOwner && (
+                                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditTool(index)}
+                                        className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
+                                        title="Edit tool"
+                                        aria-label="Edit tool"
+                                      >
+                                        <PencilIcon className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveTool(index)}
+                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                        title="Remove tool"
+                                        aria-label="Remove tool"
+                                      >
+                                        <TrashIcon className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             );
                           }
@@ -561,28 +569,30 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleEditTool(index)}
-                                      className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-600/20 rounded-lg transition-colors duration-200"
-                                      title="Edit tool"
-                                      aria-label="Edit tool"
-                                    >
-                                      <PencilIcon className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveTool(index)}
-                                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                      title="Remove tool"
-                                      aria-label="Remove tool"
-                                    >
-                                      <TrashIcon className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </td>
+                                {isOwner && (
+                                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditTool(index)}
+                                        className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-600/20 rounded-lg transition-colors duration-200"
+                                        title="Edit tool"
+                                        aria-label="Edit tool"
+                                      >
+                                        <PencilIcon className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveTool(index)}
+                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                        title="Remove tool"
+                                        aria-label="Remove tool"
+                                      >
+                                        <TrashIcon className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             );
                           }
@@ -634,43 +644,45 @@ export function AgentDetailsV2({ agentId }: { agentId?: string }) {
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    {canNavigate && (
+                                {isOwner && (
+                                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      {canNavigate && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            router.push(
+                                              `/dashboard/vector-stores?indexName=${encodeURIComponent(tool.index)}`
+                                            )
+                                          }
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
+                                          title="View details"
+                                        >
+                                          <LinkIcon className="h-4 w-4" />
+                                          View Details
+                                        </button>
+                                      )}
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          router.push(
-                                            `/dashboard/vector-stores?indexName=${encodeURIComponent(tool.index)}`
-                                          )
-                                        }
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
-                                        title="View details"
+                                        onClick={() => handleEditTool(index)}
+                                        className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
+                                        title="Edit tool"
+                                        aria-label="Edit tool"
                                       >
-                                        <LinkIcon className="h-4 w-4" />
-                                        View Details
+                                        <PencilIcon className="h-4 w-4" />
                                       </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleEditTool(index)}
-                                      className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
-                                      title="Edit tool"
-                                      aria-label="Edit tool"
-                                    >
-                                      <PencilIcon className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveTool(index)}
-                                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                      title="Remove tool"
-                                      aria-label="Remove tool"
-                                    >
-                                      <TrashIcon className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </td>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveTool(index)}
+                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                        title="Remove tool"
+                                        aria-label="Remove tool"
+                                      >
+                                        <TrashIcon className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             );
                           }
