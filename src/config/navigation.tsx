@@ -48,6 +48,11 @@ export const navigation: NavigationItem[] = [
     ],
   },
   {
+    name: "Access Groups",
+    href: "/dashboard/groups",
+    enabled: true,
+  },
+  {
     name: "Credentials",
     enabled: true,
     children: [

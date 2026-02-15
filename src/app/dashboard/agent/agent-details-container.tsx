@@ -32,6 +32,7 @@ import {
 } from "@/services/vectorStoresService";
 import { AddKnowledgeBaseModal } from "../agents/create/add-knowledge-base-modal";
 import { KnowledgeBaseChip } from "../agents/create/knowledge-base-chip";
+import { AgentSharingPanel } from "@/components/agent-sharing/agent-sharing-panel";
 
 export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
   const router = useRouter();
@@ -227,6 +228,9 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
     ? knowledgeBases[editingKnowledgeBaseIndex] 
     : null;
 
+  // Ownership: default to true for backwards compat
+  const isOwner = agent.is_owner !== false;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -238,19 +242,28 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
           >
             <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
           </button>
-          <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
+            {!isOwner && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600/20 text-indigo-300 border border-indigo-500/40">
+                Shared with you
+              </span>
+            )}
+          </div>
         </div>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Delete agent"
-        >
-          <TrashIcon className="h-5 w-5" />
-          <span className="text-sm font-medium">
-            {deleting ? "Deleting..." : "Delete"}
-          </span>
-        </button>
+        {isOwner && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Delete agent"
+          >
+            <TrashIcon className="h-5 w-5" />
+            <span className="text-sm font-medium">
+              {deleting ? "Deleting..." : "Delete"}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Basic Information */}
@@ -315,8 +328,9 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 required
+                disabled={!isOwner}
               />
             </div>
 
@@ -330,8 +344,9 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                 onChange={(e) => setSystemPrompt(e.target.value)}
                 placeholder="Enter the system prompt for this agent..."
                 rows={6}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                 required
+                disabled={!isOwner}
               />
               <p className="text-gray-400 text-xs mt-2">
                 The system prompt that guides your agent&apos;s behavior and responses.
@@ -344,35 +359,39 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                 <label className="block text-sm font-medium text-gray-300">
                   Knowledge Bases
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingKnowledgeBaseIndex(null);
-                    setShowKnowledgeBaseModal(true);
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Add Knowledge Base
-                </button>
-              </div>
-
-              {knowledgeBases.length === 0 ? (
-                <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-8 text-center">
-                  <p className="text-gray-400 text-sm mb-4">
-                    No knowledge bases added yet
-                  </p>
+                {isOwner && (
                   <button
                     type="button"
                     onClick={() => {
                       setEditingKnowledgeBaseIndex(null);
                       setShowKnowledgeBaseModal(true);
                     }}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Add Your First Knowledge Base
+                    Add Knowledge Base
                   </button>
+                )}
+              </div>
+
+              {knowledgeBases.length === 0 ? (
+                <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-8 text-center">
+                  <p className="text-gray-400 text-sm">
+                    No knowledge bases added yet
+                  </p>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingKnowledgeBaseIndex(null);
+                        setShowKnowledgeBaseModal(true);
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 mt-4"
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      Add Your First Knowledge Base
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
@@ -392,9 +411,11 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             Description
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Actions
-                          </th>
+                          {isOwner && (
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          )}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-700/50">
@@ -439,49 +460,51 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                                   )}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  {canNavigate && (
+                              {isOwner && (
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    {canNavigate && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          router.push(
+                                            `/dashboard/vector-stores?indexName=${encodeURIComponent(kb.index!)}`
+                                          )
+                                        }
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
+                                        title="View details"
+                                      >
+                                        <LinkIcon className="h-4 w-4" />
+                                        View Details
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
-                                      onClick={() =>
-                                        router.push(
-                                          `/dashboard/vector-stores?indexName=${encodeURIComponent(kb.index!)}`
-                                        )
-                                      }
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
-                                      title="View details"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditKnowledgeBase(index);
+                                      }}
+                                      className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
+                                      title="Edit knowledge base"
+                                      aria-label="Edit knowledge base"
                                     >
-                                      <LinkIcon className="h-4 w-4" />
-                                      View Details
+                                      <PencilIcon className="h-4 w-4" />
                                     </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditKnowledgeBase(index);
-                                    }}
-                                    className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
-                                    title="Edit knowledge base"
-                                    aria-label="Edit knowledge base"
-                                  >
-                                    <PencilIcon className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveKnowledgeBase(index);
-                                    }}
-                                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                    title="Remove knowledge base"
-                                    aria-label="Remove knowledge base"
-                                  >
-                                    <TrashIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveKnowledgeBase(index);
+                                      }}
+                                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                      title="Remove knowledge base"
+                                      aria-label="Remove knowledge base"
+                                    >
+                                      <TrashIcon className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           );
                         })}
@@ -497,17 +520,24 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
           </div>
         </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors duration-200"
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
+        {/* Save Button (owners only) */}
+        {isOwner && (
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors duration-200"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
       </form>
+
+      {/* Sharing Panel (owners only) */}
+      {isOwner && agentId && (
+        <AgentSharingPanel agentId={agentId} />
+      )}
 
       {/* Add/Edit Knowledge Base Modal */}
       {showKnowledgeBaseModal && (

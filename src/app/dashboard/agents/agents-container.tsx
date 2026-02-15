@@ -167,23 +167,31 @@ function AgentCard({
   const modelConfig = getAgentModelConfig(agent);
   const isV3 = version === 3;
   const isModern = version >= 2;
+  const isOwner = agent.is_owner !== false;
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 transition-all duration-200 hover:shadow-lg hover:border-gray-600/50 flex flex-col">
       <div className="flex-1 mb-4">
         <div className="flex items-start justify-between mb-2">
           <h3 className="text-xl font-semibold text-white">{agent.name}</h3>
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-              isV3
-                ? "bg-green-600/20 text-green-300 border border-green-500/40"
-                : isModern
-                ? "bg-blue-600/20 text-blue-300 border border-blue-500/40"
-                : "bg-gray-700/50 text-gray-400 border border-gray-600/40"
-            }`}
-          >
-            v{version}
-          </span>
+          <div className="flex items-center gap-2">
+            {!isOwner && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-600/20 text-indigo-300 border border-indigo-500/40">
+                Shared
+              </span>
+            )}
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                isV3
+                  ? "bg-green-600/20 text-green-300 border border-green-500/40"
+                  : isModern
+                  ? "bg-blue-600/20 text-blue-300 border border-blue-500/40"
+                  : "bg-gray-700/50 text-gray-400 border border-gray-600/40"
+              }`}
+            >
+              v{version}
+            </span>
+          </div>
         </div>
         {agent.description && (
           <p className="text-sm text-gray-400 mb-4">{agent.description}</p>
