@@ -236,7 +236,7 @@ export function AgentDetailsV3({ agentId }: { agentId?: string }) {
     : null;
 
   // Ownership: default to true for backwards compat (before backend returns `owned`)
-  const isOwner = agent.owned !== false;
+  const isOwner = agent.is_owner !== false;
 
   return (
     <div className="space-y-6">

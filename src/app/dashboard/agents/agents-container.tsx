@@ -167,7 +167,7 @@ function AgentCard({
   const modelConfig = getAgentModelConfig(agent);
   const isV3 = version === 3;
   const isModern = version >= 2;
-  const isOwner = agent.owned !== false;
+  const isOwner = agent.is_owner !== false;
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 transition-all duration-200 hover:shadow-lg hover:border-gray-600/50 flex flex-col">

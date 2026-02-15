@@ -229,7 +229,7 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
     : null;
 
   // Ownership: default to true for backwards compat
-  const isOwner = agent.owned !== false;
+  const isOwner = agent.is_owner !== false;
 
   return (
     <div className="space-y-6">
