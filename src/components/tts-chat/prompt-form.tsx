@@ -9,6 +9,7 @@ import {
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { nanoid } from "@/shared/utils";
 import { callTtsChatAgent } from "@/services/callTtsChatAgent";
+import { getAppSettings } from "@/shared/app-settings";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { StopIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
 
@@ -122,6 +123,7 @@ export function PromptForm({
 
         try {
           // Call the unified TTS chat endpoint
+          const { elevenLabsVoiceId } = getAppSettings();
           await callTtsChatAgent(
             agentId,
             sessionId,
@@ -132,7 +134,8 @@ export function PromptForm({
               onAudioChunk,
               onAudioStart,
               onAudioEnd,
-            }
+            },
+            elevenLabsVoiceId
           );
         } catch (error: any) {
           if (error.name !== "AbortError") {

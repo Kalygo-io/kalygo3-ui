@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
     let wsQueue: string[] = [];
     let textStreamComplete = false;
     let sentFinalChunk = false;
+    let sentAudioDone = false;
 
     try {
       // Step 1: Call the agent API
@@ -160,17 +161,29 @@ export async function POST(request: NextRequest) {
           }
         });
 
+        let audioChunksSent = 0;
+        let audioBytesSent = 0;
+
         ws.on("message", async (data: Buffer) => {
           try {
             const message = JSON.parse(data.toString());
 
             if (message.audio) {
+              audioChunksSent++;
+              audioBytesSent += message.audio.length;
+              if (audioChunksSent <= 3 || audioChunksSent % 10 === 0) {
+                console.log(`[TTS] Audio chunk #${audioChunksSent} → client (${message.audio.length} base64 chars, total ${audioBytesSent})`);
+              }
               await sendEvent({ type: "audio", data: message.audio });
             }
 
             if (message.isFinal) {
-              console.log("ElevenLabs stream complete");
-              await sendEvent({ type: "audio_done" });
+              console.log(`[TTS] ElevenLabs isFinal received. Sent ${audioChunksSent} audio chunks (${audioBytesSent} base64 chars total) to client`);
+              if (!sentAudioDone) {
+                sentAudioDone = true;
+                await sendEvent({ type: "audio_done" });
+                console.log("[TTS] audio_done event sent to client");
+              }
             }
           } catch (e) {
             console.warn("Error parsing WebSocket message:", e);
@@ -182,9 +195,17 @@ export async function POST(request: NextRequest) {
           await sendEvent({ type: "error", data: "TTS WebSocket error" });
         });
 
-        ws.on("close", async () => {
-          console.log("ElevenLabs WebSocket closed");
+        ws.on("close", async (code, reason) => {
+          console.log(`ElevenLabs WebSocket closed (code: ${code}, reason: ${reason || "none"})`);
           wsReady = false;
+
+          // If the WebSocket closes before ElevenLabs sent isFinal,
+          // still tell the client that audio is done so the player finalizes.
+          if (!sentAudioDone) {
+            sentAudioDone = true;
+            console.log("Sending audio_done after premature WebSocket close");
+            await sendEvent({ type: "audio_done" });
+          }
         });
       };
 
@@ -249,13 +270,26 @@ export async function POST(request: NextRequest) {
           await sendEvent({ type: "text_done" });
 
           // Send final text to TTS
-          if (wsReady) {
+          if (ws && !sentFinalChunk) {
+            // Try to flush remaining buffer and send EOS.
+            // Works when wsReady is true (normal case) and also when the
+            // WS is still OPEN but wsReady was briefly toggled.
             sendFinalChunk();
           } else if (!ws && fullText.trim().length > 0) {
             // Short response that never hit MIN_BUFFER_SIZE — still init the WS.
             // The "open" handler already checks textStreamComplete and calls
             // sendFinalChunk(), so the remaining textBuffer will be flushed.
             initWebSocket();
+          }
+
+          // Safety: if the WS already closed (or was never opened) and the
+          // client still hasn't received audio_done, send it now.
+          const wsRef = ws as WebSocket | null;
+          if (!wsRef || wsRef.readyState === WebSocket.CLOSED) {
+            if (!sentAudioDone && fullText.trim().length > 0) {
+              sentAudioDone = true;
+              await sendEvent({ type: "audio_done" });
+            }
           }
           break;
         }

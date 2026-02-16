@@ -18,7 +18,8 @@ export async function callTtsChatAgent(
   prompt: string,
   dispatch: React.Dispatch<Action>,
   abortController?: AbortController,
-  callbacks?: TtsChatCallbacks
+  callbacks?: TtsChatCallbacks,
+  voiceId?: string
 ): Promise<void> {
   console.log(
     "Starting TTS Chat call with agentId:",
@@ -56,6 +57,7 @@ export async function callTtsChatAgent(
         agentId,
         sessionId,
         prompt,
+        ...(voiceId ? { voiceId } : {}),
       }),
       credentials: "include",
       signal: abortController?.signal,
@@ -280,15 +282,18 @@ export async function callTtsChatAgent(
               // Handle audio chunks
               if (!audioStarted) {
                 audioStarted = true;
+                console.log("[TTS Client] First audio chunk received, calling onAudioStart");
                 callbacks?.onAudioStart?.();
                 dispatch({ type: "SET_TTS_LOADING", payload: true });
               }
+              const dataLen = typeof event.data === "string" ? event.data.length : 0;
+              console.log(`[TTS Client] Audio chunk received (${dataLen} base64 chars), calling onAudioChunk`);
               callbacks?.onAudioChunk?.(event.data);
             } else if (event.type === "text_done") {
-              console.log("Text streaming complete");
+              console.log("[TTS Client] text_done received");
               dispatch({ type: "SET_COMPLETION_LOADING", payload: false });
             } else if (event.type === "audio_done") {
-              console.log("Audio streaming complete");
+              console.log("[TTS Client] audio_done received, calling onAudioEnd");
               callbacks?.onAudioEnd?.();
               dispatch({ type: "SET_TTS_LOADING", payload: false });
             } else if (event.type === "error") {

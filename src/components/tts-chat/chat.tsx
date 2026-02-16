@@ -102,22 +102,28 @@ export function Chat({
   // Handle audio chunk from streaming TTS
   const handleAudioChunk = useCallback((base64Audio: string) => {
     const player = (window as any).__streamingAudioPlayer;
+    const dataLen = typeof base64Audio === "string" ? base64Audio.length : 0;
     if (player?.addAudioChunk) {
       // Process any queued chunks first
+      if (audioChunkQueueRef.current.length > 0) {
+        console.log(`[Chat] Flushing ${audioChunkQueueRef.current.length} queued chunks to player`);
+      }
       while (audioChunkQueueRef.current.length > 0) {
         const queuedChunk = audioChunkQueueRef.current.shift();
         if (queuedChunk) player.addAudioChunk(queuedChunk);
       }
+      console.log(`[Chat] handleAudioChunk → player.addAudioChunk (${dataLen} chars)`);
       player.addAudioChunk(base64Audio);
     } else {
       // Player not ready, queue the chunk
       audioChunkQueueRef.current.push(base64Audio);
+      console.log(`[Chat] handleAudioChunk → QUEUED (player not ready). Queue size: ${audioChunkQueueRef.current.length}`);
     }
   }, []);
 
   // Handle TTS stream start - called BEFORE any audio chunks arrive
   const handleAudioStart = useCallback(() => {
-    console.log("Audio streaming started");
+    console.log("[Chat] handleAudioStart called");
     
     // Clear the queue FIRST
     audioChunkQueueRef.current = [];
@@ -125,16 +131,20 @@ export function Chat({
     // Reset the player SYNCHRONOUSLY before any chunks arrive
     const player = (window as any).__streamingAudioPlayer;
     if (player?.reset) {
+      console.log("[Chat] Resetting audio player");
       player.reset();
+    } else {
+      console.log("[Chat] WARNING: __streamingAudioPlayer not available for reset");
     }
     
     // NOW set streaming state (this will cause player to render if not already)
     setIsAudioStreaming(true);
+    console.log("[Chat] isAudioStreaming set to true");
   }, []);
 
   // Handle TTS stream end
   const handleAudioEnd = useCallback(() => {
-    console.log("Audio streaming ended");
+    console.log(`[Chat] handleAudioEnd called. Queued chunks remaining: ${audioChunkQueueRef.current.length}`);
     // Process any remaining queued chunks
     const player = (window as any).__streamingAudioPlayer;
     if (player?.addAudioChunk) {
@@ -144,6 +154,7 @@ export function Chat({
       }
     }
     setIsAudioStreaming(false);
+    console.log("[Chat] isAudioStreaming set to false");
   }, []);
 
   // Process queued chunks when player becomes available
