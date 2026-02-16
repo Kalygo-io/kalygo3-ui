@@ -96,15 +96,15 @@ export function AgentChatContainer() {
                     key={agent.id}
                     onClick={() => handleSelectAgent(agent)}
                     disabled={creatingSession !== null}
-                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    className={`p-4 rounded-lg border-2 transition-all text-left overflow-hidden ${
                       creatingSession === agent.id
                         ? "border-blue-500 bg-blue-600/20"
                         : "border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-900/70 disabled:opacity-50 disabled:cursor-not-allowed"
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold mb-1">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <h3 className="text-white font-semibold mb-1 truncate">
                           {agent.name}
                         </h3>
                         {agent.config?.data?.systemPrompt && (
@@ -125,9 +125,9 @@ export function AgentChatContainer() {
                         )}
                       </div>
                       {creatingSession === agent.id ? (
-                        <div className="h-5 w-5 flex-shrink-0 ml-2 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+                        <div className="h-5 w-5 flex-shrink-0 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
                       ) : (
-                        <ArrowRightIcon className="h-5 w-5 flex-shrink-0 ml-2 text-gray-500" />
+                        <ArrowRightIcon className="h-5 w-5 flex-shrink-0 text-gray-500" />
                       )}
                     </div>
                   </button>
