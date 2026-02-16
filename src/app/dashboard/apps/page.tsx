@@ -108,13 +108,6 @@ export default function Page() {
               href="/dashboard/customer-support"
             />
 
-            {/* Chatbot Concierge Card */}
-            <AppCard
-              title="Chatbot Concierge"
-              description="Intelligent chatbot assistant for providing personalized concierge services."
-              href="/dashboard/chatbot-concierge"
-            />
-
             {/* AI Video Automation Card */}
             <AppCard
               title="AI Video Automation"
