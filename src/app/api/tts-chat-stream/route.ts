@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   if (!completionApiUrl) {
     return new Response(
       JSON.stringify({ error: "COMPLETION_API_URL not configured" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   if (!agentId || !sessionId || !prompt) {
     return new Response(
       JSON.stringify({ error: "agentId, sessionId, and prompt are required" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         error:
           "ElevenLabs API key not found. Please add an ELEVENLABS_API_KEY credential in Settings → Credentials.",
       }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
             sessionId,
             prompt,
           }),
-        }
+        },
       );
 
       if (!agentResponse.ok) {
@@ -122,7 +122,6 @@ export async function POST(request: NextRequest) {
       const initWebSocket = () => {
         if (ws) return;
 
-        console.log("Initializing ElevenLabs WebSocket...");
         const wsUrl = `${ELEVENLABS_WS_URL}/${voiceId}/stream-input?model_id=${DEFAULT_MODEL_ID}&output_format=mp3_44100_128`;
 
         ws = new WebSocket(wsUrl, {
@@ -132,7 +131,6 @@ export async function POST(request: NextRequest) {
         });
 
         ws.on("open", () => {
-          console.log("ElevenLabs WebSocket connected");
           wsReady = true;
 
           // Send initial configuration
@@ -146,7 +144,7 @@ export async function POST(request: NextRequest) {
               generation_config: {
                 chunk_length_schedule: [50, 90, 130, 170], // Lower for faster first audio
               },
-            })
+            }),
           );
 
           // Send any queued text
@@ -172,17 +170,17 @@ export async function POST(request: NextRequest) {
               audioChunksSent++;
               audioBytesSent += message.audio.length;
               if (audioChunksSent <= 3 || audioChunksSent % 10 === 0) {
-                console.log(`[TTS] Audio chunk #${audioChunksSent} → client (${message.audio.length} base64 chars, total ${audioBytesSent})`);
+                console.log(
+                  `[TTS] Audio chunk #${audioChunksSent} → client (${message.audio.length} base64 chars, total ${audioBytesSent})`,
+                );
               }
               await sendEvent({ type: "audio", data: message.audio });
             }
 
             if (message.isFinal) {
-              console.log(`[TTS] ElevenLabs isFinal received. Sent ${audioChunksSent} audio chunks (${audioBytesSent} base64 chars total) to client`);
               if (!sentAudioDone) {
                 sentAudioDone = true;
                 await sendEvent({ type: "audio_done" });
-                console.log("[TTS] audio_done event sent to client");
               }
             }
           } catch (e) {
@@ -196,14 +194,15 @@ export async function POST(request: NextRequest) {
         });
 
         ws.on("close", async (code, reason) => {
-          console.log(`ElevenLabs WebSocket closed (code: ${code}, reason: ${reason || "none"})`);
+          console.log(
+            `ElevenLabs WebSocket closed (code: ${code}, reason: ${reason || "none"})`,
+          );
           wsReady = false;
 
           // If the WebSocket closes before ElevenLabs sent isFinal,
           // still tell the client that audio is done so the player finalizes.
           if (!sentAudioDone) {
             sentAudioDone = true;
-            console.log("Sending audio_done after premature WebSocket close");
             await sendEvent({ type: "audio_done" });
           }
         });
@@ -225,7 +224,6 @@ export async function POST(request: NextRequest) {
           message.flush = true;
         }
 
-        console.log(`Sending to TTS: "${text.substring(0, 50)}..." (last: ${isLast})`);
         ws.send(JSON.stringify(message));
 
         if (isLast) {
@@ -260,12 +258,11 @@ export async function POST(request: NextRequest) {
 
       // Process agent stream
       let jsonBuffer = "";
-      
+
       while (true) {
         const { done, value } = await reader.read();
 
         if (done) {
-          console.log("Agent stream complete");
           textStreamComplete = true;
           await sendEvent({ type: "text_done" });
 
@@ -323,10 +320,7 @@ export async function POST(request: NextRequest) {
                 const jsonStr = jsonBuffer.substring(objectStart, idx + 1);
                 try {
                   const parsed = JSON.parse(jsonStr);
-                  
-                  // Log ALL events to understand the data flow
-                  console.log(`[TTS Chat Server] Event: ${parsed.event}`, JSON.stringify(parsed).substring(0, 500));
-                  
+
                   // Handle different event types
                   if (parsed.event === "on_chat_model_stream" && parsed.data) {
                     const textChunk = parsed.data;
@@ -350,7 +344,7 @@ export async function POST(request: NextRequest) {
                       // Match sentences ending with punctuation, or lines ending
                       // with newlines (handles bullet lists, code, etc.)
                       const boundary = textBuffer.match(
-                        /[^.!?;\n]+[.!?;]+\s*|[^\n]+\n+/g
+                        /[^.!?;\n]+[.!?;]+\s*|[^\n]+\n+/g,
                       );
                       if (boundary && boundary.length > 0) {
                         const completeText = boundary.join("");
@@ -361,16 +355,17 @@ export async function POST(request: NextRequest) {
                         // at the last space to avoid splitting words
                         const lastSpace = textBuffer.lastIndexOf(" ");
                         const splitAt =
-                          lastSpace > MIN_BUFFER_SIZE ? lastSpace + 1 : textBuffer.length;
+                          lastSpace > MIN_BUFFER_SIZE
+                            ? lastSpace + 1
+                            : textBuffer.length;
                         sendTextToWs(textBuffer.substring(0, splitAt), false);
                         textBuffer = textBuffer.substring(splitAt);
                       }
                     }
-                  } else if (parsed.event === "on_tool_start" || parsed.event === "on_tool_end") {
-                    // Forward the ENTIRE parsed object as-is to preserve all fields
-                    // This ensures we don't lose any data in translation
-                    console.log(`[TTS Chat Server] Tool event: ${parsed.event}`, JSON.stringify(parsed).substring(0, 1000));
-                    
+                  } else if (
+                    parsed.event === "on_tool_start" ||
+                    parsed.event === "on_tool_end"
+                  ) {
                     // Send the full parsed object, spread all fields
                     await sendEvent({
                       type: "text",
@@ -378,19 +373,19 @@ export async function POST(request: NextRequest) {
                       ...parsed, // Spread all fields from the original event
                     });
                   } else if (parsed.event === "on_chain_end") {
-                    // Forward chain end with ALL data including toolCalls
-                    // The toolCalls array contains the actual vector search results
-                    console.log("[TTS Chat Server] Chain end - toolCalls:", parsed.toolCalls ? "present" : "not present");
-                    console.log("[TTS Chat Server] Chain end - data.toolCalls:", parsed.data?.toolCalls ? "present" : "not present");
-                    
                     await sendEvent({
                       type: "text",
                       event: parsed.event,
                       data: parsed.data,
                       // Include toolCalls - check multiple locations
-                      toolCalls: parsed.toolCalls || parsed.data?.toolCalls || parsed.tool_calls || parsed.data?.tool_calls,
+                      toolCalls:
+                        parsed.toolCalls ||
+                        parsed.data?.toolCalls ||
+                        parsed.tool_calls ||
+                        parsed.data?.tool_calls,
                       // Include retrieval_calls for legacy support
-                      retrieval_calls: parsed.retrieval_calls || parsed.data?.retrieval_calls,
+                      retrieval_calls:
+                        parsed.retrieval_calls || parsed.data?.retrieval_calls,
                     });
                   } else if (parsed.event) {
                     // Forward other events to client
