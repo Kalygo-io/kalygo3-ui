@@ -36,13 +36,13 @@ export function ContextualAside({
 
       {/* Drawer */}
       <div
-        className={`fixed inset-y-0 right-0 w-96 bg-gray-900 border-l border-gray-700 z-[80] transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-16 bottom-0 right-0 w-96 bg-gray-900 border-l border-gray-700 z-[80] transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
-          {/* Header - positioned below top nav (64px = h-16) */}
-          <div className="flex items-center justify-between p-4 pt-20 border-b border-gray-700">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-700">
             <h2 className="text-lg font-semibold text-white">Agent Config</h2>
             <DrawerCloseButton onClose={onClose} />
           </div>
