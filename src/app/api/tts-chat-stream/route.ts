@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import WebSocket from "ws";
+import { fetchElevenLabsApiKey } from "@/shared/server/fetch-elevenlabs-key";
 
 const ELEVENLABS_WS_URL = "wss://api.elevenlabs.io/v1/text-to-speech";
 const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
@@ -26,15 +27,7 @@ interface StreamEvent {
  * agent text streaming and ElevenLabs audio streaming in parallel
  */
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
   const completionApiUrl = process.env.NEXT_PUBLIC_COMPLETION_API_URL;
-
-  if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: "ELEVENLABS_API_KEY not configured" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
-  }
 
   if (!completionApiUrl) {
     return new Response(
@@ -55,6 +48,18 @@ export async function POST(request: NextRequest) {
 
   // Get cookies from the request to forward to the agent API
   const cookies = request.headers.get("cookie") || "";
+
+  // Fetch the ElevenLabs API key from the user's stored credentials
+  const apiKey = await fetchElevenLabsApiKey(cookies);
+  if (!apiKey) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "ElevenLabs API key not found. Please add an ELEVENLABS_API_KEY credential in Settings → Credentials.",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   const encoder = new TextEncoder();
   const stream = new TransformStream();
