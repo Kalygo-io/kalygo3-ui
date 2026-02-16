@@ -27,6 +27,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AddToolModal } from "./add-tool-modal";
 import { AgentSharingPanel } from "@/components/agent-sharing/agent-sharing-panel";
+import { TemplateVariableHint } from "@/components/shared/template-variable-hint";
 
 export function AgentDetailsV3({ agentId }: { agentId?: string }) {
   const router = useRouter();
@@ -358,9 +359,9 @@ export function AgentDetailsV3({ agentId }: { agentId?: string }) {
                 required
                 disabled={!isOwner}
               />
-              <p className="text-gray-400 text-xs mt-2">
-                The system prompt that defines the agent&apos;s behavior and personality.
-              </p>
+              <TemplateVariableHint
+                onInsert={(variable) => setSystemPrompt((prev) => prev + variable)}
+              />
             </div>
 
             {/* Model Selection */}

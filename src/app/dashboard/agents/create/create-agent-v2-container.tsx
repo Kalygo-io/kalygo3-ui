@@ -19,6 +19,7 @@ import {
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import { AddToolModal } from "../../agent/add-tool-modal";
+import { TemplateVariableHint } from "@/components/shared/template-variable-hint";
 
 export function CreateAgentV2Container() {
   const router = useRouter();
@@ -191,9 +192,9 @@ export function CreateAgentV2Container() {
               required
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
-            <p className="text-gray-400 text-xs mt-2">
-              The system prompt that defines the agent&apos;s behavior and personality.
-            </p>
+            <TemplateVariableHint
+              onInsert={(variable) => setSystemPrompt((prev) => prev + variable)}
+            />
           </div>
 
           {/* Tools */}

@@ -33,6 +33,7 @@ import {
 import { AddKnowledgeBaseModal } from "../agents/create/add-knowledge-base-modal";
 import { KnowledgeBaseChip } from "../agents/create/knowledge-base-chip";
 import { AgentSharingPanel } from "@/components/agent-sharing/agent-sharing-panel";
+import { TemplateVariableHint } from "@/components/shared/template-variable-hint";
 
 export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
   const router = useRouter();
@@ -348,9 +349,9 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
                 required
                 disabled={!isOwner}
               />
-              <p className="text-gray-400 text-xs mt-2">
-                The system prompt that guides your agent&apos;s behavior and responses.
-              </p>
+              <TemplateVariableHint
+                onInsert={(variable) => setSystemPrompt((prev) => prev + variable)}
+              />
             </div>
 
             {/* Knowledge Bases */}
