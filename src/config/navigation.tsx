@@ -56,6 +56,11 @@ export const navigation: NavigationItem[] = [
         enabled: true,
       },
       {
+        name: "App Settings",
+        href: "/dashboard/settings/app-settings",
+        enabled: true,
+      },
+      {
         name: "API Keys",
         href: "/dashboard/settings/api-keys",
         enabled: true,
