@@ -22,7 +22,7 @@ interface StreamEvent {
 }
 
 /**
- * Unified concierge streaming endpoint that orchestrates both
+ * Unified TTS chat streaming endpoint that orchestrates both
  * agent text streaming and ElevenLabs audio streaming in parallel
  */
 export async function POST(request: NextRequest) {
@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
                   const parsed = JSON.parse(jsonStr);
                   
                   // Log ALL events to understand the data flow
-                  console.log(`[Concierge Server] Event: ${parsed.event}`, JSON.stringify(parsed).substring(0, 500));
+                  console.log(`[TTS Chat Server] Event: ${parsed.event}`, JSON.stringify(parsed).substring(0, 500));
                   
                   // Handle different event types
                   if (parsed.event === "on_chat_model_stream" && parsed.data) {
@@ -330,7 +330,7 @@ export async function POST(request: NextRequest) {
                   } else if (parsed.event === "on_tool_start" || parsed.event === "on_tool_end") {
                     // Forward the ENTIRE parsed object as-is to preserve all fields
                     // This ensures we don't lose any data in translation
-                    console.log(`[Concierge Server] Tool event: ${parsed.event}`, JSON.stringify(parsed).substring(0, 1000));
+                    console.log(`[TTS Chat Server] Tool event: ${parsed.event}`, JSON.stringify(parsed).substring(0, 1000));
                     
                     // Send the full parsed object, spread all fields
                     await sendEvent({
@@ -341,8 +341,8 @@ export async function POST(request: NextRequest) {
                   } else if (parsed.event === "on_chain_end") {
                     // Forward chain end with ALL data including toolCalls
                     // The toolCalls array contains the actual vector search results
-                    console.log("[Concierge Server] Chain end - toolCalls:", parsed.toolCalls ? "present" : "not present");
-                    console.log("[Concierge Server] Chain end - data.toolCalls:", parsed.data?.toolCalls ? "present" : "not present");
+                    console.log("[TTS Chat Server] Chain end - toolCalls:", parsed.toolCalls ? "present" : "not present");
+                    console.log("[TTS Chat Server] Chain end - data.toolCalls:", parsed.data?.toolCalls ? "present" : "not present");
                     
                     await sendEvent({
                       type: "text",
@@ -392,7 +392,7 @@ export async function POST(request: NextRequest) {
         wsInstance.close();
       }
     } catch (error) {
-      console.error("Concierge stream error:", error);
+      console.error("TTS chat stream error:", error);
       await sendEvent({
         type: "error",
         data: error instanceof Error ? error.message : "Unknown error",

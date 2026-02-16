@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/concierge-chat/chat-session-context";
+} from "@/app/dashboard/tts-chat/chat-session-context";
 import {
   chatReducer,
   initialState,
-} from "@/app/dashboard/concierge-chat/chat-session-reducer";
-import { Chat as ConciergeChat } from "@/components/concierge-chat/chat";
+} from "@/app/dashboard/tts-chat/chat-session-reducer";
+import { Chat as TtsChat } from "@/components/tts-chat/chat";
 import { agentsService, Agent } from "@/services/agentsService";
 import { chatSessionService } from "@/services/chatSessionService";
 import { errorToast, successToast } from "@/shared/toasts";
@@ -23,13 +23,13 @@ import {
 import { clearSessionMessages } from "@/services/clearSessionMessages";
 import { cn } from "@/shared/utils";
 
-interface ConciergeChatSessionPageProps {
+interface TtsChatSessionPageProps {
   sessionId: string;
 }
 
-export function ConciergeChatSessionPage({
+export function TtsChatSessionPage({
   sessionId,
-}: ConciergeChatSessionPageProps) {
+}: TtsChatSessionPageProps) {
   const router = useRouter();
   const [chat, dispatch] = useReducer(chatReducer, {
     ...initialState,
@@ -50,7 +50,7 @@ export function ConciergeChatSessionPage({
         const session = await chatSessionService.getSession(sessionId);
         if (!session) {
           errorToast("Session not found");
-          router.push("/dashboard/concierge-chat");
+          router.push("/dashboard/tts-chat");
           return;
         }
 
@@ -72,12 +72,12 @@ export function ConciergeChatSessionPage({
           });
         } else {
           errorToast("Session has no associated agent");
-          router.push("/dashboard/concierge-chat");
+          router.push("/dashboard/tts-chat");
           return;
         }
       } catch (error: any) {
         errorToast(error.message || "Failed to load session");
-        router.push("/dashboard/concierge-chat");
+        router.push("/dashboard/tts-chat");
       } finally {
         setLoadingSession(false);
       }
@@ -96,7 +96,7 @@ export function ConciergeChatSessionPage({
   }, []); // Empty deps - only run cleanup on unmount
 
   const handleBack = useCallback(() => {
-    router.push("/dashboard/concierge-chat");
+    router.push("/dashboard/tts-chat");
   }, [router]);
 
   const toggleDrawer = () => {
@@ -227,7 +227,7 @@ export function ConciergeChatSessionPage({
           </div>
           {/* Chat interface - Takes remaining space */}
           <div className="flex-1 overflow-hidden min-h-0">
-            <ConciergeChat
+            <TtsChat
               agent={agent}
               isDrawerOpen={isDrawerOpen}
               setIsDrawerOpen={setIsDrawerOpen}

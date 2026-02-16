@@ -12,11 +12,11 @@ import {
 import { Separator } from "@/components/shared/separator";
 import { memo, useState } from "react";
 import { ChatMarkdown } from "@/components/shared/markdown/chat-markdown";
-import { ConciergeToolCallsDrawer } from "@/components/concierge-chat/tool-calls-drawer";
-import { ConciergeErrorDetailsDrawer } from "@/components/concierge-chat/error-details-drawer";
+import { TtsChatToolCallsDrawer } from "@/components/tts-chat/tool-calls-drawer";
+import { TtsChatErrorDetailsDrawer } from "@/components/tts-chat/error-details-drawer";
 import { useCopyToClipboard } from "@/shared/hooks/use-copy-to-clipboard";
 
-interface ConciergeChatMessageProps {
+interface TtsChatMessageProps {
   index: number;
   message: Message;
 }
@@ -52,8 +52,8 @@ function MessageActions({ message }: { message: Message }) {
   );
 }
 
-export const ConciergeChatMessage = memo(
-  function ConciergeChatMessage({ index, message }: ConciergeChatMessageProps) {
+export const TtsChatMessage = memo(
+  function TtsChatMessage({ index, message }: TtsChatMessageProps) {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isErrorDrawerOpen, setIsErrorDrawerOpen] = useState(false);
 
@@ -140,7 +140,7 @@ export const ConciergeChatMessage = memo(
           </div>
 
           {/* Tool Calls Drawer */}
-          <ConciergeToolCallsDrawer
+          <TtsChatToolCallsDrawer
             isOpen={isDrawerOpen}
             onClose={() => setIsDrawerOpen(false)}
             toolCalls={(message.toolCalls || []) as unknown[]}
@@ -148,7 +148,7 @@ export const ConciergeChatMessage = memo(
 
           {/* Error Details Drawer */}
           {message.error && (
-            <ConciergeErrorDetailsDrawer
+            <TtsChatErrorDetailsDrawer
               isOpen={isErrorDrawerOpen}
               onClose={() => setIsErrorDrawerOpen(false)}
               error={message.error}

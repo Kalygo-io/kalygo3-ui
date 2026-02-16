@@ -9,7 +9,7 @@ import {
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { useCopyToClipboard } from "@/shared/hooks/use-copy-to-clipboard";
 
-// Tool call types for concierge chat - flexible to handle multiple formats
+// Tool call types for TTS chat - flexible to handle multiple formats
 interface VectorSearchResult {
   content?: string;
   score?: number;
@@ -37,7 +37,7 @@ interface VectorSearchResult {
 }
 
 // Flexible tool call type that can handle both v1 and v2 schemas
-interface ConciergeToolCall {
+interface TtsChatToolCall {
   // V2 schema fields
   toolType?: string;
   toolName?: string;
@@ -64,11 +64,11 @@ interface ConciergeToolCall {
   [key: string]: unknown;
 }
 
-interface ConciergeToolCallsDrawerProps {
+interface TtsChatToolCallsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   // Accept any array type for flexibility
-  toolCalls?: ConciergeToolCall[] | unknown[];
+  toolCalls?: TtsChatToolCall[] | unknown[];
 }
 
 // Type guards
@@ -80,11 +80,11 @@ function isTextDocumentMetadata(metadata: Record<string, unknown>): boolean {
   return "chunkId" in metadata && "totalChunks" in metadata;
 }
 
-export function ConciergeToolCallsDrawer({
+export function TtsChatToolCallsDrawer({
   isOpen,
   onClose,
   toolCalls = [],
-}: ConciergeToolCallsDrawerProps) {
+}: TtsChatToolCallsDrawerProps) {
   const [expandedToolCalls, setExpandedToolCalls] = useState<Set<number>>(
     new Set()
   );
@@ -100,7 +100,7 @@ export function ConciergeToolCallsDrawer({
       // Expand all chunks
       const allChunkKeys = new Set<string>();
       toolCalls.forEach((rawCall, toolCallIndex) => {
-        const call = rawCall as ConciergeToolCall;
+        const call = rawCall as TtsChatToolCall;
         // Check both v1 and v2 schema locations for results
         const results = call.output?.results || call.results;
         if (results) {
@@ -178,7 +178,7 @@ export function ConciergeToolCallsDrawer({
 
   // Calculate total chunks
   const totalChunks = toolCalls.reduce<number>((total, rawCall) => {
-    const call = rawCall as ConciergeToolCall;
+    const call = rawCall as TtsChatToolCall;
     const results = call.output?.results || call.results;
     return total + (results?.length || 0);
   }, 0);
@@ -248,8 +248,8 @@ export function ConciergeToolCallsDrawer({
                 </h4>
 
                 {toolCalls.map((rawCall, index) => {
-                  // Cast to ConciergeToolCall to access properties
-                  const call = rawCall as ConciergeToolCall;
+                  // Cast to TtsChatToolCall to access properties
+                  const call = rawCall as TtsChatToolCall;
                   
                   const duration = formatDuration(call.startTime, call.endTime);
                   

@@ -1,27 +1,27 @@
-import { Action } from "@/app/dashboard/concierge-chat/chat-session-reducer";
+import { Action } from "@/app/dashboard/tts-chat/chat-session-reducer";
 import { nanoid } from "@/shared/utils";
 import React from "react";
 
-export interface ConciergeCallbacks {
+export interface TtsChatCallbacks {
   onAudioChunk?: (base64Audio: string) => void;
   onAudioStart?: () => void;
   onAudioEnd?: () => void;
 }
 
 /**
- * Call the concierge streaming endpoint that orchestrates both
+ * Call the TTS chat streaming endpoint that orchestrates both
  * agent text streaming and TTS audio streaming in parallel
  */
-export async function callConciergeAgent(
+export async function callTtsChatAgent(
   agentId: string,
   sessionId: string,
   prompt: string,
   dispatch: React.Dispatch<Action>,
   abortController?: AbortController,
-  callbacks?: ConciergeCallbacks
+  callbacks?: TtsChatCallbacks
 ): Promise<void> {
   console.log(
-    "Starting Concierge call with agentId:",
+    "Starting TTS Chat call with agentId:",
     agentId,
     "sessionId:",
     sessionId
@@ -47,7 +47,7 @@ export async function callConciergeAgent(
   dispatch({ type: "SET_COMPLETION_LOADING", payload: true });
 
   try {
-    const response = await fetch("/api/concierge-stream", {
+    const response = await fetch("/api/tts-chat-stream", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -63,7 +63,7 @@ export async function callConciergeAgent(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Concierge API error: ${response.status} - ${errorText}`);
+      throw new Error(`TTS Chat API error: ${response.status} - ${errorText}`);
     }
 
     const reader = response.body?.getReader();
@@ -78,7 +78,7 @@ export async function callConciergeAgent(
       const { done, value } = await reader.read();
 
       if (done) {
-        console.log("Concierge stream complete");
+        console.log("TTS Chat stream complete");
         break;
       }
 
@@ -105,7 +105,7 @@ export async function callConciergeAgent(
                   },
                 });
               } else if (event.event === "on_tool_start") {
-                console.log("[Concierge] Tool start - raw event:", JSON.stringify(event));
+                console.log("[TTS Chat] Tool start - raw event:", JSON.stringify(event));
                 
                 // Extract tool information - check ALL possible locations
                 const toolName =
@@ -136,7 +136,7 @@ export async function callConciergeAgent(
                   event.data?.tool_type ||
                   "unknown";
 
-                console.log("[Concierge] Tool start - extracted:", { toolName, toolType, toolInput });
+                console.log("[TTS Chat] Tool start - extracted:", { toolName, toolType, toolInput });
 
                 currentToolCall = {
                   toolType,
@@ -148,7 +148,7 @@ export async function callConciergeAgent(
 
                 dispatch({ type: "SET_CURRENT_TOOL", payload: toolName });
               } else if (event.event === "on_tool_end") {
-                console.log("[Concierge] Tool end - raw event:", JSON.stringify(event));
+                console.log("[TTS Chat] Tool end - raw event:", JSON.stringify(event));
                 
                 // Extract tool output - check ALL possible locations
                 // The agent API may return results in various structures
@@ -184,7 +184,7 @@ export async function callConciergeAgent(
                   toolOutput = {};
                 }
 
-                console.log("[Concierge] Tool end - extracted output:", toolOutput);
+                console.log("[TTS Chat] Tool end - extracted output:", toolOutput);
 
                 if (currentToolCall) {
                   const completedToolCall = {
@@ -193,7 +193,7 @@ export async function callConciergeAgent(
                     endTime: Date.now(),
                   };
                   
-                  console.log("[Concierge] Completed tool call:", completedToolCall);
+                  console.log("[TTS Chat] Completed tool call:", completedToolCall);
                   
                   accumulatedToolCalls = [...accumulatedToolCalls, completedToolCall];
                   dispatch({
@@ -207,7 +207,7 @@ export async function callConciergeAgent(
                 }
                 dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
               } else if (event.event === "on_chain_end") {
-                console.log("[Concierge] Chain end - raw event:", event);
+                console.log("[TTS Chat] Chain end - raw event:", event);
                 
                 // Final content
                 if (event.data && typeof event.data === "string") {
@@ -228,10 +228,10 @@ export async function callConciergeAgent(
                   event.data?.tool_calls ||
                   null;
                 
-                console.log("[Concierge] Chain end - toolCalls found:", toolCallsFromChainEnd ? toolCallsFromChainEnd.length : 0);
+                console.log("[TTS Chat] Chain end - toolCalls found:", toolCallsFromChainEnd ? toolCallsFromChainEnd.length : 0);
                 
                 if (toolCallsFromChainEnd && Array.isArray(toolCallsFromChainEnd) && toolCallsFromChainEnd.length > 0) {
-                  console.log("[Concierge] Chain end - using toolCalls from chain_end event:", toolCallsFromChainEnd);
+                  console.log("[TTS Chat] Chain end - using toolCalls from chain_end event:", toolCallsFromChainEnd);
                   dispatch({
                     type: "EDIT_MESSAGE",
                     payload: {
@@ -241,7 +241,7 @@ export async function callConciergeAgent(
                   });
                 } else if (accumulatedToolCalls.length > 0) {
                   // Fall back to accumulated tool calls from on_tool_start/on_tool_end
-                  console.log("[Concierge] Chain end - using accumulated tool calls:", accumulatedToolCalls);
+                  console.log("[TTS Chat] Chain end - using accumulated tool calls:", accumulatedToolCalls);
                   dispatch({
                     type: "EDIT_MESSAGE",
                     payload: {
@@ -254,7 +254,7 @@ export async function callConciergeAgent(
                 // Check for legacy retrieval_calls
                 const retrievalCalls = event.retrieval_calls || event.data?.retrieval_calls;
                 if (retrievalCalls && Array.isArray(retrievalCalls) && retrievalCalls.length > 0) {
-                  console.log("[Concierge] Chain end - retrieval_calls found:", retrievalCalls);
+                  console.log("[TTS Chat] Chain end - retrieval_calls found:", retrievalCalls);
                   dispatch({
                     type: "EDIT_MESSAGE",
                     payload: {
@@ -316,11 +316,11 @@ export async function callConciergeAgent(
     dispatch({ type: "SET_TTS_LOADING", payload: false });
 
     if (error instanceof Error && error.name === "AbortError") {
-      console.log("Concierge request aborted");
+      console.log("TTS Chat request aborted");
       return;
     }
 
-    console.error("Concierge error:", error);
+    console.error("TTS Chat error:", error);
     dispatch({
       type: "EDIT_MESSAGE",
       payload: {

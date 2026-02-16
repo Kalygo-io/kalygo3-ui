@@ -61,7 +61,7 @@ export type Action =
       payload: boolean;
     };
 
-export interface ConciergeState {
+export interface TtsChatState {
   messages: Message[];
   completionLoading: boolean;
   sessionId: string;
@@ -76,9 +76,9 @@ export interface ConciergeState {
 }
 
 export function chatReducer(
-  state: ConciergeState,
+  state: TtsChatState,
   action: Action
-): ConciergeState {
+): TtsChatState {
   switch (action.type) {
     case "ADD_MESSAGE": {
       return {
@@ -192,7 +192,7 @@ export function chatReducer(
   }
 }
 
-export const initialState: ConciergeState = {
+export const initialState: TtsChatState = {
   messages: [],
   completionLoading: false,
   sessionId: uuid(),

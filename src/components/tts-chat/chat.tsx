@@ -3,12 +3,12 @@
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/concierge-chat/chat-session-context";
-import { ConciergeChatList } from "@/components/concierge-chat/chat-list";
+} from "@/app/dashboard/tts-chat/chat-session-context";
+import { TtsChatList } from "@/components/tts-chat/chat-list";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
-import { PromptForm } from "@/components/concierge-chat/prompt-form";
-import { StreamingAudioPlayer } from "@/components/concierge-chat/streaming-audio-player";
-import { ConciergeContextualAside } from "@/components/concierge-chat/contextual-aside";
+import { PromptForm } from "@/components/tts-chat/prompt-form";
+import { StreamingAudioPlayer } from "@/components/tts-chat/streaming-audio-player";
+import { TtsChatContextualAside } from "@/components/tts-chat/contextual-aside";
 import { useScrollAnchor } from "@/shared/hooks/use-scroll-anchor";
 import { cn } from "@/shared/utils";
 import { useContext, useEffect, useState, useCallback, useRef } from "react";
@@ -226,7 +226,7 @@ export function Chat({
             ref={messagesRef}
           >
             {chatState.messages.length ? (
-              <ConciergeChatList
+              <TtsChatList
                 messages={chatState.messages}
                 isCompletionLoading={chatState.completionLoading}
                 currentTool={chatState.currentTool}
@@ -236,7 +236,7 @@ export function Chat({
                 content={
                   <>
                     <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-text_default_color p-1">
-                      Concierge Chat 🎙️
+                      TTS Chat 🎙️
                     </h1>
                     <p className="text-center text-gray-400 mt-2">
                       Your AI assistant with streaming voice responses
@@ -278,7 +278,7 @@ export function Chat({
         </div>
       </div>
 
-      <ConciergeContextualAside
+      <TtsChatContextualAside
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen?.(false)}
         agent={agent}

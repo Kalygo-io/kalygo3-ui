@@ -12,7 +12,7 @@ import {
   SpeakerWaveIcon,
 } from "@heroicons/react/24/outline";
 
-export function ConciergeChatContainer() {
+export function TtsChatContainer() {
   const router = useRouter();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ export function ConciergeChatContainer() {
         parseInt(agent.id)
       );
       // Navigate to the chat page with the session ID
-      router.push(`/dashboard/concierge-chat/${newSession.sessionId}`);
+      router.push(`/dashboard/tts-chat/${newSession.sessionId}`);
     } catch (error: any) {
       errorToast(error.message || "Failed to create chat session");
       setCreatingSession(null);
@@ -58,7 +58,7 @@ export function ConciergeChatContainer() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <SpeakerWaveIcon className="h-8 w-8 text-purple-400" />
-            <h1 className="text-3xl font-bold text-white">Concierge Chat</h1>
+            <h1 className="text-3xl font-bold text-white">TTS Chat</h1>
           </div>
           <p className="text-gray-400">
             Select an agent to start a voice-enabled conversation

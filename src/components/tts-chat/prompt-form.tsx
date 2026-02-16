@@ -5,10 +5,10 @@ import * as React from "react";
 import {
   ChatContext,
   ChatDispatchContext,
-} from "@/app/dashboard/concierge-chat/chat-session-context";
+} from "@/app/dashboard/tts-chat/chat-session-context";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { nanoid } from "@/shared/utils";
-import { callConciergeAgent } from "@/services/callConciergeAgent";
+import { callTtsChatAgent } from "@/services/callTtsChatAgent";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { StopIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
 
@@ -121,8 +121,8 @@ export function PromptForm({
         }
 
         try {
-          // Call the unified concierge endpoint
-          await callConciergeAgent(
+          // Call the unified TTS chat endpoint
+          await callTtsChatAgent(
             agentId,
             sessionId,
             prompt,
@@ -136,7 +136,7 @@ export function PromptForm({
           );
         } catch (error: any) {
           if (error.name !== "AbortError") {
-            console.error("Concierge call error:", error);
+            console.error("TTS Chat call error:", error);
           }
         } finally {
           dispatch({ type: "SET_CURRENT_REQUEST", payload: null });

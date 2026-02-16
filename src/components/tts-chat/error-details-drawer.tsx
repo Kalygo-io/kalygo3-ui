@@ -8,17 +8,17 @@ import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { ErrorDetails } from "@/ts/types/Message";
 import { useCopyToClipboard } from "@/shared/hooks/use-copy-to-clipboard";
 
-interface ConciergeErrorDetailsDrawerProps {
+interface TtsChatErrorDetailsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   error: ErrorDetails;
 }
 
-export function ConciergeErrorDetailsDrawer({
+export function TtsChatErrorDetailsDrawer({
   isOpen,
   onClose,
   error,
-}: ConciergeErrorDetailsDrawerProps) {
+}: TtsChatErrorDetailsDrawerProps) {
   const { copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
 
   if (!isOpen) return null;

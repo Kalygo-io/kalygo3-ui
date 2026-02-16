@@ -1,18 +1,18 @@
-import { ConciergeChatMessage } from "@/components/concierge-chat/chat-message";
-import { ToolStatus } from "@/components/concierge-chat/tool-status";
+import { TtsChatMessage } from "@/components/tts-chat/chat-message";
+import { ToolStatus } from "@/components/tts-chat/tool-status";
 import { Message } from "@/ts/types/Message";
 
-export interface ConciergeChatListProps {
+export interface TtsChatListProps {
   isCompletionLoading: boolean;
   messages: Message[];
   currentTool: string;
 }
 
-export function ConciergeChatList({
+export function TtsChatList({
   isCompletionLoading,
   messages,
   currentTool,
-}: ConciergeChatListProps) {
+}: TtsChatListProps) {
   if (!messages.length) {
     return null;
   }
@@ -20,7 +20,7 @@ export function ConciergeChatList({
   return (
     <div className="relative mx-auto max-w-2xl px-4">
       {messages.map((message: Message, index: number) => {
-        return <ConciergeChatMessage key={message.id} index={index} message={message} />;
+        return <TtsChatMessage key={message.id} index={index} message={message} />;
       })}
 
       {isCompletionLoading && (

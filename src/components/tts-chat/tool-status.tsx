@@ -7,7 +7,7 @@ interface ToolStatusProps extends React.ComponentProps<"div"> {
 }
 
 export function ToolStatus({ currentTool, className, ...props }: ToolStatusProps) {
-  console.log("[Concierge] ToolStatus - currentTool:", currentTool);
+  console.log("[TTS Chat] ToolStatus - currentTool:", currentTool);
 
   if (!currentTool) return null;
 

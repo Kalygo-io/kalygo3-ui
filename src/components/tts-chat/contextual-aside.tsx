@@ -12,17 +12,17 @@ import {
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { Agent, KnowledgeBase, isAgentConfigV1, ToolV2 } from "@/services/agentsService";
 
-interface ConciergeContextualAsideProps {
+interface TtsChatContextualAsideProps {
   isOpen: boolean;
   onClose: () => void;
   agent?: Agent | null;
 }
 
-export function ConciergeContextualAside({
+export function TtsChatContextualAside({
   isOpen,
   onClose,
   agent,
-}: ConciergeContextualAsideProps) {
+}: TtsChatContextualAsideProps) {
   return (
     <>
       {/* Mobile overlay backdrop */}
@@ -57,12 +57,12 @@ export function ConciergeContextualAside({
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Concierge Info Banner */}
+                {/* TTS Chat Info Banner */}
                 <div className="bg-purple-900/20 border border-purple-700/30 rounded-lg p-4">
                   <div className="flex items-center space-x-2 mb-2">
                     <SpeakerWaveIcon className="w-5 h-5 text-purple-400" />
                     <h3 className="text-lg font-semibold text-white">
-                      Concierge Agent
+                      TTS Chat Agent
                     </h3>
                   </div>
                   <p className="text-white text-sm leading-relaxed">

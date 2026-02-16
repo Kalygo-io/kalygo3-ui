@@ -27,8 +27,8 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
-    name: "Concierge Chat",
-    href: "/dashboard/concierge-chat",
+    name: "TTS Chat",
+    href: "/dashboard/tts-chat",
     enabled: true,
   },
   {

@@ -2,7 +2,7 @@
 
 import { protectedPageGuard } from "@/components/shared/utils/validate-token";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
-import { ConciergeChatSessionPage } from "./concierge-chat-session-page";
+import { TtsChatSessionPage } from "./tts-chat-session-page";
 
 interface PageProps {
   params: Promise<{
@@ -16,7 +16,7 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <DashboardLayout>
-      <ConciergeChatSessionPage sessionId={sessionId} />
+      <TtsChatSessionPage sessionId={sessionId} />
     </DashboardLayout>
   );
 }
