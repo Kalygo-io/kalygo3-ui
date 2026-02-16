@@ -7,6 +7,8 @@ const DEFAULT_MODEL_ID = "eleven_multilingual_v2";
 
 // Minimum characters to buffer before starting TTS
 const MIN_BUFFER_SIZE = 80;
+// Force-flush the TTS buffer when it exceeds this size, even without a boundary
+const MAX_BUFFER_SIZE = 250;
 
 interface StreamEvent {
   type: "text" | "audio" | "text_done" | "audio_done" | "error";
@@ -25,7 +27,7 @@ interface StreamEvent {
  */
 export async function POST(request: NextRequest) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
-  const aiApiUrl = process.env.NEXT_PUBLIC_AI_API_URL;
+  const completionApiUrl = process.env.NEXT_PUBLIC_COMPLETION_API_URL;
 
   if (!apiKey) {
     return new Response(
@@ -34,9 +36,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!aiApiUrl) {
+  if (!completionApiUrl) {
     return new Response(
-      JSON.stringify({ error: "AI_API_URL not configured" }),
+      JSON.stringify({ error: "COMPLETION_API_URL not configured" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
     try {
       // Step 1: Call the agent API
       const agentResponse = await fetch(
-        `${aiApiUrl}/api/agents/${encodeURIComponent(agentId)}/completion`,
+        `${completionApiUrl}/api/agents/${encodeURIComponent(agentId)}/completion`,
         {
           method: "POST",
           headers: {
@@ -244,6 +246,11 @@ export async function POST(request: NextRequest) {
           // Send final text to TTS
           if (wsReady) {
             sendFinalChunk();
+          } else if (!ws && fullText.trim().length > 0) {
+            // Short response that never hit MIN_BUFFER_SIZE — still init the WS.
+            // The "open" handler already checks textStreamComplete and calls
+            // sendFinalChunk(), so the remaining textBuffer will be flushed.
+            initWebSocket();
           }
           break;
         }
@@ -299,14 +306,25 @@ export async function POST(request: NextRequest) {
                       initWebSocket();
                     }
 
-                    // Send buffered text to TTS at sentence boundaries
+                    // Send buffered text to TTS at natural boundaries
                     if (wsReady && textBuffer.length >= MIN_BUFFER_SIZE) {
-                      const sentences = textBuffer.match(/[^.!?]+[.!?]+\s*/g);
-                      if (sentences && sentences.length > 0) {
-                        // Send complete sentences, keep partial in buffer
-                        const completeText = sentences.join("");
+                      // Match sentences ending with punctuation, or lines ending
+                      // with newlines (handles bullet lists, code, etc.)
+                      const boundary = textBuffer.match(
+                        /[^.!?;\n]+[.!?;]+\s*|[^\n]+\n+/g
+                      );
+                      if (boundary && boundary.length > 0) {
+                        const completeText = boundary.join("");
                         sendTextToWs(completeText, false);
                         textBuffer = textBuffer.substring(completeText.length);
+                      } else if (textBuffer.length >= MAX_BUFFER_SIZE) {
+                        // No natural boundary found but buffer is large — flush
+                        // at the last space to avoid splitting words
+                        const lastSpace = textBuffer.lastIndexOf(" ");
+                        const splitAt =
+                          lastSpace > MIN_BUFFER_SIZE ? lastSpace + 1 : textBuffer.length;
+                        sendTextToWs(textBuffer.substring(0, splitAt), false);
+                        textBuffer = textBuffer.substring(splitAt);
                       }
                     }
                   } else if (parsed.event === "on_tool_start" || parsed.event === "on_tool_end") {
@@ -356,16 +374,21 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Wait for audio to complete (with timeout)
+      // Wait for the ElevenLabs WebSocket to finish (connect → process → close).
+      // We must keep the SSE writer open until all audio chunks have been sent.
       let waitCount = 0;
       const wsInstance = ws as WebSocket | null;
-      while (wsInstance && wsInstance.readyState === WebSocket.OPEN && waitCount < 300) {
+      while (
+        wsInstance &&
+        wsInstance.readyState !== WebSocket.CLOSED &&
+        waitCount < 300 // 30 s safety timeout
+      ) {
         await new Promise((resolve) => setTimeout(resolve, 100));
         waitCount++;
       }
 
-      // Close WebSocket if still open
-      if (wsInstance && wsInstance.readyState === WebSocket.OPEN) {
+      // Force-close WebSocket if it's still alive after the timeout
+      if (wsInstance && wsInstance.readyState !== WebSocket.CLOSED) {
         wsInstance.close();
       }
     } catch (error) {
