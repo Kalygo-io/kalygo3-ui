@@ -22,30 +22,19 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
-    name: "Playground",
+    name: "Agent Chat",
+    href: "/dashboard/agent-chat",
     enabled: true,
-    children: [
-      {
-        name: "View All",
-        href: "/dashboard/apps",
-        enabled: true,
-      },
-      {
-        name: "Agent Chat",
-        href: "/dashboard/agent-chat",
-        enabled: true,
-      },
-      {
-        name: "Concierge Chat",
-        href: "/dashboard/concierge-chat",
-        enabled: true,
-      },
-      {
-        name: "Vector Stores",
-        href: "/dashboard/vector-stores",
-        enabled: true,
-      },
-    ],
+  },
+  {
+    name: "Concierge Chat",
+    href: "/dashboard/concierge-chat",
+    enabled: true,
+  },
+  {
+    name: "Vector Stores",
+    href: "/dashboard/vector-stores",
+    enabled: true,
   },
   {
     name: "Access Groups",
@@ -54,14 +43,8 @@ export const navigation: NavigationItem[] = [
   },
   {
     name: "Credentials",
+    href: "/dashboard/credentials",
     enabled: true,
-    children: [
-      {
-        name: "View All",
-        href: "/dashboard/credentials",
-        enabled: true,
-      },
-    ],
   },
   {
     name: "Settings",
@@ -76,16 +59,6 @@ export const navigation: NavigationItem[] = [
         name: "API Keys",
         href: "/dashboard/settings/api-keys",
         enabled: true,
-      },
-      {
-        name: "Payment Settings",
-        href: "/dashboard/settings/payment",
-        enabled: false,
-      },
-      {
-        name: "Experimental Settings",
-        href: "/dashboard/settings/experimental",
-        enabled: false,
       },
     ],
   },
