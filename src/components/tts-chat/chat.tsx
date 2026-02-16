@@ -186,6 +186,18 @@ export function Chat({
     return () => clearInterval(checkInterval);
   }, [isAudioStreaming]);
 
+  // Reset audio player when chat messages are cleared (e.g. session reset)
+  useEffect(() => {
+    if (chatState.messages.length === 0) {
+      const player = (window as any).__streamingAudioPlayer;
+      if (player?.reset) {
+        player.reset();
+      }
+      audioChunkQueueRef.current = [];
+      setIsAudioStreaming(false);
+    }
+  }, [chatState.messages.length]);
+
   // Handle stop button in audio player
   const handleAudioStop = useCallback(() => {
     setIsAudioStreaming(false);
