@@ -3,6 +3,7 @@ export enum ServiceName {
   OPENAI_API_KEY = "OPENAI_API_KEY",
   ANTHROPIC_API_KEY = "ANTHROPIC_API_KEY",
   PINECONE_API_KEY = "PINECONE_API_KEY",
+  ELEVENLABS_API_KEY = "ELEVENLABS_API_KEY",
   SUPABASE = "SUPABASE",
 }
 
@@ -191,6 +192,7 @@ export function formatServiceName(serviceName: ServiceName | string): string {
     [ServiceName.OPENAI_API_KEY]: "OpenAI",
     [ServiceName.ANTHROPIC_API_KEY]: "Anthropic",
     [ServiceName.PINECONE_API_KEY]: "Pinecone",
+    [ServiceName.ELEVENLABS_API_KEY]: "ElevenLabs",
     [ServiceName.SUPABASE]: "Supabase",
   };
   return displayNames[serviceName] || serviceName;
