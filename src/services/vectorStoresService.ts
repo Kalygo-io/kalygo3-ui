@@ -268,6 +268,26 @@ class VectorStoresService {
     return response.json();
   }
 
+  async deleteNamespaceVectors(
+    indexName: string,
+    namespace: string
+  ): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(
+        indexName
+      )}/namespaces/${encodeURIComponent(namespace)}/vectors`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      }
+    );
+
+    return this.handleResponse<void>(response);
+  }
+
   async getIngestionLogs(
     indexName: string,
     options: IngestionLogsFilterOptions = {}

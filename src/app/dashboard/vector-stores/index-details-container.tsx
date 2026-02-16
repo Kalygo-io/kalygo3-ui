@@ -95,6 +95,22 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
     }
   };
 
+  const handleDeleteNamespace = async (namespaceName: string) => {
+    const displayName = namespaceName || "(default)";
+    const confirmed = window.confirm(
+      `Are you sure you want to delete all vectors in namespace "${displayName}"? This action cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      await vectorStoresService.deleteNamespaceVectors(indexName, namespaceName);
+      successToast(`Namespace "${displayName}" vectors deleted successfully`);
+      await loadNamespaces();
+    } catch (error: any) {
+      errorToast(error.message || "Failed to delete namespace vectors");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -255,14 +271,25 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
                         key={namespace.namespace}
                         className="bg-gray-900/50 border border-gray-700/30 rounded-lg p-4"
                       >
-                        <div className="text-white font-medium mb-2">
-                          {namespace.namespace || "(default)"}
-                        </div>
-                        {namespace.vector_count !== undefined && (
-                          <div className="text-sm text-gray-400">
-                            {namespace.vector_count.toLocaleString()} vectors
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="text-white font-medium mb-2">
+                              {namespace.namespace || "(default)"}
+                            </div>
+                            {namespace.vector_count !== undefined && (
+                              <div className="text-sm text-gray-400">
+                                {namespace.vector_count.toLocaleString()} vectors
+                              </div>
+                            )}
                           </div>
-                        )}
+                          <button
+                            onClick={() => handleDeleteNamespace(namespace.namespace)}
+                            className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                            title="Delete namespace vectors"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
