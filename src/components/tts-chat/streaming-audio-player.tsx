@@ -86,8 +86,10 @@ export function StreamingAudioPlayer({
     }
   }, []);
 
-  // Check if we should trigger play
-  const checkAndTriggerPlay = useCallback(() => {
+  // Check if we should trigger play.
+  // When `force` is true (stream ended), play immediately even if
+  // the buffer hasn't reached MIN_BUFFERED_SECONDS.
+  const checkAndTriggerPlay = useCallback((force = false) => {
     if (hasTriggeredPlayRef.current) return;
 
     const audio = audioRef.current;
@@ -95,7 +97,9 @@ export function StreamingAudioPlayer({
 
     setBufferedSeconds(duration);
 
-    if (duration >= MIN_BUFFERED_SECONDS && audio) {
+    const shouldPlay = duration > 0 && audio && (force || duration >= MIN_BUFFERED_SECONDS);
+
+    if (shouldPlay) {
       hasTriggeredPlayRef.current = true;
       
       if (playCheckIntervalRef.current) {
@@ -103,7 +107,7 @@ export function StreamingAudioPlayer({
         playCheckIntervalRef.current = null;
       }
 
-      console.log(`[Audio] Buffer ready: start=${start.toFixed(3)}s, end=${end.toFixed(3)}s, duration=${duration.toFixed(2)}s`);
+      console.log(`[Audio] Buffer ready (force=${force}): start=${start.toFixed(3)}s, end=${end.toFixed(3)}s, duration=${duration.toFixed(2)}s`);
       
       // Seek to the start of the buffered range
       audio.currentTime = start;
@@ -136,12 +140,41 @@ export function StreamingAudioPlayer({
       processQueueTimeoutRef.current = null;
     }
 
+    // Abort any pending SourceBuffer operations first
+    if (sourceBufferRef.current) {
+      try {
+        sourceBufferRef.current.abort();
+      } catch (e) {
+        // abort() throws if MediaSource is not "open" - that's fine
+      }
+    }
+
+    // Remove the SourceBuffer from the MediaSource while it's still "open".
+    // This is critical: it releases the browser's global SourceBuffer slot
+    // so the next MediaSource can allocate one.
+    if (
+      sourceBufferRef.current &&
+      mediaSourceRef.current &&
+      mediaSourceRef.current.readyState === "open"
+    ) {
+      try {
+        mediaSourceRef.current.removeSourceBuffer(sourceBufferRef.current);
+        console.log("[Audio] Removed SourceBuffer from MediaSource");
+      } catch (e) {
+        // May fail if already removed or in bad state
+      }
+    }
+
+    // End the MediaSource stream if still open
     if (mediaSourceRef.current && mediaSourceRef.current.readyState === "open") {
       try {
         mediaSourceRef.current.endOfStream();
       } catch (e) {}
     }
     
+    // Detach the audio element from the old MediaSource object URL.
+    // This is essential for the browser to garbage-collect the MediaSource
+    // and free the underlying SourceBuffer resources.
     if (audioRef.current) {
       audioRef.current.pause();
       const oldSrc = audioRef.current.src;
@@ -186,22 +219,28 @@ export function StreamingAudioPlayer({
       }
 
       console.log("[Audio] MediaSource opened");
-      try {
-        const mimeType = 'audio/mpeg';
-        if (MediaSource.isTypeSupported(mimeType)) {
+
+      const mimeType = 'audio/mpeg';
+      if (!MediaSource.isTypeSupported(mimeType)) {
+        console.error("[Audio] MP3 not supported in MediaSource");
+        return;
+      }
+
+      // Retry helper: the browser may not have released SourceBuffer
+      // resources from the previous stream yet (global limit). Retrying
+      // with increasing delays gives the GC time to reclaim them.
+      const tryAddSourceBuffer = (attempt: number) => {
+        // Stale guard (may have been reset while waiting for retry)
+        if (streamIdRef.current !== currentStreamId) return;
+
+        try {
           const sourceBuffer = mediaSource.addSourceBuffer(mimeType);
           sourceBufferRef.current = sourceBuffer;
 
           sourceBuffer.addEventListener("updateend", () => {
-            // Guard against stale callbacks
             if (streamIdRef.current !== currentStreamId) return;
-            
             isAppendingRef.current = false;
-            
-            // Check buffer and maybe trigger play
             checkAndTriggerPlay();
-            
-            // Process next chunk
             processQueue();
           });
 
@@ -210,23 +249,31 @@ export function StreamingAudioPlayer({
             isAppendingRef.current = false;
           });
 
-          // Mark buffer as ready
           isBufferReadyRef.current = true;
-          console.log(`[Audio] SourceBuffer ready. Queued chunks waiting: ${queueRef.current.length}`);
+          console.log(`[Audio] SourceBuffer ready (attempt ${attempt + 1}). Queued chunks waiting: ${queueRef.current.length}`);
 
-          // Start checking for playback readiness
           if (!playCheckIntervalRef.current) {
             playCheckIntervalRef.current = setInterval(checkAndTriggerPlay, 100);
           }
 
-          // IMPORTANT: Process any chunks that were queued before buffer was ready
           processQueue();
-        } else {
-          console.error("[Audio] MP3 not supported in MediaSource");
+        } catch (e) {
+          const isQuotaError =
+            e instanceof DOMException && e.name === "QuotaExceededError";
+
+          if (isQuotaError && attempt < 5) {
+            const delayMs = 100 * (attempt + 1);
+            console.warn(
+              `[Audio] SourceBuffer limit hit (attempt ${attempt + 1}), retrying in ${delayMs}ms...`
+            );
+            setTimeout(() => tryAddSourceBuffer(attempt + 1), delayMs);
+          } else {
+            console.error("[Audio] Error creating SourceBuffer:", e);
+          }
         }
-      } catch (e) {
-        console.error("[Audio] Error creating SourceBuffer:", e);
-      }
+      };
+
+      tryAddSourceBuffer(0);
     });
   }, [checkAndTriggerPlay, processQueue]);
 
@@ -268,7 +315,19 @@ export function StreamingAudioPlayer({
     internalReset();
   }, [internalReset]);
 
-  // End the stream when streaming stops
+  // Deferred MediaSource initialization:
+  // When audio chunks arrive before React renders the <audio> element,
+  // initMediaSource() silently fails because audioRef.current is null.
+  // This effect retries initialization after the component renders.
+  useEffect(() => {
+    if (chunkCount > 0 && !mediaSourceRef.current && audioRef.current) {
+      console.log("[Audio] Deferred MediaSource init (audio element now available, queued chunks:", queueRef.current.length, ")");
+      initMediaSource();
+    }
+  }, [chunkCount, initMediaSource]);
+
+  // End the stream when streaming stops, and force-play if the buffer
+  // never reached MIN_BUFFERED_SECONDS (short responses).
   useEffect(() => {
     if (!isStreaming && isBufferReadyRef.current && mediaSourceRef.current) {
       const checkAndEnd = () => {
@@ -278,6 +337,17 @@ export function StreamingAudioPlayer({
         if (!sourceBuffer || !mediaSource) return;
         
         if (queueRef.current.length === 0 && !sourceBuffer.updating && !isAppendingRef.current && mediaSource.readyState === "open") {
+          // Force play if we have audio but never hit the buffer threshold
+          if (!hasTriggeredPlayRef.current) {
+            console.log("[Audio] Stream ended before buffer threshold — force playing");
+            checkAndTriggerPlay(true);
+          }
+
+          // Do NOT remove the SourceBuffer here — doing so destroys the
+          // buffered audio data before the deferred audio.play() fires.
+          // SourceBuffer cleanup is handled by internalReset() when the
+          // next stream starts, and initMediaSource() has retry logic
+          // as a safety net for browser GC lag.
           try {
             console.log("[Audio] Ending MediaSource stream");
             mediaSource.endOfStream();
@@ -292,7 +362,7 @@ export function StreamingAudioPlayer({
       
       setTimeout(checkAndEnd, 300);
     }
-  }, [isStreaming]);
+  }, [isStreaming, checkAndTriggerPlay]);
 
   // Expose methods via window - IMPORTANT: these are stable references
   useEffect(() => {
@@ -307,8 +377,27 @@ export function StreamingAudioPlayer({
     return () => {
       if (playCheckIntervalRef.current) clearInterval(playCheckIntervalRef.current);
       if (processQueueTimeoutRef.current) clearTimeout(processQueueTimeoutRef.current);
+      // Release SourceBuffer slot, then end the MediaSource
+      if (sourceBufferRef.current) {
+        try { sourceBufferRef.current.abort(); } catch (e) {}
+      }
+      if (
+        sourceBufferRef.current &&
+        mediaSourceRef.current?.readyState === "open"
+      ) {
+        try {
+          mediaSourceRef.current.removeSourceBuffer(sourceBufferRef.current);
+        } catch (e) {}
+      }
       if (mediaSourceRef.current?.readyState === "open") {
         try { mediaSourceRef.current.endOfStream(); } catch (e) {}
+      }
+      // Revoke the object URL so the browser can GC the MediaSource
+      if (audioRef.current?.src) {
+        const oldSrc = audioRef.current.src;
+        audioRef.current.removeAttribute("src");
+        audioRef.current.load();
+        URL.revokeObjectURL(oldSrc);
       }
     };
   }, []);
