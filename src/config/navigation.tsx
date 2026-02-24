@@ -22,6 +22,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Search Prompts",
+    href: "/dashboard/similarity-search",
+    enabled: true,
+  },
+  {
     name: "Agent Chat",
     href: "/dashboard/agent-chat",
     enabled: true,

@@ -8,9 +8,7 @@ import {
   InformationCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  UserIcon,
-  StarIcon,
-  DocumentIcon,
+  DocumentTextIcon,
   Cog6ToothIcon,
   ArrowPathIcon,
   PaperAirplaneIcon,
@@ -19,6 +17,10 @@ import {
 import { ContextualAside } from "@/components/similarity-search/contextual-aside";
 import Image from "next/image";
 import { errorToast } from "@/shared/toasts/errorToast";
+import {
+  callSimilaritySearch,
+  SimilaritySearchResult,
+} from "@/services/callSimilaritySearch";
 
 export function SimilaritySearchDemoContainer() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,41 +45,23 @@ export function SimilaritySearchDemoContainer() {
     ],
     queryFn: async () => {
       if (!submittedQuery.trim()) {
-        return { results: [] };
+        return { success: true, results: [] };
       }
 
-      const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_AI_API_URL}/api/similarity-search/search`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: submittedQuery,
-            top_k: appliedTopK,
-            similarity_threshold: appliedSimilarityThreshold,
-          }),
-        }
-      );
+      const response = await callSimilaritySearch({
+        query: submittedQuery,
+        top_k: appliedTopK,
+        similarity_threshold: appliedSimilarityThreshold,
+      });
 
-      if (!resp.ok) {
-        errorToast(`HTTP error status: ${resp.status}`);
-
-        throw new Error(`HTTP error status: ${resp.status}`);
+      if (!response.success) {
+        errorToast(response.error ?? "Search failed");
       }
 
-      const responseBody = await resp.json();
-
-      if (!responseBody.success) {
-        errorToast(`${responseBody.error}`);
-      }
-
-      return responseBody;
+      return response;
     },
     enabled: !!submittedQuery.trim(),
-    staleTime: 0, // No caching - always fetch fresh results
+    staleTime: 0,
     retry: 2,
   });
 
@@ -287,10 +271,10 @@ export function SimilaritySearchDemoContainer() {
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-white mb-2">
-            Similarity Search
+            Search Prompts
           </h1>
           <p className="text-gray-400">
-            Search through QnA pairs using semantic similarity
+            Search through prompts using semantic similarity
           </p>
         </div>
 
@@ -360,105 +344,62 @@ export function SimilaritySearchDemoContainer() {
               </h2>
             </div>
 
-            {/* Compact Vertical List Layout */}
+            {/* Prompt Results List */}
             <div className="space-y-2">
               {data.results.map(
-                (
-                  result: {
-                    metadata: {
-                      q: string;
-                      a: string;
-                      content: string;
-                      filename: string;
-                      row_number: number;
-                      upload_timestamp: string;
-                      user_email: string;
-                    };
-                    score: number;
-                  },
-                  index: number
-                ) => {
+                (result: SimilaritySearchResult, index: number) => {
                   const scorePercentage = Math.round(result.score * 100);
-
                   const isExpanded = expandedCards.has(index);
+                  const scoreColor =
+                    scorePercentage >= 70
+                      ? { bg: "rgba(34, 197, 94, 0.2)", border: "rgba(34, 197, 94, 0.4)", text: "#4ade80" }
+                      : scorePercentage >= 60
+                        ? { bg: "rgba(234, 179, 8, 0.2)", border: "rgba(234, 179, 8, 0.4)", text: "#facc15" }
+                        : scorePercentage >= 50
+                          ? { bg: "rgba(249, 115, 22, 0.2)", border: "rgba(249, 115, 22, 0.4)", text: "#fb923c" }
+                          : scorePercentage >= 40
+                            ? { bg: "rgba(239, 68, 68, 0.2)", border: "rgba(239, 68, 68, 0.4)", text: "#f87171" }
+                            : { bg: "rgba(107, 114, 128, 0.2)", border: "rgba(107, 114, 128, 0.4)", text: "#9ca3af" };
 
                   return (
                     <div
-                      key={index}
+                      key={result.metadata.prompt_id ?? index}
                       className={`bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 hover:border-gray-600/70 hover:bg-gray-800/70 transition-all duration-200 group ${
                         isExpanded ? "ring-2 ring-blue-500/20" : ""
                       }`}
                     >
-                      {/* Compact Header Row */}
-                      <div className="flex items-start justify-between mb-3">
+                      {/* Header: name + score */}
+                      <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
                             <div className="flex-shrink-0">
                               <div className="w-6 h-6 bg-blue-600/20 rounded-md flex items-center justify-center">
-                                <StarIcon className="w-3 h-3 text-blue-400" />
+                                <DocumentTextIcon className="w-3 h-3 text-blue-400" />
                               </div>
                             </div>
                             <h3 className="text-base font-semibold text-white line-clamp-1 group-hover:text-blue-100 transition-colors">
-                              Q: {result.metadata.q}
+                              {result.metadata.name}
                             </h3>
                           </div>
 
-                          {/* Compact File Info */}
-                          <div className="flex items-center space-x-1 text-xs text-gray-400 ml-8">
-                            <DocumentIcon className="w-3 h-3" />
-                            <span>
-                              {result.metadata.filename} (Row{" "}
-                              {result.metadata.row_number})
+                          {/* Metadata badges */}
+                          <div className="flex items-center flex-wrap gap-2 ml-8 text-xs">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-purple-600/20 text-purple-300 border border-purple-700/30">
+                              {result.metadata.type}
                             </span>
-                            <span className="mx-1">•</span>
-                            <span className="text-blue-400">
-                              by {result.metadata.user_email}
+                            <span className="text-gray-500">
+                              ID: {result.metadata.prompt_id}
                             </span>
                           </div>
                         </div>
 
-                        {/* Enhanced Score Badge with better legibility */}
+                        {/* Score Badge */}
                         <div
                           className="flex-shrink-0 ml-3 border rounded-md px-2.5 py-1 shadow-sm"
-                          style={{
-                            backgroundColor:
-                              scorePercentage >= 70
-                                ? "rgba(34, 197, 94, 0.2)"
-                                : scorePercentage >= 60
-                                ? "rgba(234, 179, 8, 0.2)"
-                                : scorePercentage >= 50
-                                ? "rgba(249, 115, 22, 0.2)"
-                                : scorePercentage >= 40
-                                ? "rgba(239, 68, 68, 0.2)"
-                                : "rgba(107, 114, 128, 0.2)",
-                            borderColor:
-                              scorePercentage >= 70
-                                ? "rgba(34, 197, 94, 0.4)"
-                                : scorePercentage >= 60
-                                ? "rgba(234, 179, 8, 0.4)"
-                                : scorePercentage >= 50
-                                ? "rgba(249, 115, 22, 0.4)"
-                                : scorePercentage >= 40
-                                ? "rgba(239, 68, 68, 0.4)"
-                                : "rgba(107, 114, 128, 0.4)",
-                          }}
+                          style={{ backgroundColor: scoreColor.bg, borderColor: scoreColor.border }}
                         >
                           <div className="flex items-center space-x-1">
-                            <span
-                              className="text-sm font-bold"
-                              style={{
-                                color:
-                                  scorePercentage >= 70
-                                    ? "#4ade80"
-                                    : scorePercentage >= 60
-                                    ? "#facc15"
-                                    : scorePercentage >= 50
-                                    ? "#fb923c"
-                                    : scorePercentage >= 40
-                                    ? "#f87171"
-                                    : "#9ca3af",
-                              }}
-                            >
+                            <span className="text-sm font-bold" style={{ color: scoreColor.text }}>
                               {scorePercentage}%
                             </span>
                             <span className="text-xs text-gray-300 font-medium">
@@ -468,39 +409,41 @@ export function SimilaritySearchDemoContainer() {
                         </div>
                       </div>
 
-                      {/* Compact Description */}
-                      <div className="space-y-2 ml-8">
-                        <p
-                          className={`text-gray-300 text-sm leading-relaxed line-clamp-2`}
-                        >
-                          A: {result.metadata.a}
-                        </p>
+                      {/* Description preview */}
+                      <div className="ml-8">
+                        {result.metadata.description && (
+                          <p className="text-gray-300 text-sm leading-relaxed line-clamp-2 mb-1">
+                            {result.metadata.description}
+                          </p>
+                        )}
 
-                        {/* Expanded Details - More compact */}
+                        {/* Expanded: full prompt content */}
                         {isExpanded && (
-                          <div className="space-y-3 pt-3 border-t border-gray-700/50">
-                            <div className="bg-gray-900/20 rounded-md p-3">
-                              <h5 className="font-medium text-white mb-2 text-sm">
-                                Question:
-                              </h5>
-                              <p className="text-gray-300 text-sm leading-relaxed">
-                                {result.metadata.q}
-                              </p>
-                            </div>
+                          <div className="space-y-3 pt-3 border-t border-gray-700/50 mt-2">
+                            {result.metadata.description && (
+                              <div className="bg-gray-900/20 rounded-md p-3">
+                                <h5 className="font-medium text-white mb-2 text-sm">
+                                  Description
+                                </h5>
+                                <p className="text-gray-300 text-sm leading-relaxed">
+                                  {result.metadata.description}
+                                </p>
+                              </div>
+                            )}
 
                             <div className="bg-gray-900/20 rounded-md p-3">
                               <h5 className="font-medium text-white mb-2 text-sm">
-                                Answer:
+                                Prompt Content
                               </h5>
-                              <p className="text-gray-300 text-sm leading-relaxed">
-                                {result.metadata.a}
-                              </p>
+                              <pre className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-mono">
+                                {result.metadata.content}
+                              </pre>
                             </div>
                           </div>
                         )}
                       </div>
 
-                      {/* Compact Action Bar */}
+                      {/* Action Bar */}
                       <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-700/50 ml-8">
                         <div className="text-xs text-gray-500">
                           <span className="font-medium">
@@ -524,7 +467,7 @@ export function SimilaritySearchDemoContainer() {
                       </div>
                     </div>
                   );
-                }
+                },
               )}
             </div>
           </div>
@@ -540,8 +483,7 @@ export function SimilaritySearchDemoContainer() {
               Ready to search
             </h3>
             <p className="text-gray-400 text-center max-w-md">
-              Enter a search query above and press Enter to find results using
-              similarity search
+              Enter a search query above and press Enter to find similar prompts
             </p>
           </div>
         )}
@@ -571,7 +513,4 @@ export function SimilaritySearchDemoContainer() {
       />
     </>
   );
-}
-function successToast(arg0: string) {
-  throw new Error("Function not implemented.");
 }

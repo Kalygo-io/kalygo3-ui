@@ -10,7 +10,7 @@ export default async function Page() {
     await protectedPageGuard();
     return (
       <DashboardLayout>
-        <SimilaritySearchDemoContainer />;
+        <SimilaritySearchDemoContainer />
       </DashboardLayout>
     );
   } catch (error) {
