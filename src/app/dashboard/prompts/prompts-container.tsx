@@ -458,10 +458,10 @@ function PromptCard({
   const scoreColor =
     similarityScore != null
       ? similarityScore >= 70
-        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+        ? "bg-emerald-600 border-emerald-500 text-white"
         : similarityScore >= 50
-          ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
-          : "bg-gray-500/20 border-gray-500/40 text-gray-400"
+          ? "bg-amber-600 border-amber-500 text-white"
+          : "bg-gray-600 border-gray-500 text-white"
       : null;
 
   return (
