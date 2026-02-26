@@ -7,6 +7,8 @@ export interface AppSettings {
 export const ELEVENLABS_VOICES = [
   { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah" },
   { id: "JBFqnCBsd6RMkjVDRZzb", name: "George" },
+  { id: "n3yMmKmTfVCEM13Kk2lp", name: "Silvara" },
+  { id: "5GR0JTHRVmv00OeaRI9u", name: "Maria" },
 ] as const;
 
 const DEFAULT_SETTINGS: AppSettings = {
