@@ -27,6 +27,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Hierarchical Agent Chat",
+    href: "/dashboard/hierarchical-agent-chat",
+    enabled: true,
+  },
+  {
     name: "TTS Chat",
     href: "/dashboard/tts-chat",
     enabled: true,
