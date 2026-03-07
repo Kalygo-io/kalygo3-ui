@@ -207,6 +207,14 @@ export function getAgentModelConfig(agent: Agent): ModelConfig {
 }
 
 /**
+ * Check if agent is configured as a hierarchical swarm (for /dashboard/hierarchical-agent-chat).
+ */
+export function isSwarmAgent(agent: Agent): boolean {
+  const data = (agent.config as any)?.data;
+  return data?.multiAgentArchitecture === "hierarchicalSwarm" && data?.swarm?.workers?.length > 0;
+}
+
+/**
  * Convert V1 knowledge bases to V2 tools (defaults to basic vectorSearch)
  */
 export function convertKnowledgeBasesToTools(knowledgeBases: KnowledgeBaseV1[]): VectorSearchTool[] {

@@ -3,6 +3,8 @@ export interface Message {
   content: string;
   role: "human" | "ai";
   error: ErrorDetails | null;
+  /** For swarm chat: which agent (Director, worker name) produced this message */
+  agentName?: string;
   parallelGroupId?: string;
   blocks?: Message[];
   rerankedMatches?: RerankedMatch[];
