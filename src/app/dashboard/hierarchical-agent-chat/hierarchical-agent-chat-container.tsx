@@ -1,26 +1,41 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { agentsService, Agent } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
-  ChatBubbleLeftRightIcon,
-  UserGroupIcon,
-  Cog6ToothIcon,
+  ArrowLeftIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
+import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import { CustomizeCrewPanel } from "@/components/hierarchical/customize-crew-panel";
 import { HierarchicalDrawer } from "@/components/hierarchical/drawer";
+import { EmptyScreen } from "@/components/shared/chat/empty-screen";
+import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 
 const MAX_AGENTS = 3;
 
 export function HierarchicalAgentChatContainer() {
+  const router = useRouter();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<Agent[]>([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [input, setInput] = useState("");
+  const [isXl, setIsXl] = useState(true);
 
   useEffect(() => {
     loadAgents();
+  }, []);
+
+  // Only show the slide-out drawer below xl; on xl we use the fixed aside only (avoid two panels)
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1280px)");
+    const handler = () => setIsXl(mql.matches);
+    handler();
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
   }, []);
 
   const loadAgents = async () => {
@@ -47,84 +62,125 @@ export function HierarchicalAgentChatContainer() {
   };
 
   const handleDrawerClose = () => setDrawerOpen(false);
+  const toggleDrawer = () => setDrawerOpen((prev) => !prev);
+  const handleBack = () => router.push("/dashboard/agent-chat");
+
+  const subtitle =
+    selectedAgents.length === 0
+      ? "Choose 1–3 agents in the panel to the right to get started."
+      : selectedAgents.map((a) => a.name).join(", ");
 
   return (
     <>
-      {/* Main content: padding-right on xl so content doesn't go under the aside */}
-      <div className="xl:pr-96">
-        <div className="px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center gap-3 mb-1">
-              <UserGroupIcon className="h-8 w-8 text-blue-400" />
-              <h1 className="text-3xl font-bold text-white">
-                Hierarchical Agent Chat
-              </h1>
-            </div>
-            <p className="text-gray-400">
-              Chat with a room of agents. Customize the crew in the panel to
-              the right (or open the panel on smaller screens).
+      {/* Full-bleed layout matching agent-chat session page */}
+      <div
+        className={`fixed inset-0 lg:pl-72 pt-16 flex flex-col overflow-hidden bg-black ${drawerOpen ? "xl:pr-96" : ""}`}
+      >
+        {/* Header bar - same as agent-chat session */}
+        <div className="flex-shrink-0 border-b border-gray-700 bg-gray-800/50 backdrop-blur-sm px-4 py-3 flex items-center gap-4 z-10">
+          <button
+            onClick={handleBack}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+            title="Back to agent selection"
+          >
+            <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-semibold text-white truncate">
+              Hierarchical Agent Chat
+            </h1>
+            <p className="text-sm text-gray-400 line-clamp-1 truncate">
+              {subtitle}
             </p>
           </div>
+          {/* Toggle Customize Crew panel - always visible (open/close) */}
+          <button
+            onClick={toggleDrawer}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+            title={drawerOpen ? "Close crew panel" : "Customize crew"}
+          >
+            <InformationCircleIcon className="w-5 h-5 text-blue-400" />
+          </button>
+        </div>
 
-          {/* Chat area */}
-          <div className="flex flex-col min-h-[calc(100vh-12rem)] rounded-xl border border-gray-700/50 bg-gray-800/50 overflow-hidden">
-            {selectedAgents.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <ChatBubbleLeftRightIcon className="h-16 w-16 text-gray-600 mb-4" />
-                <p className="text-gray-400 text-lg mb-2">No agents selected</p>
-                <p className="text-gray-500 text-sm mb-6 max-w-md">
-                  Open the Customize Crew panel and choose 1–3 agents to chat
-                  with in this room.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setDrawerOpen(true)}
-                  className="xl:hidden inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                >
-                  <Cog6ToothIcon className="h-5 w-5" />
-                  Open panel
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 p-3 border-b border-gray-700/50 bg-gray-900/50 flex-shrink-0">
-                  <span className="text-sm text-gray-400 mr-2">
-                    In this room:
-                  </span>
-                  {selectedAgents.map((agent) => (
-                    <span
-                      key={agent.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-700/80 text-white text-sm font-medium"
-                    >
-                      {agent.name}
-                    </span>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setDrawerOpen(true)}
-                    className="xl:hidden text-xs text-blue-400 hover:text-blue-300 ml-2"
-                  >
-                    Change
-                  </button>
-                  <span className="xl:inline hidden text-xs text-gray-500 ml-2">
-                    (Edit in panel →)
-                  </span>
-                </div>
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-0">
-                  <p className="text-gray-500 text-sm">
-                    Chat UI will go here. You have {selectedAgents.length} agent
-                    {selectedAgents.length !== 1 ? "s" : ""} in the room.
-                  </p>
-                </div>
-              </>
-            )}
+        {/* Chat area - scrollable, same structure as agent-chat Chat */}
+        <div className="flex-1 overflow-hidden min-h-0">
+          <div className="h-full overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 custom-scrollbar">
+            <div className="pb-[200px]">
+              <EmptyScreen
+                content={
+                  <>
+                    <h1 className="text-center text-5xl leading-[1.5] font-semibold leading-12 text-ellipsis overflow-hidden text-white p-1">
+                      {selectedAgents.length === 0
+                        ? "Hierarchical Agent Chat"
+                        : "Crew Chat"}
+                    </h1>
+                    <p className="text-center text-gray-400 mt-2">
+                      {selectedAgents.length === 0
+                        ? "Choose 1–3 agents in the panel to the right, then send a message to your crew."
+                        : "Send message to your crew and get a response."}
+                    </p>
+                  </>
+                }
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Fixed aside: Customize Crew panel (visible on xl) */}
-      <aside className="fixed inset-y-0 right-0 hidden w-96 overflow-y-auto border-l border-gray-700 bg-gray-800 shadow-xl xl:block pt-16">
+      {/* Fixed bottom panel - same design as agent-chat ChatPanel + PromptForm */}
+      <div
+        className={`fixed inset-x-0 bottom-0 w-full border-t bg-black border-gray-700 shadow-lg rounded-t-xl z-[10] lg:pl-72 ${drawerOpen ? "xl:pr-96" : ""}`}
+        style={{ zIndex: 10 }}
+      >
+        <div
+          className={`mx-auto lg:max-w-[calc(100%-18rem)] ${drawerOpen ? "xl:max-w-[calc(100%-18rem-24rem)]" : ""}`}
+        >
+          <div className="mx-4 sm:mx-8 space-y-4 border-t border-gray-700 px-4 py-2 md:py-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!input.trim()) return;
+                setInput("");
+              }}
+              className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background"
+            >
+              <ResizableTextarea
+                tabIndex={0}
+                placeholder="Send a message."
+                className="block w-full rounded-md border-0 py-1.5 text-gray-200 bg-gray-800 shadow-sm ring-1 ring-inset ring-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 pl-4 pr-12"
+                spellCheck={false}
+                autoComplete="off"
+                autoCorrect="off"
+                name="message"
+                rows={3}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                minHeight={80}
+                maxHeight={240}
+              />
+              <div className="absolute bottom-2 right-2 flex items-center">
+                <button
+                  type="submit"
+                  disabled={!input.trim()}
+                  className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white transition-colors"
+                  title="Send message"
+                >
+                  <PaperAirplaneIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+            <p className="text-gray-200 px-2 text-center text-xs leading-normal hidden sm:block">
+              Made with ❤️ in Miami 🌴
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed aside: Customize Crew (visible on xl when drawerOpen) */}
+      <aside
+        className={`fixed top-16 bottom-0 right-0 w-96 overflow-y-auto border-l border-gray-700 bg-gray-900 z-[80] ${drawerOpen ? "hidden xl:block" : "hidden"}`}
+      >
         <CustomizeCrewPanel
           agents={agents}
           selectedAgents={selectedAgents}
@@ -134,25 +190,9 @@ export function HierarchicalAgentChatContainer() {
         />
       </aside>
 
-      {/* Floating cog: open drawer on smaller screens (xl:hidden) */}
-      <div
-        className="fixed top-20 right-4 z-10 xl:hidden"
-        style={{ top: "5.5rem" }}
-      >
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 hover:text-white transition-colors shadow-lg"
-          title="Customize Crew"
-          aria-label="Open Customize Crew panel"
-        >
-          <Cog6ToothIcon className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Drawer: same Customize Crew content for smaller screens */}
+      {/* Drawer: only on viewports below xl; on xl the fixed aside is used instead */}
       <HierarchicalDrawer
-        open={drawerOpen}
+        open={drawerOpen && !isXl}
         onClose={handleDrawerClose}
         topOffset={64}
       >
