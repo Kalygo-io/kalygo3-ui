@@ -33,9 +33,7 @@ export function CustomizeCrewPanel({
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header - same as Agent Config */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-white">
-            Customize Crew
-          </h2>
+          <h2 className="text-lg font-semibold text-white">Customize Crew</h2>
           {showCloseButton && onClose && (
             <DrawerCloseButton onClose={onClose} />
           )}

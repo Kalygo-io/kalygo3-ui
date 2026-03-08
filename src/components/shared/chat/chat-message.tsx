@@ -84,7 +84,11 @@ export const ChatMessage = memo(
                 P.message.error && "text-red-400"
               )}
             >
-              {/* <ChatMarkdown content={P.message.content} /> */}
+              {P.message.role === "ai" && P.message.agentName && (
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-700/60 px-2 py-0.5 text-xs font-medium text-gray-300">
+                  {P.message.agentName}
+                </span>
+              )}
               <ChatMarkdown content={P.message.content} />
             </div>
             <MessageActions message={P.message} />

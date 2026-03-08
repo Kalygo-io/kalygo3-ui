@@ -67,7 +67,11 @@ export interface DbTableWriteTool {
   injectChatSessionId?: boolean; // Auto-inject chat session UUID into the record
 }
 
-export type ToolV2 = VectorSearchTool | VectorSearchWithRerankingTool | DbTableReadTool | DbTableWriteTool;
+export type ToolV2 =
+  | VectorSearchTool
+  | VectorSearchWithRerankingTool
+  | DbTableReadTool
+  | DbTableWriteTool;
 
 export interface AgentConfigDataV2 {
   systemPrompt: string;
@@ -104,7 +108,10 @@ export interface AgentConfigV3 {
 }
 
 // Available models by provider
-export const AVAILABLE_MODELS: Record<ModelProvider, { value: string; label: string }[]> = {
+export const AVAILABLE_MODELS: Record<
+  ModelProvider,
+  { value: string; label: string }[]
+> = {
   openai: [
     { value: "gpt-5.1", label: "GPT-5.1 (Latest)" },
     { value: "gpt-4o-mini", label: "GPT-4o Mini (Fast, Cost-effective)" },
@@ -113,7 +120,10 @@ export const AVAILABLE_MODELS: Record<ModelProvider, { value: string; label: str
     { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (Legacy)" },
   ],
   anthropic: [
-    { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (Recommended)" },
+    {
+      value: "claude-3-5-sonnet-20241022",
+      label: "Claude 3.5 Sonnet (Recommended)",
+    },
     { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku (Fast)" },
     { value: "claude-3-opus-20240229", label: "Claude 3 Opus (Most Capable)" },
   ],
@@ -135,7 +145,10 @@ export const DEFAULT_MODEL: ModelConfig = {
 // ============================================================================
 
 export type AgentConfig = AgentConfigV1 | AgentConfigV2 | AgentConfigV3;
-export type AgentConfigData = AgentConfigDataV1 | AgentConfigDataV2 | AgentConfigDataV3;
+export type AgentConfigData =
+  | AgentConfigDataV1
+  | AgentConfigDataV2
+  | AgentConfigDataV3;
 export type KnowledgeBase = KnowledgeBaseV1; // Keep for backwards compatibility
 
 export interface Agent {
@@ -169,21 +182,27 @@ export interface UpdateAgentRequest {
 /**
  * Type guard to check if agent config is V3
  */
-export function isAgentConfigV3(config: AgentConfig | undefined): config is AgentConfigV3 {
+export function isAgentConfigV3(
+  config: AgentConfig | undefined,
+): config is AgentConfigV3 {
   return config?.version === 3;
 }
 
 /**
  * Type guard to check if agent config is V2
  */
-export function isAgentConfigV2(config: AgentConfig | undefined): config is AgentConfigV2 {
+export function isAgentConfigV2(
+  config: AgentConfig | undefined,
+): config is AgentConfigV2 {
   return config?.version === 2;
 }
 
 /**
  * Type guard to check if agent config is V1
  */
-export function isAgentConfigV1(config: AgentConfig | undefined): config is AgentConfigV1 {
+export function isAgentConfigV1(
+  config: AgentConfig | undefined,
+): config is AgentConfigV1 {
   return config?.version === 1 || !config?.version; // Treat missing version as V1
 }
 
@@ -207,17 +226,11 @@ export function getAgentModelConfig(agent: Agent): ModelConfig {
 }
 
 /**
- * Check if agent is configured as a hierarchical swarm (for /dashboard/hierarchical-agent-chat).
- */
-export function isSwarmAgent(agent: Agent): boolean {
-  const data = (agent.config as any)?.data;
-  return data?.multiAgentArchitecture === "hierarchicalSwarm" && data?.swarm?.workers?.length > 0;
-}
-
-/**
  * Convert V1 knowledge bases to V2 tools (defaults to basic vectorSearch)
  */
-export function convertKnowledgeBasesToTools(knowledgeBases: KnowledgeBaseV1[]): VectorSearchTool[] {
+export function convertKnowledgeBasesToTools(
+  knowledgeBases: KnowledgeBaseV1[],
+): VectorSearchTool[] {
   return knowledgeBases
     .filter((kb) => kb.provider === "pinecone" && kb.index && kb.namespace)
     .map((kb) => ({
@@ -234,9 +247,15 @@ export function convertKnowledgeBasesToTools(knowledgeBases: KnowledgeBaseV1[]):
  * Convert V2 tools to V1 knowledge bases (for backwards compatibility)
  * Note: This converts both vectorSearch and vectorSearchWithReranking to simple knowledge bases
  */
-export function convertToolsToKnowledgeBases(tools: ToolV2[]): KnowledgeBaseV1[] {
+export function convertToolsToKnowledgeBases(
+  tools: ToolV2[],
+): KnowledgeBaseV1[] {
   return tools
-    .filter((tool) => tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking")
+    .filter(
+      (tool) =>
+        tool.type === "vectorSearch" ||
+        tool.type === "vectorSearchWithReranking",
+    )
     .map((tool) => ({
       provider: tool.provider,
       index: tool.index,
@@ -249,7 +268,7 @@ export function convertToolsToKnowledgeBases(tools: ToolV2[]): KnowledgeBaseV1[]
 function getApiBaseUrl(): string {
   console.log("getApiBaseUrl", process.env.NEXT_PUBLIC_AI_API_URL);
   const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
-  
+
   // If we're in the browser and the page is HTTPS, ensure API URL is also HTTPS
   if (typeof window !== "undefined" && window.location.protocol === "https:") {
     // Replace http:// with https:// for production domains
@@ -257,7 +276,7 @@ function getApiBaseUrl(): string {
       return apiUrl.replace("http://", "https://");
     }
   }
-  
+
   return apiUrl;
 }
 
@@ -305,7 +324,7 @@ class AgentsService {
           "Content-Type": "application/json",
         },
         credentials: "include",
-      }
+      },
     );
 
     return this.handleResponse<Agent>(response);
@@ -334,7 +353,7 @@ class AgentsService {
         },
         credentials: "include",
         body: JSON.stringify(data),
-      }
+      },
     );
 
     return this.handleResponse<Agent>(response);
@@ -349,7 +368,7 @@ class AgentsService {
           "Content-Type": "application/json",
         },
         credentials: "include",
-      }
+      },
     );
 
     return this.handleResponse<void>(response);
