@@ -27,12 +27,16 @@ const MAX_AGENTS = 3;
 const DEFAULT_MODEL = "gpt-4o-mini";
 
 function getAgentSystemPrompt(agent: Agent): string {
-  const data = (agent.config as { data?: { systemPrompt?: string } } | undefined)?.data;
+  const data = (
+    agent.config as { data?: { systemPrompt?: string } } | undefined
+  )?.data;
   return agent.systemPrompt ?? data?.systemPrompt ?? `You are ${agent.name}.`;
 }
 
 function getAgentModelName(agent: Agent): string {
-  const data = (agent.config as { data?: { model?: { model?: string } } } | undefined)?.data;
+  const data = (
+    agent.config as { data?: { model?: { model?: string } } } | undefined
+  )?.data;
   return data?.model?.model ?? DEFAULT_MODEL;
 }
 
@@ -49,7 +53,7 @@ function buildSwarmFromAgents(agents: Agent[]): SwarmPayload {
   };
 }
 
-export function HierarchicalAgentChatContainer() {
+export function MultiAgentChatContainer() {
   const router = useRouter();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<Agent[]>([]);
@@ -60,7 +64,9 @@ export function HierarchicalAgentChatContainer() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId] = useState(() => uuid());
   const [completionLoading, setCompletionLoading] = useState(false);
-  const [currentRequest, setCurrentRequest] = useState<AbortController | null>(null);
+  const [currentRequest, setCurrentRequest] = useState<AbortController | null>(
+    null,
+  );
 
   useEffect(() => {
     loadAgents();
@@ -133,12 +139,10 @@ export function HierarchicalAgentChatContainer() {
         setMessages((prev) => [...prev, msg]);
       const editMessage = (
         id: string,
-        update: { content?: string; error?: Message["error"] }
+        update: { content?: string; error?: Message["error"] },
       ) =>
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === id ? { ...m, ...update } : m
-          )
+          prev.map((m) => (m.id === id ? { ...m, ...update } : m)),
         );
 
       try {
@@ -147,7 +151,7 @@ export function HierarchicalAgentChatContainer() {
           prompt,
           swarm,
           { addMessage, editMessage, setLoading: setCompletionLoading },
-          abortController
+          abortController,
         );
       } catch (err: unknown) {
         if ((err as Error).name === "AbortError") return;
@@ -166,13 +170,7 @@ export function HierarchicalAgentChatContainer() {
         setCurrentRequest(null);
       }
     },
-    [
-      input,
-      selectedAgents,
-      completionLoading,
-      currentRequest,
-      sessionId,
-    ]
+    [input, selectedAgents, completionLoading, currentRequest, sessionId],
   );
 
   const handleStop = () => {
@@ -208,7 +206,7 @@ export function HierarchicalAgentChatContainer() {
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-semibold text-white truncate">
-              Hierarchical Agent Chat
+              Multi Agent Chat
             </h1>
             <p className="text-sm text-gray-400 line-clamp-1 truncate">
               {subtitle}
@@ -229,7 +227,10 @@ export function HierarchicalAgentChatContainer() {
           <div className="h-full overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 custom-scrollbar">
             <div className="pb-[200px]">
               {messages.length > 0 ? (
-                <ChatList messages={messages} isCompletionLoading={completionLoading} />
+                <ChatList
+                  messages={messages}
+                  isCompletionLoading={completionLoading}
+                />
               ) : (
                 <EmptyScreen
                   content={
