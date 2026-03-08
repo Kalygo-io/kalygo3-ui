@@ -183,10 +183,13 @@ export async function callSwarmCompletion(
       return;
     }
     const genericContent = typeof data === "string" ? data : (obj.content ?? obj.message ?? (data as { content?: string; message?: string; text?: string })?.content ?? (data as { content?: string; message?: string; text?: string })?.message ?? (data as { content?: string; message?: string; text?: string })?.text);
-    if (genericContent != null && String(genericContent).trim()) {
+    const text = genericContent != null ? String(genericContent).trim() : "";
+    // Don't show directive-like text as an AI message (e.g. "X says something to Y, Y responds")
+    const looksLikeDirective = /^\w+(\s+\w+)*\s+says?\s+something\s+to\s+.+\s*,.+\s+responds?$/i.test(text) || /^\w+(\s+\w+)*\s+responds?$/i.test(text);
+    if (text && !looksLikeDirective) {
       addMessage({
         id: nanoid(),
-        content: String(genericContent).trim(),
+        content: text,
         role: "ai",
         error: null,
         agentName: "Director",
@@ -199,39 +202,54 @@ export async function callSwarmCompletion(
     while (rest) {
       const trimmed = rest.trim();
       if (!trimmed) return rest;
+      let start = 0;
       if (trimmed.startsWith("data:")) {
-        const after = trimmed.slice(5).trim();
-        const end = after.indexOf("}");
-        if (end === -1) return rest;
-        try {
-          const parsed = JSON.parse(after.slice(0, end + 1)) as Record<string, unknown>;
-          dispatch(parsed);
-          rest = after.slice(end + 1);
-          continue;
-        } catch {
-          return rest;
-        }
+        start = trimmed.indexOf("{");
+        if (start === -1) return rest;
       }
+      const slice = start > 0 ? trimmed.slice(start) : trimmed;
       let depth = 0;
+      let inString = false;
+      let escape = false;
+      let quoteChar = "";
       let i = 0;
-      for (; i < trimmed.length; i++) {
-        const c = trimmed[i];
-        if (c === "{") depth++;
-        else if (c === "}") {
-          depth--;
-          if (depth === 0) {
-            try {
-              const parsed = JSON.parse(trimmed.slice(0, i + 1)) as Record<string, unknown>;
-              dispatch(parsed);
-              rest = trimmed.slice(i + 1);
-              continue;
-            } catch {
-              return rest;
+      for (; i < slice.length; i++) {
+        const c = slice[i];
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        if ((c === '"' || c === "'") && inString) {
+          if (c === quoteChar) inString = false;
+          continue;
+        }
+        if ((c === '"' || c === "'") && !inString) {
+          inString = true;
+          quoteChar = c;
+          continue;
+        }
+        if (c === "\\" && inString) {
+          escape = true;
+          continue;
+        }
+        if (!inString) {
+          if (c === "{") depth++;
+          else if (c === "}") {
+            depth--;
+            if (depth === 0) {
+              try {
+                const parsed = JSON.parse(slice.slice(0, i + 1)) as Record<string, unknown>;
+                dispatch(parsed);
+                rest = (start > 0 ? trimmed.slice(start + i + 1) : trimmed.slice(i + 1)).trim();
+                break;
+              } catch {
+                return rest;
+              }
             }
           }
         }
       }
-      return rest;
+      if (i >= slice.length) return rest;
     }
     return rest;
   };
@@ -242,6 +260,11 @@ export async function callSwarmCompletion(
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       buffer = tryParse(buffer);
+    }
+    while (buffer.trim()) {
+      const next = tryParse(buffer);
+      if (next === buffer) break;
+      buffer = next;
     }
   } catch (e) {
     if ((e as Error).name !== "AbortError") {
