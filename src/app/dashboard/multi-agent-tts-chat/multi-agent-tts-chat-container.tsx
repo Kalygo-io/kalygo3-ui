@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { agentsService, Agent } from "@/services/agentsService";
+import { agentsService, Agent, getAgentModelConfig } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
   SpeakerWaveIcon,
@@ -18,8 +18,27 @@ import { StreamingAudioPlayer } from "@/components/tts-chat/streaming-audio-play
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
+import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "@/shared/utils";
+import type { Message } from "@/ts/types/Message";
+import {
+  callSwarmTtsNextTurn,
+  type SwarmPayload,
+} from "@/services/callSwarmTtsNextTurn";
 
 const MAX_AGENTS = 3;
+
+function buildSwarm(agents: Agent[]): SwarmPayload {
+  return {
+    supervisor: { name: "supervisor", modelName: "gpt-4o-mini" },
+    workers: agents.map((a) => ({
+      agentName: a.name,
+      systemPrompt: (a.config?.data as { systemPrompt?: string } | undefined)?.systemPrompt ?? "",
+      modelName: getAgentModelConfig(a).model,
+    })),
+    outputMode: "last_message",
+  };
+}
 
 export function MultiAgentTtsChatContainer() {
   const router = useRouter();
@@ -27,10 +46,16 @@ export function MultiAgentTtsChatContainer() {
   const [selectedAgents, setSelectedAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [inConversation, setInConversation] = useState(false);
+  const [sessionId, setSessionId] = useState<string>("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [stateToken, setStateToken] = useState<string | null>(null);
+  const [completionLoading, setCompletionLoading] = useState(false);
+  const [currentSpeaker, setCurrentSpeaker] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isAudioStreaming, setIsAudioStreaming] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const { formRef, onKeyDown } = useEnterSubmit();
 
@@ -66,11 +91,98 @@ export function MultiAgentTtsChatContainer() {
       errorToast("Select 1–3 agents to start.");
       return;
     }
+    setSessionId(uuidv4());
+    setMessages([]);
+    setStateToken(null);
     setInConversation(true);
   };
 
   const handleBackToSelection = () => {
     setInConversation(false);
+  };
+
+  const requestNextTurn = async (prompt?: string, token?: string | null) => {
+    const swarm = buildSwarm(selectedAgents);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      const res = await callSwarmTtsNextTurn(
+        sessionId,
+        swarm,
+        { prompt, stateToken: token ?? stateToken },
+        controller.signal
+      );
+      return res;
+    } finally {
+      abortRef.current = null;
+    }
+  };
+
+  const speakWithWebSpeech = (text: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (typeof window === "undefined" || !window.speechSynthesis) {
+        resolve();
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.onend = () => resolve();
+      u.onerror = () => resolve();
+      window.speechSynthesis.speak(u);
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed || completionLoading || selectedAgents.length === 0) return;
+    setInput("");
+    const userMessage: Message = {
+      id: nanoid(),
+      content: trimmed,
+      role: "human",
+      error: null,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setCompletionLoading(true);
+    try {
+      let token: string | null = null;
+      let done = false;
+      let first = true;
+      do {
+        const res = await requestNextTurn(first ? trimmed : undefined, first ? undefined : token);
+        first = false;
+        token = res.stateToken;
+        done = res.done;
+        const aiMessage: Message = {
+          id: nanoid(),
+          content: res.content,
+          role: "ai",
+          error: null,
+          agentName: res.agentName,
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        setCurrentSpeaker(res.agentName);
+        setCompletionLoading(false);
+        setIsAudioStreaming(false);
+        setIsAudioPlaying(true);
+        await speakWithWebSpeech(res.content);
+        setIsAudioPlaying(false);
+        setCurrentSpeaker(null);
+        if (!done && token) {
+          setStateToken(token);
+          setCompletionLoading(true);
+        } else {
+          setStateToken(null);
+        }
+      } while (!done && token);
+    } catch (err) {
+      errorToast(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setCompletionLoading(false);
+      setIsAudioPlaying(false);
+      setCurrentSpeaker(null);
+    }
   };
 
   const handleBack = () => router.push("/dashboard/tts-chat");
@@ -222,19 +334,53 @@ export function MultiAgentTtsChatContainer() {
       {/* Chat area */}
       <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 custom-scrollbar">
-          <div className="pb-[200px]">
-            <EmptyScreen
-              content={
-                <>
-                  <h1 className="text-center text-5xl leading-[1.5] font-semibold text-white p-1">
-                    Voice conversation
-                  </h1>
-                  <p className="text-center text-gray-400 mt-2">
-                    Send a message and hear your agents respond with voice.
-                  </p>
-                </>
-              }
-            />
+          <div className="pb-[200px] space-y-4 max-w-3xl mx-auto">
+            {messages.length === 0 ? (
+              <EmptyScreen
+                content={
+                  <>
+                    <h1 className="text-center text-5xl leading-[1.5] font-semibold text-white p-1">
+                      Voice conversation
+                    </h1>
+                    <p className="text-center text-gray-400 mt-2">
+                      Send a message and hear your agents respond with voice.
+                    </p>
+                  </>
+                }
+              />
+            ) : (
+              messages.map((m) =>
+                m.role === "human" ? (
+                  <div
+                    key={m.id}
+                    className="flex justify-end"
+                  >
+                    <div className="rounded-2xl bg-purple-600/80 text-white px-4 py-2.5 max-w-[85%]">
+                      <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    key={m.id}
+                    className="flex justify-start"
+                  >
+                    <div className="rounded-2xl bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2.5 max-w-[85%]">
+                      {m.agentName && (
+                        <p className="text-xs font-medium text-purple-400 mb-1">
+                          {m.agentName}
+                        </p>
+                      )}
+                      <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+                    </div>
+                  </div>
+                )
+              )
+            )}
+            {currentSpeaker && (
+              <p className="text-sm text-gray-500 italic">
+                {currentSpeaker} is speaking…
+              </p>
+            )}
           </div>
         </div>
 
@@ -262,12 +408,7 @@ export function MultiAgentTtsChatContainer() {
           <div className="mx-4 sm:mx-8 space-y-4 border-t border-gray-700 px-4 py-2 md:py-4">
             <form
               ref={formRef}
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!input.trim()) return;
-                setInput("");
-                // TODO: call multi-agent TTS API and stream audio
-              }}
+              onSubmit={handleSubmit}
               className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background"
             >
               <ResizableTextarea
@@ -287,7 +428,7 @@ export function MultiAgentTtsChatContainer() {
               <div className="absolute bottom-2 right-2 flex items-center space-x-2">
                 <button
                   type="submit"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || completionLoading}
                   className="flex items-center justify-center w-8 h-8 rounded-md bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white transition-colors"
                   title="Send message"
                 >
