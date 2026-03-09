@@ -42,6 +42,7 @@ export interface SwarmTtsNextTurnResponse {
   content: string;
   stateToken: string | null;
   done: boolean;
+  finalReason?: string;
 }
 
 export type SwarmTtsEventType =
@@ -61,6 +62,12 @@ export interface TtsTurnResultPayload {
   content?: string;
   stateToken?: string | null;
   done?: boolean;
+  stopReason?: string;
+  doneReason?: string;
+  finishReason?: string;
+  completionReason?: string;
+  finalReason?: string;
+  reason?: string;
 }
 
 export interface SwarmTtsStreamCallbacks {
@@ -88,11 +95,21 @@ function extractTurnResult(parsed: Record<string, unknown>): SwarmTtsNextTurnRes
   const data = (parsed.data ?? parsed.result) as Record<string, unknown> | undefined;
   const payload = data && typeof data === "object" ? data : parsed;
   if (!isTurnResultPayload(payload)) return null;
+  const finalReasonCandidate =
+    payload.finalReason ??
+    payload.stopReason ??
+    payload.doneReason ??
+    payload.finishReason ??
+    payload.completionReason ??
+    payload.reason;
+  const finalReason =
+    typeof finalReasonCandidate === "string" ? finalReasonCandidate.trim() : "";
   return {
     agentName: (payload.agentName ?? "") as string,
     content: (payload.content ?? "") as string,
     stateToken: (payload.stateToken ?? null) as string | null,
     done: (payload.done ?? true) as boolean,
+    finalReason: finalReason || undefined,
   };
 }
 
@@ -149,6 +166,10 @@ export async function callSwarmTtsNextTurn(
       content: data.content ?? "",
       stateToken: data.stateToken ?? null,
       done: data.done ?? true,
+      finalReason:
+        typeof (data as { finalReason?: unknown }).finalReason === "string"
+          ? ((data as { finalReason?: string }).finalReason || "").trim() || undefined
+          : undefined,
     };
   }
 

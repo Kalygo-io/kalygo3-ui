@@ -7,6 +7,8 @@ export interface Message {
   agentName?: string;
   /** When set, this message is a moderator/supervisor decision row: chosenAgent + reason for tooltip */
   supervisorDecision?: { chosenAgent: string; reason: string };
+  /** When set, this message marks why the swarm ended the current turn chain */
+  turnStopDecision?: { done: boolean; reason: string };
   parallelGroupId?: string;
   blocks?: Message[];
   rerankedMatches?: RerankedMatch[];

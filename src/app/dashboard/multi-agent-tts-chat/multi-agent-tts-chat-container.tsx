@@ -31,13 +31,10 @@ import {
   type SwarmPayload,
   type SwarmTtsNextTurnResponse,
 } from "@/services/callSwarmTtsNextTurn";
-import { HierarchicalDrawer } from "@/components/hierarchical/drawer";
 import { SessionAgentsConfigPanel } from "@/components/multi-agent-tts/session-agents-config-panel";
 import { StreamingAudioPlayer } from "@/components/tts-chat/streaming-audio-player";
 
 const MAX_AGENTS = 3;
-/** Min chars to send to ElevenLabs before requesting audio (reduces latency vs waiting for full turn) */
-const MIN_TTS_CHUNK_CHARS = 80;
 /** How many queued chunks to prefetch while current chunk is playing. */
 const TTS_PREFETCH_DEPTH = 2;
 
@@ -47,6 +44,27 @@ type TtsQueueItem = {
   voiceId: string;
   segmentId: string;
 };
+
+type ElevenLabsPlaybackItem = {
+  id: string;
+  agentName: string;
+  text: string;
+  status: "converting" | "ready" | "playing" | "error";
+  audioUrl?: string;
+};
+
+const getAgentColorFromName = (agentName: string): string => {
+  let hash = 0;
+  for (let i = 0; i < agentName.length; i++) {
+    hash = agentName.charCodeAt(i) + ((hash << 5) - hash);
+    hash |= 0;
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 70% 45%)`;
+};
+
+const getAgentInitial = (agentName?: string): string =>
+  (agentName?.trim().charAt(0).toUpperCase() || "A");
 
 function buildSwarm(agents: Agent[]): SwarmPayload {
   return {
@@ -80,8 +98,8 @@ export function MultiAgentTtsChatContainer() {
   const [input, setInput] = useState("");
   const [isAudioStreaming, setIsAudioStreaming] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [elevenLabsQueue, setElevenLabsQueue] = useState<ElevenLabsPlaybackItem[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [isXl, setIsXl] = useState(true);
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>("browser");
   /** Progress for current turn: streamed text length vs chars sent to TTS (for progress bar) */
   const [ttsProgress, setTtsProgress] = useState<{ streamed: number; converted: number }>({ streamed: 0, converted: 0 });
@@ -104,6 +122,8 @@ export function MultiAgentTtsChatContainer() {
   const activeSegmentIdRef = useRef("segment-0");
   const playbackSegmentIdRef = useRef<string | null>(null);
   const awaitingSegmentDrainRef = useRef(false);
+  const elevenLabsQueueRef = useRef<ElevenLabsPlaybackItem[]>([]);
+  const activeElevenLabsAudioRef = useRef<HTMLAudioElement | null>(null);
   /** Queue for audio chunks that arrive before player is ready. */
   const audioChunkQueueRef = useRef<string[]>([]);
   const isAudioStreamingRef = useRef(false);
@@ -124,6 +144,10 @@ export function MultiAgentTtsChatContainer() {
   useEffect(() => {
     isAudioPlayingRef.current = isAudioPlaying;
   }, [isAudioPlaying]);
+
+  useEffect(() => {
+    elevenLabsQueueRef.current = elevenLabsQueue;
+  }, [elevenLabsQueue]);
 
   useEffect(() => {
     if (!isAudioStreaming) return;
@@ -154,14 +178,6 @@ export function MultiAgentTtsChatContainer() {
   useEffect(() => {
     setTtsProvider(getAppSettings().ttsProvider);
   }, [inConversation]);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(min-width: 1280px)");
-    const handler = () => setIsXl(mql.matches);
-    handler();
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, []);
 
   const loadAgents = async () => {
     try {
@@ -233,6 +249,7 @@ export function MultiAgentTtsChatContainer() {
     !isConvertingTtsRef.current &&
     !awaitingSegmentDrainRef.current &&
     ttsQueueRef.current.length === 0 &&
+    elevenLabsQueueRef.current.length === 0 &&
     ttsPrefetchPromisesRef.current.size === 0 &&
     !isAudioStreamingRef.current &&
     !isAudioPlayingRef.current;
@@ -243,6 +260,10 @@ export function MultiAgentTtsChatContainer() {
       ttsDrainedResolveRef.current = null;
     }
   };
+
+  useEffect(() => {
+    maybeResolveTtsDrain();
+  }, [elevenLabsQueue, isAudioPlaying]);
 
   const pushAudioChunkToPlayer = useCallback((base64Audio: string) => {
     const player = (window as Window & { __streamingAudioPlayer?: { addAudioChunk?: (c: string) => void } }).__streamingAudioPlayer;
@@ -426,18 +447,8 @@ export function MultiAgentTtsChatContainer() {
                 m.id === id ? { ...m, content: m.content + chunk } : m,
               ),
             );
-            if (ttsProvider === "elevenlabs") {
-              ttsBufferRef.current += chunk;
-              if (ttsBufferRef.current.length >= MIN_TTS_CHUNK_CHARS) {
-                flushTtsBuffer(voiceIdForAgent(agentName));
-              }
-            }
           },
-          onAgentEnd: (agentName) => {
-            if (ttsProvider === "elevenlabs") {
-              flushTtsBuffer(voiceIdForAgent(agentName));
-            }
-          },
+          onAgentEnd: () => {},
           onTurnResult: (result) => {
             ttsTurnCompleteRef.current = true;
             const id = streamingMessageIdRef.current;
@@ -454,17 +465,35 @@ export function MultiAgentTtsChatContainer() {
                 setMessages((prev) => prev.filter((m) => m.id !== id));
               }
             }
+
+            if (result.done) {
+              const stopReason =
+                result.finalReason?.trim() ||
+                "No further agent turns were needed for this response.";
+              const turnStopMessage: Message = {
+                id: nanoid(),
+                content: "Moderator ended this swarm turn",
+                role: "ai",
+                error: null,
+                agentName: "Moderator",
+                turnStopDecision: {
+                  done: true,
+                  reason: stopReason,
+                },
+              };
+              setMessages((prev) => [...prev, turnStopMessage]);
+            }
+
             setCurrentSpeaker(null);
-            if (ttsProvider === "elevenlabs") {
-              flushTtsBuffer(voiceIdForAgent(result.agentName ?? ""));
-              processTtsQueue();
-              if (
-                ttsQueueRef.current.length === 0 &&
-                !isConvertingTtsRef.current &&
-                ttsPrefetchPromisesRef.current.size === 0
-              ) {
-                endAudioStreaming();
-              }
+            if (ttsProvider === "elevenlabs" && result.content?.trim()) {
+              const agentName = result.agentName?.trim() || "Agent";
+              const voiceId = voiceIdForAgent(agentName);
+              convertedCharsRef.current = result.content.length;
+              setTtsProgress({
+                streamed: streamedCharsRef.current,
+                converted: convertedCharsRef.current,
+              });
+              void enqueueElevenLabsPlayback(agentName, result.content, voiceId);
             } else if (result.content?.trim()) {
               streamedCharsRef.current = result.content.length;
               convertedCharsRef.current = result.content.length;
@@ -523,6 +552,83 @@ export function MultiAgentTtsChatContainer() {
     [],
   );
 
+  const clearElevenLabsQueue = useCallback(() => {
+    setElevenLabsQueue((prev) => {
+      for (const item of prev) {
+        if (item.audioUrl) URL.revokeObjectURL(item.audioUrl);
+      }
+      return [];
+    });
+  }, []);
+
+  const enqueueElevenLabsPlayback = useCallback(
+    async (agentName: string, text: string, voiceId: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      const id = nanoid();
+      setElevenLabsQueue((prev) => [
+        ...prev,
+        { id, agentName, text: trimmed, status: "converting" },
+      ]);
+
+      const blob = await fetchTtsBlob(trimmed, voiceId);
+      if (!blob) {
+        setElevenLabsQueue((prev) =>
+          prev.filter((item) => item.id !== id),
+        );
+        return;
+      }
+
+      const audioUrl = URL.createObjectURL(blob);
+      setElevenLabsQueue((prev) => {
+        const exists = prev.some((item) => item.id === id);
+        if (!exists) {
+          URL.revokeObjectURL(audioUrl);
+          return prev;
+        }
+        return prev.map((item) =>
+          item.id === id
+            ? { ...item, audioUrl, status: item.status === "playing" ? "playing" : "ready" }
+            : item,
+        );
+      });
+    },
+    [fetchTtsBlob],
+  );
+
+  const handleElevenLabsItemEnded = useCallback((itemId: string) => {
+    setElevenLabsQueue((prev) => {
+      const first = prev[0];
+      if (first?.id !== itemId) return prev;
+      if (first.audioUrl) URL.revokeObjectURL(first.audioUrl);
+      return prev.slice(1);
+    });
+    setIsAudioPlaying(false);
+  }, []);
+
+  useEffect(() => {
+    const first = elevenLabsQueue[0];
+    if (!first) return;
+    if (first.status === "ready") {
+      setElevenLabsQueue((prev) =>
+        prev.map((item, index) =>
+          index === 0 && item.status === "ready"
+            ? { ...item, status: "playing" }
+            : item,
+        ),
+      );
+    }
+  }, [elevenLabsQueue]);
+
+  useEffect(() => {
+    return () => {
+      for (const item of elevenLabsQueueRef.current) {
+        if (item.audioUrl) URL.revokeObjectURL(item.audioUrl);
+      }
+    };
+  }, []);
+
   const getVoiceIdForAgent = (agentName: string): string => {
     const agent = selectedAgents.find((a) => a.name === agentName);
     const voiceId = agent ? getAgentElevenLabsVoiceId(agent) : undefined;
@@ -542,6 +648,9 @@ export function MultiAgentTtsChatContainer() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setCompletionLoading(true);
+    activeElevenLabsAudioRef.current?.pause();
+    activeElevenLabsAudioRef.current = null;
+    clearElevenLabsQueue();
     ttsBufferRef.current = "";
     ttsQueueRef.current = [];
     ttsTurnCompleteRef.current = false;
@@ -553,6 +662,7 @@ export function MultiAgentTtsChatContainer() {
     ttsPrefetchPromisesRef.current.clear();
     audioChunkQueueRef.current = [];
     setIsAudioStreaming(false);
+    setIsAudioPlaying(false);
     try {
       let token: string | null = null;
       let done = false;
@@ -599,6 +709,9 @@ export function MultiAgentTtsChatContainer() {
   const handleTtsStop = () => {
     abortRef.current?.abort();
     abortRef.current = null;
+    activeElevenLabsAudioRef.current?.pause();
+    activeElevenLabsAudioRef.current = null;
+    clearElevenLabsQueue();
     ttsQueueRef.current = [];
     ttsBufferRef.current = "";
     ttsTurnCompleteRef.current = true;
@@ -624,6 +737,11 @@ export function MultiAgentTtsChatContainer() {
   const handleDrawerClose = () => setDrawerOpen(false);
 
   const handleTtsProviderChange = (value: TtsProvider) => {
+    if (value !== "elevenlabs") {
+      activeElevenLabsAudioRef.current?.pause();
+      activeElevenLabsAudioRef.current = null;
+      clearElevenLabsQueue();
+    }
     setTtsProvider(value);
     setAppSettings({ ttsProvider: value });
   };
@@ -745,7 +863,7 @@ export function MultiAgentTtsChatContainer() {
   return (
     <>
       <div
-        className={`fixed inset-0 lg:pl-72 pt-16 flex flex-col overflow-hidden bg-black ${drawerOpen ? "xl:pr-96" : ""}`}
+        className="fixed inset-0 lg:pl-72 pt-16 flex flex-col overflow-hidden bg-black"
       >
         {/* Header */}
         <div className="flex-shrink-0 border-b border-gray-700 bg-gray-800/50 backdrop-blur-sm px-4 py-3 flex items-center gap-3 sm:gap-4 z-10">
@@ -820,29 +938,90 @@ export function MultiAgentTtsChatContainer() {
                 }
                 if (m.supervisorDecision) {
                   const reason = m.supervisorDecision.reason.trim();
+                  const agentName = m.agentName || "Moderator";
                   return (
-                    <div key={m.id} className="flex justify-start">
-                      <div className="rounded-2xl bg-gray-800/80 border border-gray-600 text-gray-300 px-4 py-2 max-w-[85%] flex items-center gap-2 flex-wrap">
-                        <p className="text-sm">{m.content}</p>
-                        <span
-                          className={cn(
-                            "inline-flex flex-shrink-0 rounded p-0.5 text-gray-500 hover:text-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500",
-                            reason && "cursor-help",
-                          )}
-                          title={reason || undefined}
-                          aria-label={reason ? "Moderator reason" : undefined}
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </span>
+                    <div key={m.id} className="flex justify-start items-start gap-2.5">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                        style={{ backgroundColor: getAgentColorFromName(agentName) }}
+                        title={agentName}
+                        aria-label={`${agentName} avatar`}
+                      >
+                        {getAgentInitial(agentName)}
+                      </div>
+                      <div className="rounded-2xl bg-gray-800/80 border border-gray-600 text-gray-300 px-4 py-2 max-w-[85%]">
+                        <p className="text-xs font-medium mb-1" style={{ color: getAgentColorFromName(agentName) }}>
+                          {agentName}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm">{m.content}</p>
+                          <span
+                            className={cn(
+                              "inline-flex flex-shrink-0 rounded p-0.5 text-gray-500 hover:text-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500",
+                              reason && "cursor-help",
+                            )}
+                            title={reason || undefined}
+                            aria-label={reason ? "Moderator reason" : undefined}
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
                 }
+                if (m.turnStopDecision) {
+                  const reason = m.turnStopDecision.reason.trim();
+                  const agentName = m.agentName || "Moderator";
+                  return (
+                    <div key={m.id} className="flex justify-start items-start gap-2.5">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                        style={{ backgroundColor: getAgentColorFromName(agentName) }}
+                        title={agentName}
+                        aria-label={`${agentName} avatar`}
+                      >
+                        {getAgentInitial(agentName)}
+                      </div>
+                      <div className="rounded-2xl bg-gray-800/80 border border-gray-600 text-gray-300 px-4 py-2 max-w-[85%]">
+                        <p
+                          className="text-xs font-medium mb-1"
+                          style={{ color: getAgentColorFromName(agentName) }}
+                        >
+                          {agentName}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm">{m.content}</p>
+                          <span
+                            className={cn(
+                              "inline-flex flex-shrink-0 rounded p-0.5 text-gray-500 hover:text-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500",
+                              reason && "cursor-help",
+                            )}
+                            title={reason || undefined}
+                            aria-label={reason ? "Turn stop reason" : undefined}
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                const agentName = m.agentName || "Agent";
+                const agentColor = getAgentColorFromName(agentName);
                 return (
-                  <div key={m.id} className="flex justify-start">
+                  <div key={m.id} className="flex justify-start items-start gap-2.5">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                      style={{ backgroundColor: agentColor }}
+                      title={agentName}
+                      aria-label={`${agentName} avatar`}
+                    >
+                      {getAgentInitial(agentName)}
+                    </div>
                     <div className="rounded-2xl bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2.5 max-w-[85%]">
                       {m.agentName && (
-                        <p className="text-xs font-medium text-purple-400 mb-1">
+                        <p className="text-xs font-medium mb-1" style={{ color: agentColor }}>
                           {m.agentName}
                         </p>
                       )}
@@ -869,21 +1048,65 @@ export function MultiAgentTtsChatContainer() {
       >
         {inConversation && (
           <div className="max-w-3xl mx-auto mb-4">
-            <StreamingAudioPlayer
-              isStreaming={ttsProvider === "elevenlabs" ? isAudioStreaming : false}
-              isPlaying={isAudioPlaying}
-              onPlayingChange={(playing) => {
-                setIsAudioPlaying(playing);
-                if (!playing && awaitingSegmentDrainRef.current) {
-                  awaitingSegmentDrainRef.current = false;
-                  playbackSegmentIdRef.current = null;
-                  processTtsQueue();
-                }
-                if (!playing) maybeResolveTtsDrain();
-              }}
-              onStop={handleTtsStop}
-              className={cn(ttsProvider !== "elevenlabs" && "min-h-[72px]")}
-            />
+            {ttsProvider === "elevenlabs" ? (
+              elevenLabsQueue.length > 0 ? (
+                <div className="space-y-2">
+                  {elevenLabsQueue.map((item, index) => {
+                    const isHead = index === 0;
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-xl px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs text-gray-300 truncate">
+                            {item.agentName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {item.status === "converting"
+                              ? "Converting..."
+                              : isHead
+                                ? "Now playing"
+                                : "Queued"}
+                          </p>
+                        </div>
+                        {item.audioUrl && isHead ? (
+                          <audio
+                            key={item.id}
+                            ref={(el) => {
+                              if (isHead) activeElevenLabsAudioRef.current = el;
+                            }}
+                            controls
+                            autoPlay
+                            preload="auto"
+                            className="w-full h-10 mt-2"
+                            src={item.audioUrl}
+                            onPlay={() => setIsAudioPlaying(true)}
+                            onPause={() => setIsAudioPlaying(false)}
+                            onEnded={() => handleElevenLabsItemEnded(item.id)}
+                          />
+                        ) : (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                            {item.text}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null
+            ) : (
+              <StreamingAudioPlayer
+                isStreaming={false}
+                isPlaying={isAudioPlaying}
+                onPlayingChange={(playing) => {
+                  setIsAudioPlaying(playing);
+                  if (!playing) maybeResolveTtsDrain();
+                }}
+                onStop={handleTtsStop}
+                className="min-h-[72px]"
+              />
+            )}
           </div>
         )}
 
@@ -925,29 +1148,30 @@ export function MultiAgentTtsChatContainer() {
           </div>
       </div>
 
-      {/* Fixed aside: Session agents config (visible on xl when drawerOpen) */}
-      <aside
-        className={`fixed top-16 bottom-0 right-0 w-96 overflow-y-auto border-l border-gray-700 bg-gray-900 z-[80] ${drawerOpen ? "hidden xl:block" : "hidden"}`}
-        aria-label="Session agents configuration"
-      >
-        <SessionAgentsConfigPanel
-          selectedAgents={selectedAgents}
-          showCloseButton={false}
-        />
-      </aside>
+      {/* Mobile overlay backdrop */}
+      <div
+        className={cn(
+          "fixed inset-0 bg-black/50 z-[75] transition-opacity duration-300 lg:hidden",
+          drawerOpen ? "opacity-100" : "opacity-0 pointer-events-none",
+        )}
+        onClick={handleDrawerClose}
+      />
 
-      {/* Drawer: on viewports below xl; slides in from right with overlay */}
-      <HierarchicalDrawer
-        open={drawerOpen && !isXl}
-        onClose={handleDrawerClose}
-        topOffset={64}
+      {/* Session agents drawer overlays chat (desktop + mobile) */}
+      <aside
+        className={cn(
+          "fixed top-16 bottom-0 right-0 w-96 max-w-[92vw] overflow-y-auto border-l border-gray-700 bg-gray-900 z-[80]",
+          "transform transition-transform duration-300 ease-in-out",
+          drawerOpen ? "translate-x-0" : "translate-x-full",
+        )}
+        aria-label="Session agents configuration"
       >
         <SessionAgentsConfigPanel
           selectedAgents={selectedAgents}
           onClose={handleDrawerClose}
           showCloseButton={true}
         />
-      </HierarchicalDrawer>
+      </aside>
     </>
   );
 }
