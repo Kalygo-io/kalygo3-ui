@@ -1,7 +1,11 @@
 const STORAGE_KEY = "kalygo_app_settings";
 
+export type TtsProvider = "browser" | "elevenlabs";
+
 export interface AppSettings {
   elevenLabsVoiceId: string;
+  /** Text-to-speech engine: browser (Web Speech API) or ElevenLabs */
+  ttsProvider: TtsProvider;
 }
 
 export const ELEVENLABS_VOICES = [
@@ -14,6 +18,7 @@ export const ELEVENLABS_VOICES = [
 
 const DEFAULT_SETTINGS: AppSettings = {
   elevenLabsVoiceId: ELEVENLABS_VOICES[0].id,
+  ttsProvider: "browser",
 };
 
 export function getAppSettings(): AppSettings {

@@ -6,7 +6,9 @@ import {
   agentsService,
   Agent,
   getAgentModelConfig,
+  getAgentElevenLabsVoiceId,
 } from "@/services/agentsService";
+import { getAppSettings, setAppSettings, type TtsProvider } from "@/shared/app-settings";
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
   SpeakerWaveIcon,
@@ -68,13 +70,23 @@ export function MultiAgentTtsChatContainer() {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isXl, setIsXl] = useState(true);
+  const [ttsProvider, setTtsProvider] = useState<TtsProvider>("browser");
   const abortRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>([]);
 
   const { formRef, onKeyDown } = useEnterSubmit();
 
   useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
     loadAgents();
   }, []);
+
+  useEffect(() => {
+    setTtsProvider(getAppSettings().ttsProvider);
+  }, [inConversation]);
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 1280px)");
@@ -140,7 +152,7 @@ export function MultiAgentTtsChatContainer() {
   };
 
   const speakWithWebSpeech = (text: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (typeof window === "undefined" || !window.speechSynthesis) {
         resolve();
         return;
@@ -151,6 +163,44 @@ export function MultiAgentTtsChatContainer() {
       u.onerror = () => resolve();
       window.speechSynthesis.speak(u);
     });
+  };
+
+  const speakWithElevenLabs = async (text: string, voiceId: string): Promise<void> => {
+    try {
+      const res = await fetch("/api/tts/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text, voiceId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        errorToast(err?.error ?? "TTS failed");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      await new Promise<void>((resolve, reject) => {
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(audio.error);
+        };
+        audio.play().catch(reject);
+      });
+    } catch (e) {
+      errorToast(e instanceof Error ? e.message : "TTS playback failed");
+    }
+  };
+
+  const getVoiceIdForAgent = (agentName: string): string => {
+    const agent = selectedAgents.find((a) => a.name === agentName);
+    const voiceId = agent ? getAgentElevenLabsVoiceId(agent) : undefined;
+    return voiceId ?? getAppSettings().elevenLabsVoiceId;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -178,21 +228,38 @@ export function MultiAgentTtsChatContainer() {
         first = false;
         token = res.stateToken;
         done = res.done;
-        const aiMessage: Message = {
-          id: nanoid(),
-          content: res.content,
-          role: "ai",
-          error: null,
-          agentName: res.agentName,
-        };
-        setMessages((prev) => [...prev, aiMessage]);
-        setCurrentSpeaker(res.agentName);
-        setCompletionLoading(false);
-        setIsAudioStreaming(false);
-        setIsAudioPlaying(true);
-        await speakWithWebSpeech(res.content);
-        setIsAudioPlaying(false);
-        setCurrentSpeaker(null);
+        const hasContent = res.content != null && res.content.trim() !== "";
+        if (hasContent) {
+          const trimmedContent = res.content.trim();
+          const prev = messagesRef.current;
+          const last = prev[prev.length - 1];
+          const isDuplicate =
+            last?.role === "ai" &&
+            last?.agentName === res.agentName &&
+            (last?.content ?? "") === trimmedContent;
+          if (!isDuplicate) {
+            const newMessage: Message = {
+              id: nanoid(),
+              content: trimmedContent,
+              role: "ai",
+              error: null,
+              agentName: res.agentName,
+            };
+            setMessages((prev) => [...prev, newMessage]);
+            messagesRef.current = [...messagesRef.current, newMessage];
+            setCurrentSpeaker(res.agentName);
+            setCompletionLoading(false);
+            setIsAudioStreaming(false);
+            setIsAudioPlaying(true);
+            if (ttsProvider === "elevenlabs") {
+              await speakWithElevenLabs(res.content, getVoiceIdForAgent(res.agentName ?? ""));
+            } else {
+              await speakWithWebSpeech(res.content);
+            }
+            setIsAudioPlaying(false);
+            setCurrentSpeaker(null);
+          }
+        }
         if (!done && token) {
           setStateToken(token);
           setCompletionLoading(true);
@@ -212,6 +279,11 @@ export function MultiAgentTtsChatContainer() {
   const handleBack = () => router.push("/dashboard/tts-chat");
   const toggleDrawer = () => setDrawerOpen((prev) => !prev);
   const handleDrawerClose = () => setDrawerOpen(false);
+
+  const handleTtsProviderChange = (value: TtsProvider) => {
+    setTtsProvider(value);
+    setAppSettings({ ttsProvider: value });
+  };
 
   const subtitle =
     selectedAgents.length === 0
@@ -347,9 +419,24 @@ export function MultiAgentTtsChatContainer() {
             </h1>
             <SpeakerWaveIcon className="h-5 w-5 text-purple-400 flex-shrink-0" />
           </div>
-          <p className="hidden sm:block text-sm text-gray-400 truncate max-w-[30%] lg:max-w-[40%]">
+          <p className="hidden sm:block text-sm text-gray-400 truncate max-w-[25%] lg:max-w-[35%]">
             {subtitle}
           </p>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <label htmlFor="tts-provider" className="sr-only">
+              Text-to-speech engine
+            </label>
+            <select
+              id="tts-provider"
+              value={ttsProvider}
+              onChange={(e) => handleTtsProviderChange(e.target.value as TtsProvider)}
+              className="rounded-lg border border-gray-600 bg-gray-900 text-white text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              title="Text-to-speech engine"
+            >
+              <option value="browser">Browser</option>
+              <option value="elevenlabs">ElevenLabs</option>
+            </select>
+          </div>
           <button
             onClick={toggleDrawer}
             className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
