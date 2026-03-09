@@ -1,7 +1,14 @@
 /**
- * TTS next-turn: one agent turn per request.
- * POST /api/swarms/tts/next-turn with { sessionId, swarm, prompt?, stateToken? }.
- * Returns { agentName, content, stateToken?, done }.
+ * TTS next-turn (streaming): one agent turn per request.
+ * POST /api/swarms/tts/next-turn/stream with { sessionId, swarm, prompt?, stateToken? }.
+ * Accept: text/event-stream. Returns SSE stream of events; client resolves with tts_turn_result.
+ *
+ * Stream events:
+ * - swarm_agent_start
+ * - swarm_chat_model_stream
+ * - swarm_agent_end
+ * - tts_turn_result  (final payload: agentName, content, stateToken?, done)
+ * - error
  */
 
 import { getCookie } from "@/shared/utils";
@@ -10,7 +17,7 @@ const BASE_URL =
   process.env.NEXT_PUBLIC_COMPLETION_API_URL ||
   process.env.NEXT_PUBLIC_AI_API_URL ||
   "http://127.0.0.1:4100";
-const PATH = "/api/swarms/tts/next-turn";
+const PATH = "/api/swarms/tts/next-turn/stream";
 
 export interface SwarmSupervisorSpec {
   name: string;
@@ -37,6 +44,54 @@ export interface SwarmTtsNextTurnResponse {
   done: boolean;
 }
 
+export type SwarmTtsEventType =
+  | "swarm_agent_start"
+  | "swarm_chat_model_stream"
+  | "swarm_agent_end"
+  | "tts_turn_result"
+  | "error";
+
+export interface SwarmTtsStreamEvent {
+  event: SwarmTtsEventType;
+  [key: string]: unknown;
+}
+
+export interface TtsTurnResultPayload {
+  agentName?: string;
+  content?: string;
+  stateToken?: string | null;
+  done?: boolean;
+}
+
+function isTurnResultPayload(obj: unknown): obj is TtsTurnResultPayload {
+  if (obj == null || typeof obj !== "object") return false;
+  const o = obj as Record<string, unknown>;
+  return (
+    "agentName" in o ||
+    "content" in o ||
+    "stateToken" in o ||
+    "done" in o
+  );
+}
+
+function extractTurnResult(parsed: Record<string, unknown>): SwarmTtsNextTurnResponse | null {
+  // Nested payload: { event: "tts_turn_result", data: {...} } or { result: {...} }
+  const data = (parsed.data ?? parsed.result) as Record<string, unknown> | undefined;
+  const payload = data && typeof data === "object" ? data : parsed;
+  if (!isTurnResultPayload(payload)) return null;
+  return {
+    agentName: (payload.agentName ?? "") as string,
+    content: (payload.content ?? "") as string,
+    stateToken: (payload.stateToken ?? null) as string | null,
+    done: (payload.done ?? true) as boolean,
+  };
+}
+
+/**
+ * Consume the response as a stream of events (NDJSON or SSE-style) or a single JSON body.
+ * Resolves with the tts_turn_result payload, or any object with agentName/content/stateToken/done.
+ * Rejects on error event or non-ok response.
+ */
 export async function callSwarmTtsNextTurn(
   sessionId: string,
   swarm: SwarmPayload,
@@ -45,7 +100,10 @@ export async function callSwarmTtsNextTurn(
 ): Promise<SwarmTtsNextTurnResponse> {
   const url = `${BASE_URL}${PATH.startsWith("/") ? "" : "/"}${PATH}`;
   const jwt = typeof document !== "undefined" ? getCookie("jwt") : null;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+  };
   if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
 
   const body: Record<string, unknown> = {
@@ -68,11 +126,91 @@ export async function callSwarmTtsNextTurn(
     throw new Error(`TTS next-turn failed: ${res.status} - ${text}`);
   }
 
-  const data = (await res.json()) as SwarmTtsNextTurnResponse;
-  return {
-    agentName: data.agentName ?? "",
-    content: data.content ?? "",
-    stateToken: data.stateToken ?? null,
-    done: data.done ?? true,
-  };
+  const contentType = res.headers.get("content-type") ?? "";
+  const isLikelyStream =
+    contentType.includes("text/event-stream") ||
+    contentType.includes("application/x-ndjson") ||
+    contentType.includes("stream");
+
+  // Non-streaming: single JSON body
+  if (!isLikelyStream) {
+    const data = (await res.json()) as SwarmTtsNextTurnResponse & Record<string, unknown>;
+    return {
+      agentName: data.agentName ?? "",
+      content: data.content ?? "",
+      stateToken: data.stateToken ?? null,
+      done: data.done ?? true,
+    };
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    throw new Error("TTS next-turn: no response body");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: SwarmTtsNextTurnResponse | null = null;
+
+  function processLine(trimmed: string): void {
+    if (!trimmed) return;
+    const data = trimmed.startsWith("data:")
+      ? trimmed.slice(5).trim()
+      : trimmed;
+    if (data === "[DONE]" || data === "") return;
+    try {
+      const parsed = JSON.parse(data) as Record<string, unknown>;
+      const event = (parsed.event ?? parsed.type) as string | undefined;
+
+      if (event === "error") {
+        const msg = (parsed.message ?? parsed.error) ?? "Stream error";
+        throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+      }
+
+      if (
+        event === "tts_turn_result" ||
+        isTurnResultPayload(parsed) ||
+        (parsed.data && isTurnResultPayload(parsed.data)) ||
+        (parsed.result && isTurnResultPayload(parsed.result))
+      ) {
+        const next = extractTurnResult(parsed);
+        if (next) result = next;
+      }
+    } catch (e) {
+      if (e instanceof SyntaxError) return;
+      throw e;
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      processLine(line.trim());
+    }
+  }
+
+  if (buffer.trim()) processLine(buffer.trim());
+
+  // If stream had no result, try parsing entire buffer as single JSON (some servers send one chunk)
+  if (!result && buffer.trim()) {
+    try {
+      const parsed = JSON.parse(buffer.trim()) as Record<string, unknown>;
+      if (isTurnResultPayload(parsed) || (parsed.data && isTurnResultPayload(parsed.data))) {
+        result = extractTurnResult(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!result) {
+    throw new Error("TTS next-turn: no tts_turn_result event in stream");
+  }
+
+  return result;
 }
