@@ -12,6 +12,7 @@ import { getAppSettings, setAppSettings, type TtsProvider } from "@/shared/app-s
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
   SpeakerWaveIcon,
+  StopIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   PlusIcon,
@@ -20,12 +21,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { CheckIcon } from "@heroicons/react/24/solid";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
-import { StreamingAudioPlayer } from "@/components/tts-chat/streaming-audio-player";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import { v4 as uuidv4 } from "uuid";
-import { nanoid } from "@/shared/utils";
+import { cn, nanoid } from "@/shared/utils";
 import type { Message } from "@/ts/types/Message";
 import {
   callSwarmTtsNextTurnStream,
@@ -74,12 +74,16 @@ export function MultiAgentTtsChatContainer() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isXl, setIsXl] = useState(true);
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>("browser");
+  /** Progress for current turn: streamed text length vs chars sent to TTS (for progress bar) */
+  const [ttsProgress, setTtsProgress] = useState<{ streamed: number; converted: number }>({ streamed: 0, converted: 0 });
   const abortRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const streamingMessageIdRef = useRef<string | null>(null);
   const ttsBufferRef = useRef<string>("");
   const ttsQueueRef = useRef<{ text: string; voiceId: string }[]>([]);
   const isPlayingTtsRef = useRef<boolean>(false);
+  const streamedCharsRef = useRef(0);
+  const convertedCharsRef = useRef(0);
   /** Resolve when ElevenLabs TTS queue has finished playing; used to wait before next turn */
   const ttsDrainedResolveRef = useRef<(() => void) | null>(null);
   /** Promise for current Browser TTS playback so we can await before next turn */
@@ -178,6 +182,8 @@ export function MultiAgentTtsChatContainer() {
     const text = ttsBufferRef.current.trim();
     ttsBufferRef.current = "";
     if (text) {
+      convertedCharsRef.current += text.length;
+      setTtsProgress({ streamed: streamedCharsRef.current, converted: convertedCharsRef.current });
       ttsQueueRef.current.push({ text, voiceId });
       processTtsQueue();
     }
@@ -199,6 +205,9 @@ export function MultiAgentTtsChatContainer() {
         { prompt, stateToken: token ?? stateToken },
         {
           onAgentStart: (agentName) => {
+            streamedCharsRef.current = 0;
+            convertedCharsRef.current = 0;
+            setTtsProgress({ streamed: 0, converted: 0 });
             const newMessage: Message = {
               id: nanoid(),
               content: "",
@@ -214,6 +223,8 @@ export function MultiAgentTtsChatContainer() {
           onStreamChunk: (agentName, chunk) => {
             const id = streamingMessageIdRef.current;
             if (!id) return;
+            streamedCharsRef.current += chunk.length;
+            setTtsProgress({ streamed: streamedCharsRef.current, converted: convertedCharsRef.current });
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === id ? { ...m, content: m.content + chunk } : m,
@@ -251,6 +262,9 @@ export function MultiAgentTtsChatContainer() {
               flushTtsBuffer(voiceIdForAgent(result.agentName ?? ""));
               processTtsQueue();
             } else if (result.content?.trim()) {
+              streamedCharsRef.current = result.content.length;
+              convertedCharsRef.current = result.content.length;
+              setTtsProgress({ streamed: streamedCharsRef.current, converted: convertedCharsRef.current });
               setIsAudioPlaying(true);
               browserTtsPromiseRef.current = speakWithWebSpeech(result.content).then(() => {
                 setIsAudioPlaying(false);
@@ -373,7 +387,22 @@ export function MultiAgentTtsChatContainer() {
       setCompletionLoading(false);
       setIsAudioPlaying(false);
       setCurrentSpeaker(null);
+      setTtsProgress({ streamed: 0, converted: 0 });
     }
+  };
+
+  const handleTtsStop = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    ttsQueueRef.current = [];
+    ttsBufferRef.current = "";
+    isPlayingTtsRef.current = false;
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsAudioPlaying(false);
+    setIsAudioStreaming(false);
+    setCurrentSpeaker(null);
   };
 
   const handleBack = () => router.push("/dashboard/tts-chat");
@@ -593,30 +622,85 @@ export function MultiAgentTtsChatContainer() {
             )}
           </div>
         </div>
-
-        {/* TTS player placeholder bar */}
-        <div className="flex-shrink-0 border-t border-gray-700 px-4 py-2">
-          <StreamingAudioPlayer
-            isStreaming={isAudioStreaming}
-            isPlaying={isAudioPlaying}
-            onPlayingChange={setIsAudioPlaying}
-            onStop={() => {
-              setIsAudioStreaming(false);
-              setIsAudioPlaying(false);
-            }}
-            className="min-h-[72px]"
-          />
-        </div>
+      </div>
       </div>
 
-      {/* Bottom prompt form */}
+      {/* Fixed bottom panel: audio player above input (same layout as TTS chat page) */}
       <div
-        className="fixed inset-x-0 bottom-0 w-full border-t bg-black border-gray-700 shadow-lg rounded-t-xl z-[10] lg:pl-72"
+        className="fixed bottom-0 left-0 right-0 lg:left-72 bg-gradient-to-t from-black via-black to-transparent pt-8 pb-4 px-4 sm:px-6 lg:px-8 z-[10]"
         style={{ zIndex: 10 }}
       >
-        <div className="mx-auto lg:max-w-[calc(100%-18rem)]">
-          <div className="mx-4 sm:mx-8 space-y-4 border-t border-gray-700 px-4 py-2 md:py-4">
-            <form
+        {inConversation && (
+          <div className="max-w-3xl mx-auto mb-4">
+            <div
+              className={cn(
+                "bg-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4",
+                "min-h-[72px]"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <SpeakerWaveIcon
+                  className={cn(
+                    "h-5 w-5 flex-shrink-0",
+                    currentSpeaker || isAudioPlaying
+                      ? "text-purple-400 animate-pulse"
+                      : "text-gray-400"
+                  )}
+                />
+                <div className="flex-1 flex flex-col gap-2 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-gray-200 truncate">
+                      {currentSpeaker
+                        ? `${currentSpeaker} is speaking…`
+                        : isAudioPlaying
+                          ? "Playing audio…"
+                          : "Ready — audio will play here when an agent responds"}
+                    </span>
+                    {(ttsProgress.streamed > 0 || isAudioPlaying) && (
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {ttsProgress.streamed > 0
+                          ? `${Math.min(
+                              100,
+                              Math.round(
+                                (ttsProgress.converted / ttsProgress.streamed) * 100
+                              )
+                            )}% of response converted to audio`
+                          : "Playing…"}
+                      </span>
+                    )}
+                  </div>
+                  {ttsProgress.streamed > 0 && (
+                    <div className="h-1.5 w-full rounded-full bg-gray-700 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-purple-500 transition-all duration-300"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            (ttsProgress.converted / ttsProgress.streamed) * 100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+                {(currentSpeaker || isAudioPlaying) && (
+                  <button
+                    type="button"
+                    onClick={handleTtsStop}
+                    className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex-shrink-0"
+                    title="Stop"
+                  >
+                    <StopIcon className="h-4 w-4 text-white" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chat input */}
+        <div className="max-w-3xl mx-auto">
+          <form
               ref={formRef}
               onSubmit={handleSubmit}
               className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background"
@@ -650,8 +734,6 @@ export function MultiAgentTtsChatContainer() {
               Made with ❤️ in Miami 🌴
             </p>
           </div>
-        </div>
-      </div>
       </div>
 
       {/* Fixed aside: Session agents config (visible on xl when drawerOpen) */}
