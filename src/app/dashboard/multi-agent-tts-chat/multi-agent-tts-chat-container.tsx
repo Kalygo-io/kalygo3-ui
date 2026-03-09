@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   agentsService,
@@ -12,7 +12,6 @@ import { getAppSettings, setAppSettings, type TtsProvider } from "@/shared/app-s
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
   SpeakerWaveIcon,
-  StopIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   PlusIcon,
@@ -34,10 +33,19 @@ import {
 } from "@/services/callSwarmTtsNextTurn";
 import { HierarchicalDrawer } from "@/components/hierarchical/drawer";
 import { SessionAgentsConfigPanel } from "@/components/multi-agent-tts/session-agents-config-panel";
+import { StreamingAudioPlayer } from "@/components/tts-chat/streaming-audio-player";
 
 const MAX_AGENTS = 3;
 /** Min chars to send to ElevenLabs before requesting audio (reduces latency vs waiting for full turn) */
 const MIN_TTS_CHUNK_CHARS = 80;
+/** How many queued chunks to prefetch while current chunk is playing. */
+const TTS_PREFETCH_DEPTH = 2;
+
+type TtsQueueItem = {
+  id: string;
+  text: string;
+  voiceId: string;
+};
 
 function buildSwarm(agents: Agent[]): SwarmPayload {
   return {
@@ -80,12 +88,21 @@ export function MultiAgentTtsChatContainer() {
   const messagesRef = useRef<Message[]>([]);
   const streamingMessageIdRef = useRef<string | null>(null);
   const ttsBufferRef = useRef<string>("");
-  const ttsQueueRef = useRef<{ text: string; voiceId: string }[]>([]);
-  const isPlayingTtsRef = useRef<boolean>(false);
+  const ttsQueueRef = useRef<TtsQueueItem[]>([]);
+  const isConvertingTtsRef = useRef<boolean>(false);
+  const ttsTurnCompleteRef = useRef<boolean>(false);
   const streamedCharsRef = useRef(0);
   const convertedCharsRef = useRef(0);
+  /** Cache of prefetched blobs by queue item id. */
+  const ttsPrefetchedBlobsRef = useRef<Map<string, Blob>>(new Map());
+  /** In-flight fetches by queue item id to dedupe API requests. */
+  const ttsPrefetchPromisesRef = useRef<Map<string, Promise<Blob | null>>>(new Map());
   /** Resolve when ElevenLabs TTS queue has finished playing; used to wait before next turn */
   const ttsDrainedResolveRef = useRef<(() => void) | null>(null);
+  /** Queue for audio chunks that arrive before player is ready. */
+  const audioChunkQueueRef = useRef<string[]>([]);
+  const isAudioStreamingRef = useRef(false);
+  const isAudioPlayingRef = useRef(false);
   /** Promise for current Browser TTS playback so we can await before next turn */
   const browserTtsPromiseRef = useRef<Promise<void> | null>(null);
 
@@ -94,6 +111,36 @@ export function MultiAgentTtsChatContainer() {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  useEffect(() => {
+    isAudioStreamingRef.current = isAudioStreaming;
+  }, [isAudioStreaming]);
+
+  useEffect(() => {
+    isAudioPlayingRef.current = isAudioPlaying;
+  }, [isAudioPlaying]);
+
+  useEffect(() => {
+    if (!isAudioStreaming) return;
+
+    let attempts = 0;
+    const maxAttempts = 100;
+    const interval = setInterval(() => {
+      attempts += 1;
+      const player = (window as Window & { __streamingAudioPlayer?: { addAudioChunk?: (c: string) => void } }).__streamingAudioPlayer;
+      if (player?.addAudioChunk && audioChunkQueueRef.current.length > 0) {
+        while (audioChunkQueueRef.current.length > 0) {
+          const queuedChunk = audioChunkQueueRef.current.shift();
+          if (queuedChunk) player.addAudioChunk(queuedChunk);
+        }
+      }
+      if (attempts >= maxAttempts || (player && audioChunkQueueRef.current.length === 0)) {
+        clearInterval(interval);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isAudioStreaming]);
 
   useEffect(() => {
     loadAgents();
@@ -149,28 +196,135 @@ export function MultiAgentTtsChatContainer() {
     setInConversation(false);
   };
 
+  const fetchAndCacheTtsBlob = (item: TtsQueueItem): Promise<Blob | null> => {
+    const cachedBlob = ttsPrefetchedBlobsRef.current.get(item.id);
+    if (cachedBlob) return Promise.resolve(cachedBlob);
+    const inFlight = ttsPrefetchPromisesRef.current.get(item.id);
+    if (inFlight) return inFlight;
+
+    const promise = fetchTtsBlob(item.text, item.voiceId)
+      .then((blob) => {
+        if (blob) {
+          ttsPrefetchedBlobsRef.current.set(item.id, blob);
+        }
+        return blob;
+      })
+      .finally(() => {
+        ttsPrefetchPromisesRef.current.delete(item.id);
+      });
+
+    ttsPrefetchPromisesRef.current.set(item.id, promise);
+    return promise;
+  };
+
+  const prefetchUpcomingTtsChunks = () => {
+    const upcoming = ttsQueueRef.current.slice(0, TTS_PREFETCH_DEPTH);
+    for (const item of upcoming) {
+      void fetchAndCacheTtsBlob(item);
+    }
+  };
+
+  const canResolveTtsDrain = () =>
+    !isConvertingTtsRef.current &&
+    ttsQueueRef.current.length === 0 &&
+    ttsPrefetchPromisesRef.current.size === 0 &&
+    !isAudioStreamingRef.current &&
+    !isAudioPlayingRef.current;
+
+  const maybeResolveTtsDrain = () => {
+    if (canResolveTtsDrain()) {
+      ttsDrainedResolveRef.current?.();
+      ttsDrainedResolveRef.current = null;
+    }
+  };
+
+  const pushAudioChunkToPlayer = useCallback((base64Audio: string) => {
+    const player = (window as Window & { __streamingAudioPlayer?: { addAudioChunk?: (c: string) => void } }).__streamingAudioPlayer;
+    if (player?.addAudioChunk) {
+      while (audioChunkQueueRef.current.length > 0) {
+        const queuedChunk = audioChunkQueueRef.current.shift();
+        if (queuedChunk) player.addAudioChunk(queuedChunk);
+      }
+      player.addAudioChunk(base64Audio);
+      return;
+    }
+    audioChunkQueueRef.current.push(base64Audio);
+  }, []);
+
+  const startAudioStreaming = useCallback(() => {
+    if (isAudioStreamingRef.current) return;
+    audioChunkQueueRef.current = [];
+    const player = (window as Window & { __streamingAudioPlayer?: { reset?: () => void } }).__streamingAudioPlayer;
+    player?.reset?.();
+    setIsAudioStreaming(true);
+  }, []);
+
+  const endAudioStreaming = useCallback(() => {
+    if (!isAudioStreamingRef.current) {
+      maybeResolveTtsDrain();
+      return;
+    }
+    const player = (window as Window & { __streamingAudioPlayer?: { addAudioChunk?: (c: string) => void } }).__streamingAudioPlayer;
+    if (player?.addAudioChunk) {
+      while (audioChunkQueueRef.current.length > 0) {
+        const queuedChunk = audioChunkQueueRef.current.shift();
+        if (queuedChunk) player.addAudioChunk(queuedChunk);
+      }
+    }
+    setIsAudioStreaming(false);
+    maybeResolveTtsDrain();
+  }, []);
+
+  const blobToBase64 = useCallback(async (blob: Blob): Promise<string> => {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }, []);
+
   const processTtsQueue = () => {
-    if (isPlayingTtsRef.current || ttsQueueRef.current.length === 0) {
-      if (!isPlayingTtsRef.current && ttsQueueRef.current.length === 0) {
-        ttsDrainedResolveRef.current?.();
-        ttsDrainedResolveRef.current = null;
+    if (isConvertingTtsRef.current) return;
+
+    if (ttsQueueRef.current.length === 0) {
+      if (ttsTurnCompleteRef.current && ttsPrefetchPromisesRef.current.size === 0) {
+        endAudioStreaming();
       }
       return;
     }
-    const next = ttsQueueRef.current.shift();
-    if (!next) return;
-    isPlayingTtsRef.current = true;
-    setIsAudioPlaying(true);
-    speakWithElevenLabs(next.text, next.voiceId).then(() => {
-      isPlayingTtsRef.current = false;
-      setIsAudioPlaying(false);
-      processTtsQueue();
-    });
+
+    const current = ttsQueueRef.current.shift();
+    if (!current) return;
+
+    prefetchUpcomingTtsChunks();
+    isConvertingTtsRef.current = true;
+
+    fetchAndCacheTtsBlob(current)
+      .then(async (blob) => {
+        if (!blob) return;
+        ttsPrefetchedBlobsRef.current.delete(current.id);
+        const base64Audio = await blobToBase64(blob);
+        startAudioStreaming();
+        pushAudioChunkToPlayer(base64Audio);
+      })
+      .finally(() => {
+        isConvertingTtsRef.current = false;
+        if (
+          ttsTurnCompleteRef.current &&
+          ttsQueueRef.current.length === 0 &&
+          ttsPrefetchPromisesRef.current.size === 0
+        ) {
+          endAudioStreaming();
+        } else {
+          processTtsQueue();
+        }
+      });
   };
 
   /** Wait until the ElevenLabs TTS queue has finished playing. Resolves immediately if queue is already empty. */
   const waitForTtsQueueToFinish = (): Promise<void> => {
-    if (!isPlayingTtsRef.current && ttsQueueRef.current.length === 0) {
+    if (canResolveTtsDrain()) {
       return Promise.resolve();
     }
     return new Promise<void>((resolve) => {
@@ -184,7 +338,9 @@ export function MultiAgentTtsChatContainer() {
     if (text) {
       convertedCharsRef.current += text.length;
       setTtsProgress({ streamed: streamedCharsRef.current, converted: convertedCharsRef.current });
-      ttsQueueRef.current.push({ text, voiceId });
+      const queueItem: TtsQueueItem = { id: nanoid(), text, voiceId };
+      ttsQueueRef.current.push(queueItem);
+      prefetchUpcomingTtsChunks();
       processTtsQueue();
     }
   };
@@ -205,6 +361,7 @@ export function MultiAgentTtsChatContainer() {
         { prompt, stateToken: token ?? stateToken },
         {
           onAgentStart: (agentName) => {
+            ttsTurnCompleteRef.current = false;
             streamedCharsRef.current = 0;
             convertedCharsRef.current = 0;
             setTtsProgress({ streamed: 0, converted: 0 });
@@ -243,6 +400,7 @@ export function MultiAgentTtsChatContainer() {
             }
           },
           onTurnResult: (result) => {
+            ttsTurnCompleteRef.current = true;
             const id = streamingMessageIdRef.current;
             streamingMessageIdRef.current = null;
             if (id) {
@@ -261,6 +419,13 @@ export function MultiAgentTtsChatContainer() {
             if (ttsProvider === "elevenlabs") {
               flushTtsBuffer(voiceIdForAgent(result.agentName ?? ""));
               processTtsQueue();
+              if (
+                ttsQueueRef.current.length === 0 &&
+                !isConvertingTtsRef.current &&
+                ttsPrefetchPromisesRef.current.size === 0
+              ) {
+                endAudioStreaming();
+              }
             } else if (result.content?.trim()) {
               streamedCharsRef.current = result.content.length;
               convertedCharsRef.current = result.content.length;
@@ -295,37 +460,29 @@ export function MultiAgentTtsChatContainer() {
     });
   };
 
-  const speakWithElevenLabs = async (text: string, voiceId: string): Promise<void> => {
-    try {
-      const res = await fetch("/api/tts/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ text, voiceId }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        errorToast(err?.error ?? "TTS failed");
-        return;
+  /** Fetch TTS audio blob from API (used for playback and prefetch). */
+  const fetchTtsBlob = useCallback(
+    async (text: string, voiceId: string): Promise<Blob | null> => {
+      try {
+        const res = await fetch("/api/tts/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ text, voiceId }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          errorToast(err?.error ?? "TTS failed");
+          return null;
+        }
+        return await res.blob();
+      } catch (e) {
+        errorToast(e instanceof Error ? e.message : "TTS failed");
+        return null;
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      await new Promise<void>((resolve, reject) => {
-        audio.onended = () => {
-          URL.revokeObjectURL(url);
-          resolve();
-        };
-        audio.onerror = () => {
-          URL.revokeObjectURL(url);
-          reject(audio.error);
-        };
-        audio.play().catch(reject);
-      });
-    } catch (e) {
-      errorToast(e instanceof Error ? e.message : "TTS playback failed");
-    }
-  };
+    },
+    [],
+  );
 
   const getVoiceIdForAgent = (agentName: string): string => {
     const agent = selectedAgents.find((a) => a.name === agentName);
@@ -348,6 +505,11 @@ export function MultiAgentTtsChatContainer() {
     setCompletionLoading(true);
     ttsBufferRef.current = "";
     ttsQueueRef.current = [];
+    ttsTurnCompleteRef.current = false;
+    ttsPrefetchedBlobsRef.current.clear();
+    ttsPrefetchPromisesRef.current.clear();
+    audioChunkQueueRef.current = [];
+    setIsAudioStreaming(false);
     try {
       let token: string | null = null;
       let done = false;
@@ -396,13 +558,20 @@ export function MultiAgentTtsChatContainer() {
     abortRef.current = null;
     ttsQueueRef.current = [];
     ttsBufferRef.current = "";
-    isPlayingTtsRef.current = false;
+    ttsTurnCompleteRef.current = true;
+    ttsPrefetchedBlobsRef.current.clear();
+    ttsPrefetchPromisesRef.current.clear();
+    isConvertingTtsRef.current = false;
+    audioChunkQueueRef.current = [];
+    const player = (window as Window & { __streamingAudioPlayer?: { reset?: () => void } }).__streamingAudioPlayer;
+    player?.reset?.();
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
     setIsAudioPlaying(false);
     setIsAudioStreaming(false);
     setCurrentSpeaker(null);
+    maybeResolveTtsDrain();
   };
 
   const handleBack = () => router.push("/dashboard/tts-chat");
@@ -632,69 +801,16 @@ export function MultiAgentTtsChatContainer() {
       >
         {inConversation && (
           <div className="max-w-3xl mx-auto mb-4">
-            <div
-              className={cn(
-                "bg-gray-800/80 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4",
-                "min-h-[72px]"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <SpeakerWaveIcon
-                  className={cn(
-                    "h-5 w-5 flex-shrink-0",
-                    currentSpeaker || isAudioPlaying
-                      ? "text-purple-400 animate-pulse"
-                      : "text-gray-400"
-                  )}
-                />
-                <div className="flex-1 flex flex-col gap-2 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-gray-200 truncate">
-                      {currentSpeaker
-                        ? `${currentSpeaker} is speaking…`
-                        : isAudioPlaying
-                          ? "Playing audio…"
-                          : "Ready — audio will play here when an agent responds"}
-                    </span>
-                    {(ttsProgress.streamed > 0 || isAudioPlaying) && (
-                      <span className="text-xs text-gray-400 flex-shrink-0">
-                        {ttsProgress.streamed > 0
-                          ? `${Math.min(
-                              100,
-                              Math.round(
-                                (ttsProgress.converted / ttsProgress.streamed) * 100
-                              )
-                            )}% of response converted to audio`
-                          : "Playing…"}
-                      </span>
-                    )}
-                  </div>
-                  {ttsProgress.streamed > 0 && (
-                    <div className="h-1.5 w-full rounded-full bg-gray-700 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-purple-500 transition-all duration-300"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            (ttsProgress.converted / ttsProgress.streamed) * 100
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-                {(currentSpeaker || isAudioPlaying) && (
-                  <button
-                    type="button"
-                    onClick={handleTtsStop}
-                    className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex-shrink-0"
-                    title="Stop"
-                  >
-                    <StopIcon className="h-4 w-4 text-white" />
-                  </button>
-                )}
-              </div>
-            </div>
+            <StreamingAudioPlayer
+              isStreaming={ttsProvider === "elevenlabs" ? isAudioStreaming : false}
+              isPlaying={isAudioPlaying}
+              onPlayingChange={(playing) => {
+                setIsAudioPlaying(playing);
+                if (!playing) maybeResolveTtsDrain();
+              }}
+              onStop={handleTtsStop}
+              className={cn(ttsProvider !== "elevenlabs" && "min-h-[72px]")}
+            />
           </div>
         )}
 
