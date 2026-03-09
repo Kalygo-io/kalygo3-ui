@@ -28,13 +28,16 @@ import { v4 as uuidv4 } from "uuid";
 import { nanoid } from "@/shared/utils";
 import type { Message } from "@/ts/types/Message";
 import {
-  callSwarmTtsNextTurn,
+  callSwarmTtsNextTurnStream,
   type SwarmPayload,
+  type SwarmTtsNextTurnResponse,
 } from "@/services/callSwarmTtsNextTurn";
 import { HierarchicalDrawer } from "@/components/hierarchical/drawer";
 import { SessionAgentsConfigPanel } from "@/components/multi-agent-tts/session-agents-config-panel";
 
 const MAX_AGENTS = 3;
+/** Min chars to send to ElevenLabs before requesting audio (reduces latency vs waiting for full turn) */
+const MIN_TTS_CHUNK_CHARS = 80;
 
 function buildSwarm(agents: Agent[]): SwarmPayload {
   return {
@@ -73,6 +76,10 @@ export function MultiAgentTtsChatContainer() {
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>("browser");
   const abortRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
+  const streamingMessageIdRef = useRef<string | null>(null);
+  const ttsBufferRef = useRef<string>("");
+  const ttsQueueRef = useRef<{ text: string; voiceId: string }[]>([]);
+  const isPlayingTtsRef = useRef<boolean>(false);
 
   const { formRef, onKeyDown } = useEnterSubmit();
 
@@ -134,18 +141,103 @@ export function MultiAgentTtsChatContainer() {
     setInConversation(false);
   };
 
-  const requestNextTurn = async (prompt?: string, token?: string | null) => {
+  const processTtsQueue = () => {
+    if (isPlayingTtsRef.current || ttsQueueRef.current.length === 0) return;
+    const next = ttsQueueRef.current.shift();
+    if (!next) return;
+    isPlayingTtsRef.current = true;
+    setIsAudioPlaying(true);
+    speakWithElevenLabs(next.text, next.voiceId).then(() => {
+      isPlayingTtsRef.current = false;
+      setIsAudioPlaying(false);
+      processTtsQueue();
+    });
+  };
+
+  const flushTtsBuffer = (voiceId: string) => {
+    const text = ttsBufferRef.current.trim();
+    ttsBufferRef.current = "";
+    if (text) {
+      ttsQueueRef.current.push({ text, voiceId });
+      processTtsQueue();
+    }
+  };
+
+  const requestNextTurnStream = async (
+    prompt?: string,
+    token?: string | null,
+  ): Promise<SwarmTtsNextTurnResponse> => {
     const swarm = buildSwarm(selectedAgents);
     const controller = new AbortController();
     abortRef.current = controller;
+    const voiceIdForAgent = (name: string) => getVoiceIdForAgent(name);
+
     try {
-      const res = await callSwarmTtsNextTurn(
+      return await callSwarmTtsNextTurnStream(
         sessionId,
         swarm,
         { prompt, stateToken: token ?? stateToken },
+        {
+          onAgentStart: (agentName) => {
+            const newMessage: Message = {
+              id: nanoid(),
+              content: "",
+              role: "ai",
+              error: null,
+              agentName,
+            };
+            streamingMessageIdRef.current = newMessage.id;
+            setMessages((prev) => [...prev, newMessage]);
+            setCurrentSpeaker(agentName);
+            setCompletionLoading(false);
+          },
+          onStreamChunk: (agentName, chunk) => {
+            const id = streamingMessageIdRef.current;
+            if (!id) return;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === id ? { ...m, content: m.content + chunk } : m,
+              ),
+            );
+            if (ttsProvider === "elevenlabs") {
+              ttsBufferRef.current += chunk;
+              if (ttsBufferRef.current.length >= MIN_TTS_CHUNK_CHARS) {
+                flushTtsBuffer(voiceIdForAgent(agentName));
+              }
+            }
+          },
+          onAgentEnd: (agentName) => {
+            if (ttsProvider === "elevenlabs") {
+              flushTtsBuffer(voiceIdForAgent(agentName));
+            }
+          },
+          onTurnResult: (result) => {
+            const id = streamingMessageIdRef.current;
+            streamingMessageIdRef.current = null;
+            if (id) {
+              const trimmed = result.content?.trim() ?? "";
+              if (trimmed) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === id ? { ...m, content: trimmed } : m,
+                  ),
+                );
+              } else {
+                setMessages((prev) => prev.filter((m) => m.id !== id));
+              }
+            }
+            setCurrentSpeaker(null);
+            if (ttsProvider === "elevenlabs") {
+              flushTtsBuffer(voiceIdForAgent(result.agentName ?? ""));
+              processTtsQueue();
+            } else if (result.content?.trim()) {
+              setIsAudioPlaying(true);
+              speakWithWebSpeech(result.content).then(() => setIsAudioPlaying(false));
+            }
+          },
+        },
         controller.signal,
       );
-      return res;
     } finally {
       abortRef.current = null;
     }
@@ -216,50 +308,20 @@ export function MultiAgentTtsChatContainer() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setCompletionLoading(true);
+    ttsBufferRef.current = "";
+    ttsQueueRef.current = [];
     try {
       let token: string | null = null;
       let done = false;
       let first = true;
       do {
-        const res = await requestNextTurn(
+        const res = await requestNextTurnStream(
           first ? trimmed : undefined,
           first ? undefined : token,
         );
         first = false;
         token = res.stateToken;
         done = res.done;
-        const hasContent = res.content != null && res.content.trim() !== "";
-        if (hasContent) {
-          const trimmedContent = res.content.trim();
-          const prev = messagesRef.current;
-          const last = prev[prev.length - 1];
-          const isDuplicate =
-            last?.role === "ai" &&
-            last?.agentName === res.agentName &&
-            (last?.content ?? "") === trimmedContent;
-          if (!isDuplicate) {
-            const newMessage: Message = {
-              id: nanoid(),
-              content: trimmedContent,
-              role: "ai",
-              error: null,
-              agentName: res.agentName,
-            };
-            setMessages((prev) => [...prev, newMessage]);
-            messagesRef.current = [...messagesRef.current, newMessage];
-            setCurrentSpeaker(res.agentName);
-            setCompletionLoading(false);
-            setIsAudioStreaming(false);
-            setIsAudioPlaying(true);
-            if (ttsProvider === "elevenlabs") {
-              await speakWithElevenLabs(res.content, getVoiceIdForAgent(res.agentName ?? ""));
-            } else {
-              await speakWithWebSpeech(res.content);
-            }
-            setIsAudioPlaying(false);
-            setCurrentSpeaker(null);
-          }
-        }
         if (!done && token) {
           setStateToken(token);
           setCompletionLoading(true);
@@ -269,6 +331,7 @@ export function MultiAgentTtsChatContainer() {
       } while (!done && token);
     } catch (err) {
       errorToast(err instanceof Error ? err.message : "Request failed");
+      streamingMessageIdRef.current = null;
     } finally {
       setCompletionLoading(false);
       setIsAudioPlaying(false);
