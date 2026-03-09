@@ -677,18 +677,14 @@ export function MultiAgentTtsChatContainer() {
         done = res.done;
 
         if (!done && token) {
-          if (ttsProvider === "elevenlabs") {
-            await waitForTtsQueueToFinish();
-          } else {
+          if (ttsProvider !== "elevenlabs") {
             await (browserTtsPromiseRef.current ?? Promise.resolve());
             browserTtsPromiseRef.current = null;
           }
           setStateToken(token);
           setCompletionLoading(true);
         } else {
-          if (ttsProvider === "elevenlabs") {
-            await waitForTtsQueueToFinish();
-          } else {
+          if (ttsProvider !== "elevenlabs") {
             await (browserTtsPromiseRef.current ?? Promise.resolve());
             browserTtsPromiseRef.current = null;
           }
@@ -700,7 +696,9 @@ export function MultiAgentTtsChatContainer() {
       streamingMessageIdRef.current = null;
     } finally {
       setCompletionLoading(false);
-      setIsAudioPlaying(false);
+      if (ttsProvider !== "elevenlabs") {
+        setIsAudioPlaying(false);
+      }
       setCurrentSpeaker(null);
       setTtsProgress({ streamed: 0, converted: 0 });
     }
