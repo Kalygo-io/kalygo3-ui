@@ -1,0 +1,562 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  agentsService,
+  CreateAgentRequest,
+  ToolV2,
+  AgentConfigDataV4,
+  ModelConfig,
+  ModelProvider,
+  AVAILABLE_MODELS,
+  DEFAULT_MODEL,
+} from "@/services/agentsService";
+import { errorToast } from "@/shared/toasts/errorToast";
+import { successToast } from "@/shared/toasts/successToast";
+import {
+  ArrowLeftIcon,
+  PlusIcon,
+  TrashIcon,
+  PencilIcon,
+  CircleStackIcon,
+  PencilSquareIcon,
+  CpuChipIcon,
+  SpeakerWaveIcon,
+} from "@heroicons/react/24/outline";
+import { AddToolModal } from "../../agent/add-tool-modal";
+import { TemplateVariableHint } from "@/components/shared/template-variable-hint";
+import { ELEVENLABS_VOICES } from "@/shared/app-settings";
+
+export function CreateAgentV4Container() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [modelConfig, setModelConfig] = useState<ModelConfig>(DEFAULT_MODEL);
+  const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState("");
+  const [tools, setTools] = useState<ToolV2[]>([]);
+  const [showAddToolModal, setShowAddToolModal] = useState(false);
+  const [editingToolIndex, setEditingToolIndex] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleProviderChange = (provider: ModelProvider) => {
+    const firstModel = AVAILABLE_MODELS[provider][0]?.value || "";
+    setModelConfig({ provider, model: firstModel });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!name.trim()) {
+      errorToast("Agent name is required");
+      return;
+    }
+
+    if (!systemPrompt.trim()) {
+      errorToast("System prompt is required");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const configData: AgentConfigDataV4 = {
+        systemPrompt: systemPrompt.trim(),
+        model: modelConfig,
+        tools: tools.length > 0 ? tools : undefined,
+        ...(elevenlabsVoiceId.trim() ? { elevenlabsVoiceId: elevenlabsVoiceId.trim() } : {}),
+      };
+
+      const data: CreateAgentRequest = {
+        name: name.trim(),
+        config: {
+          schema: "agent_config",
+          version: 4,
+          data: configData,
+        },
+      };
+
+      const agent = await agentsService.createAgent(data);
+      successToast("Agent created successfully");
+      router.push(`/dashboard/agent?agent_id=${encodeURIComponent(agent.id)}`);
+    } catch (error: any) {
+      errorToast(error.message || "Failed to create agent");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddTool = (tool: ToolV2) => {
+    if (editingToolIndex !== null) {
+      setTools((prev) => {
+        const updated = [...prev];
+        updated[editingToolIndex] = tool;
+        return updated;
+      });
+      setEditingToolIndex(null);
+      successToast("Tool updated successfully");
+    } else {
+      let isDuplicate = false;
+
+      if (tool.type === "dbTableRead") {
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "dbTableRead" &&
+            existing.credentialId === tool.credentialId &&
+            existing.table === tool.table
+        );
+      } else if (tool.type === "dbTableWrite") {
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "dbTableWrite" &&
+            existing.credentialId === tool.credentialId &&
+            existing.table === tool.table
+        );
+      } else {
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === tool.type &&
+            "provider" in existing &&
+            "provider" in tool &&
+            existing.provider === tool.provider &&
+            "index" in existing &&
+            "index" in tool &&
+            existing.index === tool.index &&
+            "namespace" in existing &&
+            "namespace" in tool &&
+            existing.namespace === tool.namespace
+        );
+      }
+
+      if (isDuplicate) {
+        errorToast("This tool is already added");
+        return;
+      }
+
+      setTools((prev) => [...prev, tool]);
+      successToast("Tool added successfully");
+    }
+    setShowAddToolModal(false);
+  };
+
+  const handleRemoveTool = (index: number) => {
+    setTools(tools.filter((_, i) => i !== index));
+    successToast("Tool removed successfully");
+  };
+
+  const handleEditTool = (index: number) => {
+    setEditingToolIndex(index);
+    setShowAddToolModal(true);
+  };
+
+  const handleCancel = () => {
+    router.push("/dashboard/agents");
+  };
+
+  const editingTool = editingToolIndex !== null ? tools[editingToolIndex] : null;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleCancel}
+          className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
+        </button>
+        <div>
+          <h1 className="text-4xl font-semibold text-white">Create Agent</h1>
+          <p className="text-sm text-cyan-400 mt-1">Agent Config v4 (TTS voice)</p>
+        </div>
+      </div>
+
+      <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Agent Name *
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My Agent"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+            <p className="text-gray-400 text-xs mt-2">
+              Choose a descriptive name for your agent.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              System Prompt *
+            </label>
+            <textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder="Enter the system prompt that defines your agent's behavior and personality..."
+              rows={6}
+              required
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+            <TemplateVariableHint
+              onInsert={(variable) => setSystemPrompt((prev) => prev + variable)}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <CpuChipIcon className="h-5 w-5 text-blue-400" />
+              <label className="block text-sm font-medium text-gray-300">
+                Model
+              </label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2">
+                  Provider
+                </label>
+                <select
+                  value={modelConfig.provider}
+                  onChange={(e) => handleProviderChange(e.target.value as ModelProvider)}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="ollama">Ollama (Self-hosted)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2">
+                  Model
+                </label>
+                <select
+                  value={modelConfig.model}
+                  onChange={(e) => setModelConfig({ ...modelConfig, model: e.target.value })}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {AVAILABLE_MODELS[modelConfig.provider].map((model) => (
+                    <option key={model.value} value={model.value}>
+                      {model.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="text-gray-400 text-xs mt-2">
+              Select the LLM provider and model that powers this agent.
+              {modelConfig.provider === "ollama" && (
+                <span className="text-yellow-400 ml-1">
+                  Requires Ollama running locally or a configured endpoint.
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <SpeakerWaveIcon className="h-5 w-5 text-cyan-400" />
+              <label className="block text-sm font-medium text-gray-300">
+                ElevenLabs Voice (optional)
+              </label>
+            </div>
+            <select
+              value={elevenlabsVoiceId}
+              onChange={(e) => setElevenlabsVoiceId(e.target.value)}
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              <option value="">Default (use app default)</option>
+              {ELEVENLABS_VOICES.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-gray-400 text-xs mt-2">
+              Used when this agent speaks in TTS Chat or Multi-Agent TTS Chat. Leave as default to use the voice from App Settings.
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <label className="block text-sm font-medium text-gray-300">
+                Tools
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingToolIndex(null);
+                  setShowAddToolModal(true);
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Add Tool
+              </button>
+            </div>
+
+            {tools.length === 0 ? (
+              <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-6 text-center">
+                <p className="text-gray-400 text-sm mb-4">
+                  No tools added yet. Tools extend your agent&apos;s capabilities.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingToolIndex(null);
+                    setShowAddToolModal(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add Your First Tool
+                </button>
+              </div>
+            ) : (
+              <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
+                <div className="divide-y divide-gray-700/50">
+                  {tools.map((tool, index) => {
+                    if (tool.type === "dbTableRead") {
+                      const formatTableName = (name: string) =>
+                        name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+                      const toolDisplayName = tool.name || `query_${tool.table}`;
+                      return (
+                        <div
+                          key={index}
+                          className="p-4 hover:bg-gray-800/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-600/20 text-green-300 border border-green-500/40">
+                                  <CircleStackIcon className="h-3 w-3" />
+                                  Database Query
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-300">
+                                  <span className="font-medium">Table:</span>{" "}
+                                  <span className="text-white">{formatTableName(tool.table)}</span>{" "}
+                                  <code className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded ml-1">
+                                    {toolDisplayName}
+                                  </code>
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Credential ID: {tool.credentialId}
+                                </p>
+                                {tool.description && (
+                                  <p className="text-sm text-gray-400">{tool.description}</p>
+                                )}
+                                {tool.columns && tool.columns.length > 0 && (
+                                  <p className="text-xs text-gray-500">
+                                    Columns: {tool.columns.join(", ")}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                  Max: {tool.maxLimit || 100} rows
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              <button
+                                type="button"
+                                onClick={() => handleEditTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
+                                title="Edit tool"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                title="Remove tool"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (tool.type === "dbTableWrite") {
+                      const formatTableName = (name: string) =>
+                        name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+                      const toolDisplayName = tool.name || `insert_${tool.table}`;
+                      return (
+                        <div
+                          key={index}
+                          className="p-4 hover:bg-gray-800/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-600/20 text-orange-300 border border-orange-500/40">
+                                  <PencilSquareIcon className="h-3 w-3" />
+                                  Database Write
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-300">
+                                  <span className="font-medium">Table:</span>{" "}
+                                  <span className="text-white">{formatTableName(tool.table)}</span>{" "}
+                                  <code className="text-xs text-orange-400 bg-orange-900/20 px-1.5 py-0.5 rounded ml-1">
+                                    {toolDisplayName}
+                                  </code>
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Credential ID: {tool.credentialId}
+                                </p>
+                                {tool.description && (
+                                  <p className="text-sm text-gray-400">{tool.description}</p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                  Columns: {tool.columns.join(", ")}
+                                </p>
+                                {tool.requiredColumns && tool.requiredColumns.length > 0 && (
+                                  <p className="text-xs text-orange-400/80">
+                                    Required: {tool.requiredColumns.join(", ")}
+                                  </p>
+                                )}
+                                {(tool.injectAccountId || tool.injectChatSessionId) && (
+                                  <p className="text-xs text-orange-400">
+                                    {tool.injectAccountId && "+ Auto-inject account_id "}
+                                    {tool.injectChatSessionId && "+ Auto-inject chat_session_id"}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              <button
+                                type="button"
+                                onClick={() => handleEditTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-600/20 rounded-lg transition-colors duration-200"
+                                title="Edit tool"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                title="Remove tool"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
+                      const isReranking = tool.type === "vectorSearchWithReranking";
+                      return (
+                        <div
+                          key={index}
+                          className="p-4 hover:bg-gray-800/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    isReranking
+                                      ? "bg-blue-600/20 text-blue-300 border border-blue-500/40"
+                                      : "bg-purple-600/20 text-purple-300 border border-purple-500/40"
+                                  }`}
+                                >
+                                  {isReranking ? "Vector Search + Rerank" : "Vector Search"}
+                                </span>
+                                <span className="text-sm font-medium text-white capitalize">
+                                  {tool.provider}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm text-gray-300">
+                                  <span className="font-medium">Index:</span> {tool.index}
+                                </p>
+                                <p className="text-sm text-gray-300">
+                                  <span className="font-medium">Namespace:</span> {tool.namespace}
+                                </p>
+                                {tool.description && (
+                                  <p className="text-sm text-gray-400">{tool.description}</p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                  {isReranking ? (
+                                    <>
+                                      K: {tool.topK || 20}, N: {tool.topN || 5}
+                                    </>
+                                  ) : (
+                                    <>Top K: {tool.topK || 10}</>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              <button
+                                type="button"
+                                onClick={() => handleEditTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
+                                title="Edit tool"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTool(index)}
+                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                title="Remove tool"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
+            )}
+            <p className="text-gray-400 text-xs mt-2">
+              Tools extend the agent&apos;s capabilities. Add vector search tools for knowledge base retrieval or database query tools for structured data access.
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+            >
+              {submitting ? "Creating..." : "Create Agent"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {showAddToolModal && (
+        <AddToolModal
+          onClose={() => {
+            setShowAddToolModal(false);
+            setEditingToolIndex(null);
+          }}
+          onAdd={handleAddTool}
+          initialTool={editingTool || undefined}
+        />
+      )}
+    </div>
+  );
+}

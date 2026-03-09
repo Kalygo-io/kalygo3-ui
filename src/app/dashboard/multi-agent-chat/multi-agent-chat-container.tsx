@@ -47,7 +47,8 @@ function buildSwarmFromAgents(agents: Agent[]): SwarmPayload {
       agentName: a.name,
       agentDescription: a.description,
       systemPrompt: getAgentSystemPrompt(a),
-      modelName: getAgentModelName(a),
+      // modelName: getAgentModelName(a),
+      modelName: "gpt-5-mini",
     })),
     outputMode: "last_message",
   };

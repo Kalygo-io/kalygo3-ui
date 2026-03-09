@@ -107,6 +107,24 @@ export interface AgentConfigV3 {
   data: AgentConfigDataV3;
 }
 
+// ============================================================================
+// V4 Schema Types (ElevenLabs Voice)
+// ============================================================================
+
+export interface AgentConfigDataV4 {
+  systemPrompt: string;
+  model?: ModelConfig;
+  /** Optional ElevenLabs voice ID for TTS (e.g. in TTS Chat / Multi-Agent TTS Chat). */
+  elevenlabsVoiceId?: string;
+  tools?: ToolV2[];
+}
+
+export interface AgentConfigV4 {
+  schema: "agent_config";
+  version: 4;
+  data: AgentConfigDataV4;
+}
+
 // Available models by provider
 export const AVAILABLE_MODELS: Record<
   ModelProvider,
@@ -144,11 +162,12 @@ export const DEFAULT_MODEL: ModelConfig = {
 // Union Types
 // ============================================================================
 
-export type AgentConfig = AgentConfigV1 | AgentConfigV2 | AgentConfigV3;
+export type AgentConfig = AgentConfigV1 | AgentConfigV2 | AgentConfigV3 | AgentConfigV4;
 export type AgentConfigData =
   | AgentConfigDataV1
   | AgentConfigDataV2
-  | AgentConfigDataV3;
+  | AgentConfigDataV3
+  | AgentConfigDataV4;
 export type KnowledgeBase = KnowledgeBaseV1; // Keep for backwards compatibility
 
 export interface Agent {
@@ -180,6 +199,15 @@ export interface UpdateAgentRequest {
 // ============================================================================
 
 /**
+ * Type guard to check if agent config is V4
+ */
+export function isAgentConfigV4(
+  config: AgentConfig | undefined,
+): config is AgentConfigV4 {
+  return config?.version === 4;
+}
+
+/**
  * Type guard to check if agent config is V3
  */
 export function isAgentConfigV3(
@@ -209,7 +237,8 @@ export function isAgentConfigV1(
 /**
  * Get the agent schema version
  */
-export function getAgentVersion(agent: Agent): 1 | 2 | 3 {
+export function getAgentVersion(agent: Agent): 1 | 2 | 3 | 4 {
+  if (agent.config?.version === 4) return 4;
   if (agent.config?.version === 3) return 3;
   if (agent.config?.version === 2) return 2;
   return 1;
@@ -219,10 +248,23 @@ export function getAgentVersion(agent: Agent): 1 | 2 | 3 {
  * Get model config from agent, returns default if not specified
  */
 export function getAgentModelConfig(agent: Agent): ModelConfig {
+  if (isAgentConfigV4(agent.config) && agent.config.data.model) {
+    return agent.config.data.model;
+  }
   if (isAgentConfigV3(agent.config) && agent.config.data.model) {
     return agent.config.data.model;
   }
   return DEFAULT_MODEL;
+}
+
+/**
+ * Get ElevenLabs voice ID from agent (V4 only). Returns undefined if not set or not V4.
+ */
+export function getAgentElevenLabsVoiceId(agent: Agent): string | undefined {
+  if (isAgentConfigV4(agent.config) && agent.config.data.elevenlabsVoiceId) {
+    return agent.config.data.elevenlabsVoiceId;
+  }
+  return undefined;
 }
 
 /**

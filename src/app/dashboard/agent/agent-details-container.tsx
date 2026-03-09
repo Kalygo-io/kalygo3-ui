@@ -17,6 +17,7 @@ import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
 import { AgentDetailsV2 } from "./agent-details-v2";
 import { AgentDetailsV3 } from "./agent-details-v3";
+import { AgentDetailsV4 } from "./agent-details-v4";
 import {
   ArrowLeftIcon,
   TrashIcon,
@@ -93,6 +94,9 @@ export function AgentDetailsContainer({ agentId }: { agentId?: string }) {
   // Route to appropriate component based on agent version
   if (agent) {
     const version = getAgentVersion(agent);
+    if (version === 4) {
+      return <AgentDetailsV4 agentId={agentId} />;
+    }
     if (version === 3) {
       return <AgentDetailsV3 agentId={agentId} />;
     }

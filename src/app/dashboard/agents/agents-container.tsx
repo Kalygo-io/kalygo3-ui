@@ -52,6 +52,10 @@ export function AgentsContainer() {
     router.push("/dashboard/agents/create-v3");
   };
 
+  const handleCreateV4 = () => {
+    router.push("/dashboard/agents/create-v4");
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -105,6 +109,13 @@ export function AgentsContainer() {
                 </div>
                 <div className="text-xs text-gray-400 mt-1">Model selection + enhanced tools</div>
               </button>
+              <button
+                onClick={handleCreateV4}
+                className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors text-white border-t border-gray-700"
+              >
+                <div className="font-medium">Create Agent v4</div>
+                <div className="text-xs text-gray-400 mt-1">v3 + ElevenLabs voice for TTS</div>
+              </button>
             </div>
           )}
         </div>
@@ -139,6 +150,13 @@ export function AgentsContainer() {
               <PlusIcon className="h-5 w-5" />
               Create Agent v3
             </button>
+            <button
+              onClick={handleCreateV4}
+              className="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create Agent v4
+            </button>
           </div>
         </div>
       ) : (
@@ -165,6 +183,7 @@ function AgentCard({
 }) {
   const version = getAgentVersion(agent);
   const modelConfig = getAgentModelConfig(agent);
+  const isV4 = version === 4;
   const isV3 = version === 3;
   const isModern = version >= 2;
   const isOwner = agent.is_owner !== false;
@@ -182,7 +201,9 @@ function AgentCard({
             )}
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                isV3
+                isV4
+                  ? "bg-cyan-600/20 text-cyan-300 border border-cyan-500/40"
+                  : isV3
                   ? "bg-green-600/20 text-green-300 border border-green-500/40"
                   : isModern
                   ? "bg-blue-600/20 text-blue-300 border border-blue-500/40"

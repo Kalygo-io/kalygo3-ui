@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { agentsService, Agent, getAgentModelConfig } from "@/services/agentsService";
+import {
+  agentsService,
+  Agent,
+  getAgentModelConfig,
+} from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
   SpeakerWaveIcon,
@@ -10,7 +14,7 @@ import {
   ArrowRightIcon,
   PlusIcon,
   ChatBubbleLeftRightIcon,
-  InformationCircleIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import { CheckIcon } from "@heroicons/react/24/solid";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
@@ -25,15 +29,23 @@ import {
   callSwarmTtsNextTurn,
   type SwarmPayload,
 } from "@/services/callSwarmTtsNextTurn";
+import { HierarchicalDrawer } from "@/components/hierarchical/drawer";
+import { SessionAgentsConfigPanel } from "@/components/multi-agent-tts/session-agents-config-panel";
 
 const MAX_AGENTS = 3;
 
 function buildSwarm(agents: Agent[]): SwarmPayload {
   return {
-    supervisor: { name: "supervisor", modelName: "gpt-4o-mini" },
+    supervisor: {
+      name: "supervisor",
+      // modelName: "gpt-4o-mini"
+      modelName: "gpt-5.2",
+    },
     workers: agents.map((a) => ({
       agentName: a.name,
-      systemPrompt: (a.config?.data as { systemPrompt?: string } | undefined)?.systemPrompt ?? "",
+      systemPrompt:
+        (a.config?.data as { systemPrompt?: string } | undefined)
+          ?.systemPrompt ?? "",
       modelName: getAgentModelConfig(a).model,
     })),
     outputMode: "last_message",
@@ -55,12 +67,21 @@ export function MultiAgentTtsChatContainer() {
   const [isAudioStreaming, setIsAudioStreaming] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isXl, setIsXl] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
 
   const { formRef, onKeyDown } = useEnterSubmit();
 
   useEffect(() => {
     loadAgents();
+  }, []);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1280px)");
+    const handler = () => setIsXl(mql.matches);
+    handler();
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
   }, []);
 
   const loadAgents = async () => {
@@ -110,7 +131,7 @@ export function MultiAgentTtsChatContainer() {
         sessionId,
         swarm,
         { prompt, stateToken: token ?? stateToken },
-        controller.signal
+        controller.signal,
       );
       return res;
     } finally {
@@ -150,7 +171,10 @@ export function MultiAgentTtsChatContainer() {
       let done = false;
       let first = true;
       do {
-        const res = await requestNextTurn(first ? trimmed : undefined, first ? undefined : token);
+        const res = await requestNextTurn(
+          first ? trimmed : undefined,
+          first ? undefined : token,
+        );
         first = false;
         token = res.stateToken;
         done = res.done;
@@ -187,6 +211,7 @@ export function MultiAgentTtsChatContainer() {
 
   const handleBack = () => router.push("/dashboard/tts-chat");
   const toggleDrawer = () => setDrawerOpen((prev) => !prev);
+  const handleDrawerClose = () => setDrawerOpen(false);
 
   const subtitle =
     selectedAgents.length === 0
@@ -303,33 +328,37 @@ export function MultiAgentTtsChatContainer() {
 
   // ——— Conversation view (chat + TTS) ———
   return (
-    <div className="fixed inset-0 lg:pl-72 pt-16 flex flex-col overflow-hidden bg-black">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-gray-700 bg-gray-800/50 backdrop-blur-sm px-4 py-3 flex items-center gap-4 z-10">
-        <button
-          onClick={handleBackToSelection}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
-          title="Back to agent selection"
-        >
-          <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
-        </button>
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <h1 className="text-lg font-semibold text-white truncate">
-            Multi-Agent TTS Chat
-          </h1>
-          <SpeakerWaveIcon className="h-5 w-5 text-purple-400 flex-shrink-0" />
+    <>
+      <div
+        className={`fixed inset-0 lg:pl-72 pt-16 flex flex-col overflow-hidden bg-black ${drawerOpen ? "xl:pr-96" : ""}`}
+      >
+        {/* Header */}
+        <div className="flex-shrink-0 border-b border-gray-700 bg-gray-800/50 backdrop-blur-sm px-4 py-3 flex items-center gap-3 sm:gap-4 z-10">
+          <button
+            onClick={handleBackToSelection}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+            title="Back to agent selection"
+          >
+            <ArrowLeftIcon className="h-5 w-5 text-gray-400" />
+          </button>
+          <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden">
+            <h1 className="text-base sm:text-lg font-semibold text-white truncate">
+              Multi-Agent TTS Chat
+            </h1>
+            <SpeakerWaveIcon className="h-5 w-5 text-purple-400 flex-shrink-0" />
+          </div>
+          <p className="hidden sm:block text-sm text-gray-400 truncate max-w-[30%] lg:max-w-[40%]">
+            {subtitle}
+          </p>
+          <button
+            onClick={toggleDrawer}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+            title={drawerOpen ? "Close agent config" : "View agent configuration"}
+            aria-label={drawerOpen ? "Close agent config" : "View agent configuration"}
+          >
+            <EyeIcon className="w-5 h-5 text-purple-400" />
+          </button>
         </div>
-        <p className="text-sm text-gray-400 truncate max-w-[50%]">
-          {subtitle}
-        </p>
-        <button
-          onClick={toggleDrawer}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
-          title="Crew info"
-        >
-          <InformationCircleIcon className="w-5 h-5 text-purple-400" />
-        </button>
-      </div>
 
       {/* Chat area */}
       <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
@@ -351,19 +380,13 @@ export function MultiAgentTtsChatContainer() {
             ) : (
               messages.map((m) =>
                 m.role === "human" ? (
-                  <div
-                    key={m.id}
-                    className="flex justify-end"
-                  >
+                  <div key={m.id} className="flex justify-end">
                     <div className="rounded-2xl bg-purple-600/80 text-white px-4 py-2.5 max-w-[85%]">
                       <p className="text-sm whitespace-pre-wrap">{m.content}</p>
                     </div>
                   </div>
                 ) : (
-                  <div
-                    key={m.id}
-                    className="flex justify-start"
-                  >
+                  <div key={m.id} className="flex justify-start">
                     <div className="rounded-2xl bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2.5 max-w-[85%]">
                       {m.agentName && (
                         <p className="text-xs font-medium text-purple-400 mb-1">
@@ -373,7 +396,7 @@ export function MultiAgentTtsChatContainer() {
                       <p className="text-sm whitespace-pre-wrap">{m.content}</p>
                     </div>
                   </div>
-                )
+                ),
               )
             )}
             {currentSpeaker && (
@@ -442,6 +465,31 @@ export function MultiAgentTtsChatContainer() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* Fixed aside: Session agents config (visible on xl when drawerOpen) */}
+      <aside
+        className={`fixed top-16 bottom-0 right-0 w-96 overflow-y-auto border-l border-gray-700 bg-gray-900 z-[80] ${drawerOpen ? "hidden xl:block" : "hidden"}`}
+        aria-label="Session agents configuration"
+      >
+        <SessionAgentsConfigPanel
+          selectedAgents={selectedAgents}
+          showCloseButton={false}
+        />
+      </aside>
+
+      {/* Drawer: on viewports below xl; slides in from right with overlay */}
+      <HierarchicalDrawer
+        open={drawerOpen && !isXl}
+        onClose={handleDrawerClose}
+        topOffset={64}
+      >
+        <SessionAgentsConfigPanel
+          selectedAgents={selectedAgents}
+          onClose={handleDrawerClose}
+          showCloseButton={true}
+        />
+      </HierarchicalDrawer>
+    </>
   );
 }
