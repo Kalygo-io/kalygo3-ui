@@ -17,6 +17,8 @@ export interface SessionAgentsConfigPanelProps {
   selectedAgents: Agent[];
   onClose?: () => void;
   showCloseButton?: boolean;
+  onEditSwarmConfig?: () => void;
+  maxAgents?: number;
 }
 
 function AgentConfigBlock({ agent, index }: { agent: Agent; index: number }) {
@@ -141,6 +143,8 @@ export function SessionAgentsConfigPanel({
   selectedAgents,
   onClose,
   showCloseButton = false,
+  onEditSwarmConfig,
+  maxAgents = 10,
 }: SessionAgentsConfigPanelProps) {
   return (
     <div className="flex h-full flex-col">
@@ -162,7 +166,19 @@ export function SessionAgentsConfigPanel({
                 </h3>
               </div>
               <p className="text-white text-sm leading-relaxed">
-                Read-only view of the selected agents for this voice session.
+                Review the selected agents for this voice session.
+              </p>
+              {onEditSwarmConfig && (
+                <button
+                  type="button"
+                  onClick={onEditSwarmConfig}
+                  className="mt-3 inline-flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-2 text-sm font-medium text-white transition-colors"
+                >
+                  Edit Swarm Config
+                </button>
+              )}
+              <p className="text-xs text-blue-200/80 mt-2">
+                Select between 1 and {maxAgents} agents.
               </p>
             </div>
 

@@ -43,11 +43,59 @@ export const ELEVENLABS_VOICES = [
   },
   {
     id: "IKne3meq5aSn9XLyUdCD",
-    name: "Charlie - Deep, Confident, Energetic",
+    name: "Charlie - Deep, Confident, Energetic Australian Voice",
   },
   {
     id: "nPczCjzI2devNBz1zQrb",
     name: "Brian - Deep, Resonant and Comforting",
+  },
+  {
+    id: "fQ9aRKjmL75dgjNakj2u",
+    name: "Clayton - 30-40 Year Old African American Male",
+  },
+  {
+    id: "Xb7hH8MSUJpSbSDYk0k2",
+    name: "Alice - Clear, Engaging British Educator",
+  },
+  {
+    id: "Os2frcqCuUz8b9F93RuI",
+    name: "Mahmoud - Deep, Warm, and Clear Arabic Voice",
+  },
+  {
+    id: "n0vzWypeCK1NlWPVwhOc",
+    name: "Theos - Narrational, Assertive and Warm Greek Voice",
+  },
+  {
+    id: "rm143ZlE6RfHtN634wZ8",
+    name: "Jay - British, Well-spoken & Husky",
+  },
+  {
+    id: "aCChyB4P5WEomwRsOKRh",
+    name: "Salma - Mature, Inviting, & Polished Arabic Voice",
+  },
+  {
+    id: "LQMC3j3fn1LA9ZhI4o8g",
+    name: "Kumar - Clear & Confident North Indian Voice",
+  },
+  {
+    id: "SIpDYvpsUzCaJ0WmnSA8",
+    name: "Joseph Corona - A young, male, Venezuelan voice",
+  },
+  {
+    id: "3faLw6tqzw5w1UZMFTgL",
+    name: "Nick Ivanov - Middle aged Russian Voice",
+  },
+  {
+    id: "gAMZphRyrWJnLMDnom6H",
+    name: "Keith - Everyday Chinese American Voice",
+  },
+  {
+    id: "uOTaQ3KfK7rOT2MpeNyr",
+    name: "Middle aged Haitian American with a calm tone",
+  },
+  {
+    id: "DS5zQQzzakuVi8Mip84y",
+    name: "Tom - English Croatian Accent",
   },
 ] as const;
 

@@ -106,6 +106,8 @@ export function MultiAgentTtsChatContainer() {
     ElevenLabsPlaybackItem[]
   >([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isEditSwarmModalOpen, setIsEditSwarmModalOpen] = useState(false);
+  const [draftSwarmAgentIds, setDraftSwarmAgentIds] = useState<string[]>([]);
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>("browser");
   /** Progress for current turn: streamed text length vs chars sent to TTS (for progress bar) */
   const [ttsProgress, setTtsProgress] = useState<{
@@ -786,6 +788,35 @@ export function MultiAgentTtsChatContainer() {
   const handleBack = () => router.push("/dashboard/tts-chat");
   const toggleDrawer = () => setDrawerOpen((prev) => !prev);
   const handleDrawerClose = () => setDrawerOpen(false);
+  const openEditSwarmModal = () => {
+    setDraftSwarmAgentIds(selectedAgents.map((agent) => agent.id));
+    setIsEditSwarmModalOpen(true);
+  };
+  const closeEditSwarmModal = () => setIsEditSwarmModalOpen(false);
+  const toggleDraftSwarmAgent = (agent: Agent) => {
+    setDraftSwarmAgentIds((prev) => {
+      const isSelected = prev.includes(agent.id);
+      if (isSelected) return prev.filter((id) => id !== agent.id);
+      if (prev.length >= MAX_AGENTS) return prev;
+      return [...prev, agent.id];
+    });
+  };
+  const saveSwarmConfig = () => {
+    if (draftSwarmAgentIds.length === 0) {
+      errorToast("Select at least 1 agent for this session.");
+      return;
+    }
+    const agentById = new Map(agents.map((agent) => [agent.id, agent]));
+    const nextSelectedAgents = draftSwarmAgentIds
+      .map((id) => agentById.get(id))
+      .filter((agent): agent is Agent => Boolean(agent));
+    if (nextSelectedAgents.length === 0) {
+      errorToast("No valid agents selected.");
+      return;
+    }
+    setSelectedAgents(nextSelectedAgents);
+    setIsEditSwarmModalOpen(false);
+  };
 
   const handleTtsProviderChange = (value: TtsProvider) => {
     if (value !== "elevenlabs") {
@@ -1257,8 +1288,98 @@ export function MultiAgentTtsChatContainer() {
           selectedAgents={selectedAgents}
           onClose={handleDrawerClose}
           showCloseButton={true}
+          onEditSwarmConfig={openEditSwarmModal}
+          maxAgents={MAX_AGENTS}
         />
       </aside>
+
+      {isEditSwarmModalOpen && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={closeEditSwarmModal}
+          />
+          <div className="relative w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-700 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  Edit Swarm Config
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Select 1-{MAX_AGENTS} agents for this live session.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditSwarmModal}
+                className="rounded-lg border border-gray-700 px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-5 py-4 max-h-[60vh]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {agents.map((agent) => {
+                  const isSelected = draftSwarmAgentIds.includes(agent.id);
+                  const atMax = draftSwarmAgentIds.length >= MAX_AGENTS && !isSelected;
+                  return (
+                    <button
+                      key={agent.id}
+                      type="button"
+                      onClick={() => toggleDraftSwarmAgent(agent)}
+                      disabled={atMax}
+                      className={cn(
+                        "rounded-lg border-2 p-3 text-left transition-all",
+                        isSelected
+                          ? "border-blue-500 bg-blue-600/20"
+                          : atMax
+                            ? "border-gray-700 bg-gray-900/30 opacity-60 cursor-not-allowed"
+                            : "border-gray-700 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-900/70",
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={cn(
+                            "mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2",
+                            isSelected ? "border-blue-400 bg-blue-500" : "border-gray-500",
+                          )}
+                        >
+                          {isSelected && <CheckIcon className="h-3.5 w-3.5 text-white" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">
+                            {agent.name}
+                          </p>
+                          {agent.config?.data?.systemPrompt && (
+                            <p className="text-xs text-gray-400 line-clamp-2 mt-1">
+                              {agent.config.data.systemPrompt}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-gray-700 px-5 py-4">
+              <p className="text-sm text-gray-400">
+                {draftSwarmAgentIds.length} selected
+              </p>
+              <button
+                type="button"
+                onClick={saveSwarmConfig}
+                disabled={draftSwarmAgentIds.length === 0}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 text-sm font-medium text-white transition-colors"
+              >
+                Save Swarm Config
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
