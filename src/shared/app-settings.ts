@@ -41,6 +41,14 @@ export const ELEVENLABS_VOICES = [
     id: "EkK5I93UQWFDigLMpZcX",
     name: "JM - Husky & Engaging",
   },
+  {
+    id: "IKne3meq5aSn9XLyUdCD",
+    name: "Charlie - Deep, Confident, Energetic",
+  },
+  {
+    id: "nPczCjzI2devNBz1zQrb",
+    name: "Brian - Deep, Resonant and Comforting",
+  },
 ] as const;
 
 const DEFAULT_SETTINGS: AppSettings = {

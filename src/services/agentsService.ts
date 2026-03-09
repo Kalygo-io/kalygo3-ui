@@ -131,7 +131,9 @@ export const AVAILABLE_MODELS: Record<
   { value: string; label: string }[]
 > = {
   openai: [
-    { value: "gpt-5.1", label: "GPT-5.1 (Latest)" },
+    { value: "gpt-5.4", label: "GPT-5.4" },
+    { value: "gpt-5.2", label: "GPT-5.2" },
+    { value: "gpt-5.1", label: "GPT-5.1" },
     { value: "gpt-4o-mini", label: "GPT-4o Mini (Fast, Cost-effective)" },
     { value: "gpt-4o", label: "GPT-4o (Most Capable)" },
     { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
@@ -162,7 +164,11 @@ export const DEFAULT_MODEL: ModelConfig = {
 // Union Types
 // ============================================================================
 
-export type AgentConfig = AgentConfigV1 | AgentConfigV2 | AgentConfigV3 | AgentConfigV4;
+export type AgentConfig =
+  | AgentConfigV1
+  | AgentConfigV2
+  | AgentConfigV3
+  | AgentConfigV4;
 export type AgentConfigData =
   | AgentConfigDataV1
   | AgentConfigDataV2

@@ -255,13 +255,13 @@ export function MultiAgentChatContainer() {
         </div>
       </div>
 
-      {/* Fixed bottom panel - full width like agent-chat; drawer overlays it (z-[80]), does not shrink the form */}
+      {/* Fixed bottom panel aligned with Agent Chat prompt-form design */}
       <div
-        className="fixed inset-x-0 bottom-0 w-full border-t bg-black border-gray-700 shadow-lg rounded-t-xl z-[10] lg:pl-72"
+        className="fixed inset-x-0 bottom-0 w-full duration-300 ease-in-out animate-in z-[10] lg:pl-72"
         style={{ zIndex: 10 }}
       >
         <div className="mx-auto lg:max-w-[calc(100%-18rem)]">
-          <div className="mx-4 sm:mx-8 space-y-4 border-t border-gray-700 px-4 py-2 md:py-4">
+          <div className="mx-8 space-y-4 border-t bg-black border-gray-700 px-4 py-2 shadow-lg rounded-t-xl sm:border md:py-4">
             <form
               ref={formRef}
               onSubmit={handleSubmit}
@@ -305,7 +305,7 @@ export function MultiAgentChatContainer() {
                 )}
               </div>
             </form>
-            <p className="text-gray-200 px-2 text-center text-xs leading-normal hidden sm:block">
+            <p className="text-gray-200 text-muted-foreground px-2 text-center text-xs leading-normal hidden sm:block">
               Made with ❤️ in Miami 🌴
             </p>
           </div>
