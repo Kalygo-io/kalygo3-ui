@@ -80,6 +80,10 @@ export function MultiAgentTtsChatContainer() {
   const ttsBufferRef = useRef<string>("");
   const ttsQueueRef = useRef<{ text: string; voiceId: string }[]>([]);
   const isPlayingTtsRef = useRef<boolean>(false);
+  /** Resolve when ElevenLabs TTS queue has finished playing; used to wait before next turn */
+  const ttsDrainedResolveRef = useRef<(() => void) | null>(null);
+  /** Promise for current Browser TTS playback so we can await before next turn */
+  const browserTtsPromiseRef = useRef<Promise<void> | null>(null);
 
   const { formRef, onKeyDown } = useEnterSubmit();
 
@@ -142,7 +146,13 @@ export function MultiAgentTtsChatContainer() {
   };
 
   const processTtsQueue = () => {
-    if (isPlayingTtsRef.current || ttsQueueRef.current.length === 0) return;
+    if (isPlayingTtsRef.current || ttsQueueRef.current.length === 0) {
+      if (!isPlayingTtsRef.current && ttsQueueRef.current.length === 0) {
+        ttsDrainedResolveRef.current?.();
+        ttsDrainedResolveRef.current = null;
+      }
+      return;
+    }
     const next = ttsQueueRef.current.shift();
     if (!next) return;
     isPlayingTtsRef.current = true;
@@ -151,6 +161,16 @@ export function MultiAgentTtsChatContainer() {
       isPlayingTtsRef.current = false;
       setIsAudioPlaying(false);
       processTtsQueue();
+    });
+  };
+
+  /** Wait until the ElevenLabs TTS queue has finished playing. Resolves immediately if queue is already empty. */
+  const waitForTtsQueueToFinish = (): Promise<void> => {
+    if (!isPlayingTtsRef.current && ttsQueueRef.current.length === 0) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      ttsDrainedResolveRef.current = resolve;
     });
   };
 
@@ -232,7 +252,11 @@ export function MultiAgentTtsChatContainer() {
               processTtsQueue();
             } else if (result.content?.trim()) {
               setIsAudioPlaying(true);
-              speakWithWebSpeech(result.content).then(() => setIsAudioPlaying(false));
+              browserTtsPromiseRef.current = speakWithWebSpeech(result.content).then(() => {
+                setIsAudioPlaying(false);
+              });
+            } else {
+              browserTtsPromiseRef.current = Promise.resolve();
             }
           },
         },
@@ -322,10 +346,23 @@ export function MultiAgentTtsChatContainer() {
         first = false;
         token = res.stateToken;
         done = res.done;
+
         if (!done && token) {
+          if (ttsProvider === "elevenlabs") {
+            await waitForTtsQueueToFinish();
+          } else {
+            await (browserTtsPromiseRef.current ?? Promise.resolve());
+            browserTtsPromiseRef.current = null;
+          }
           setStateToken(token);
           setCompletionLoading(true);
         } else {
+          if (ttsProvider === "elevenlabs") {
+            await waitForTtsQueueToFinish();
+          } else {
+            await (browserTtsPromiseRef.current ?? Promise.resolve());
+            browserTtsPromiseRef.current = null;
+          }
           setStateToken(null);
         }
       } while (!done && token);
