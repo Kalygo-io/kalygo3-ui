@@ -5,6 +5,8 @@ export interface Message {
   error: ErrorDetails | null;
   /** For swarm/hierarchical chat: which agent (e.g. Director, worker name) produced this message */
   agentName?: string;
+  /** When set, this message is a moderator/supervisor decision row: chosenAgent + reason for tooltip */
+  supervisorDecision?: { chosenAgent: string; reason: string };
   parallelGroupId?: string;
   blocks?: Message[];
   rerankedMatches?: RerankedMatch[];

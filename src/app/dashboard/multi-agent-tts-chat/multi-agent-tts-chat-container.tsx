@@ -45,6 +45,7 @@ type TtsQueueItem = {
   id: string;
   text: string;
   voiceId: string;
+  segmentId: string;
 };
 
 function buildSwarm(agents: Agent[]): SwarmPayload {
@@ -99,6 +100,10 @@ export function MultiAgentTtsChatContainer() {
   const ttsPrefetchPromisesRef = useRef<Map<string, Promise<Blob | null>>>(new Map());
   /** Resolve when ElevenLabs TTS queue has finished playing; used to wait before next turn */
   const ttsDrainedResolveRef = useRef<(() => void) | null>(null);
+  const segmentCounterRef = useRef(0);
+  const activeSegmentIdRef = useRef("segment-0");
+  const playbackSegmentIdRef = useRef<string | null>(null);
+  const awaitingSegmentDrainRef = useRef(false);
   /** Queue for audio chunks that arrive before player is ready. */
   const audioChunkQueueRef = useRef<string[]>([]);
   const isAudioStreamingRef = useRef(false);
@@ -226,6 +231,7 @@ export function MultiAgentTtsChatContainer() {
 
   const canResolveTtsDrain = () =>
     !isConvertingTtsRef.current &&
+    !awaitingSegmentDrainRef.current &&
     ttsQueueRef.current.length === 0 &&
     ttsPrefetchPromisesRef.current.size === 0 &&
     !isAudioStreamingRef.current &&
@@ -285,7 +291,7 @@ export function MultiAgentTtsChatContainer() {
   }, []);
 
   const processTtsQueue = () => {
-    if (isConvertingTtsRef.current) return;
+    if (isConvertingTtsRef.current || awaitingSegmentDrainRef.current) return;
 
     if (ttsQueueRef.current.length === 0) {
       if (ttsTurnCompleteRef.current && ttsPrefetchPromisesRef.current.size === 0) {
@@ -297,8 +303,22 @@ export function MultiAgentTtsChatContainer() {
     const current = ttsQueueRef.current.shift();
     if (!current) return;
 
+    if (
+      playbackSegmentIdRef.current &&
+      playbackSegmentIdRef.current !== current.segmentId
+    ) {
+      if (isAudioStreamingRef.current || isAudioPlayingRef.current) {
+        ttsQueueRef.current.unshift(current);
+        awaitingSegmentDrainRef.current = true;
+        endAudioStreaming();
+        return;
+      }
+      playbackSegmentIdRef.current = null;
+    }
+
     prefetchUpcomingTtsChunks();
     isConvertingTtsRef.current = true;
+    playbackSegmentIdRef.current = current.segmentId;
 
     fetchAndCacheTtsBlob(current)
       .then(async (blob) => {
@@ -338,7 +358,12 @@ export function MultiAgentTtsChatContainer() {
     if (text) {
       convertedCharsRef.current += text.length;
       setTtsProgress({ streamed: streamedCharsRef.current, converted: convertedCharsRef.current });
-      const queueItem: TtsQueueItem = { id: nanoid(), text, voiceId };
+      const queueItem: TtsQueueItem = {
+        id: nanoid(),
+        text,
+        voiceId,
+        segmentId: activeSegmentIdRef.current,
+      };
       ttsQueueRef.current.push(queueItem);
       prefetchUpcomingTtsChunks();
       processTtsQueue();
@@ -360,11 +385,25 @@ export function MultiAgentTtsChatContainer() {
         swarm,
         { prompt, stateToken: token ?? stateToken },
         {
-          onAgentStart: (agentName) => {
+          onAgentStart: (agentName, routeReason) => {
             ttsTurnCompleteRef.current = false;
+            segmentCounterRef.current += 1;
+            activeSegmentIdRef.current = `segment-${segmentCounterRef.current}`;
             streamedCharsRef.current = 0;
             convertedCharsRef.current = 0;
             setTtsProgress({ streamed: 0, converted: 0 });
+            const decisionMessage: Message = {
+              id: nanoid(),
+              content: `Moderator chose ${agentName}`,
+              role: "ai",
+              error: null,
+              agentName: "Moderator",
+              supervisorDecision: {
+                chosenAgent: agentName,
+                reason: routeReason ?? "",
+              },
+            };
+            setMessages((prev) => [...prev, decisionMessage]);
             const newMessage: Message = {
               id: nanoid(),
               content: "",
@@ -506,6 +545,10 @@ export function MultiAgentTtsChatContainer() {
     ttsBufferRef.current = "";
     ttsQueueRef.current = [];
     ttsTurnCompleteRef.current = false;
+    segmentCounterRef.current = 0;
+    activeSegmentIdRef.current = "segment-0";
+    playbackSegmentIdRef.current = null;
+    awaitingSegmentDrainRef.current = false;
     ttsPrefetchedBlobsRef.current.clear();
     ttsPrefetchPromisesRef.current.clear();
     audioChunkQueueRef.current = [];
@@ -559,6 +602,8 @@ export function MultiAgentTtsChatContainer() {
     ttsQueueRef.current = [];
     ttsBufferRef.current = "";
     ttsTurnCompleteRef.current = true;
+    playbackSegmentIdRef.current = null;
+    awaitingSegmentDrainRef.current = false;
     ttsPrefetchedBlobsRef.current.clear();
     ttsPrefetchPromisesRef.current.clear();
     isConvertingTtsRef.current = false;
@@ -763,14 +808,37 @@ export function MultiAgentTtsChatContainer() {
                 }
               />
             ) : (
-              messages.map((m) =>
-                m.role === "human" ? (
-                  <div key={m.id} className="flex justify-end">
-                    <div className="rounded-2xl bg-purple-600/80 text-white px-4 py-2.5 max-w-[85%]">
-                      <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+              messages.map((m) => {
+                if (m.role === "human") {
+                  return (
+                    <div key={m.id} className="flex justify-end">
+                      <div className="rounded-2xl bg-purple-600/80 text-white px-4 py-2.5 max-w-[85%]">
+                        <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+                      </div>
                     </div>
-                  </div>
-                ) : (
+                  );
+                }
+                if (m.supervisorDecision) {
+                  const reason = m.supervisorDecision.reason.trim();
+                  return (
+                    <div key={m.id} className="flex justify-start">
+                      <div className="rounded-2xl bg-gray-800/80 border border-gray-600 text-gray-300 px-4 py-2 max-w-[85%] flex items-center gap-2 flex-wrap">
+                        <p className="text-sm">{m.content}</p>
+                        <span
+                          className={cn(
+                            "inline-flex flex-shrink-0 rounded p-0.5 text-gray-500 hover:text-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500",
+                            reason && "cursor-help",
+                          )}
+                          title={reason || undefined}
+                          aria-label={reason ? "Moderator reason" : undefined}
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
                   <div key={m.id} className="flex justify-start">
                     <div className="rounded-2xl bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2.5 max-w-[85%]">
                       {m.agentName && (
@@ -781,8 +849,8 @@ export function MultiAgentTtsChatContainer() {
                       <p className="text-sm whitespace-pre-wrap">{m.content}</p>
                     </div>
                   </div>
-                ),
-              )
+                );
+              })
             )}
             {currentSpeaker && (
               <p className="text-sm text-gray-500 italic">
@@ -806,6 +874,11 @@ export function MultiAgentTtsChatContainer() {
               isPlaying={isAudioPlaying}
               onPlayingChange={(playing) => {
                 setIsAudioPlaying(playing);
+                if (!playing && awaitingSegmentDrainRef.current) {
+                  awaitingSegmentDrainRef.current = false;
+                  playbackSegmentIdRef.current = null;
+                  processTtsQueue();
+                }
                 if (!playing) maybeResolveTtsDrain();
               }}
               onStop={handleTtsStop}

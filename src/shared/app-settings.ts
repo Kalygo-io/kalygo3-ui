@@ -9,11 +9,38 @@ export interface AppSettings {
 }
 
 export const ELEVENLABS_VOICES = [
-  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah" },
-  { id: "JBFqnCBsd6RMkjVDRZzb", name: "George" },
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah - Mature, Reassuring, Confident" },
+  {
+    id: "JBFqnCBsd6RMkjVDRZzb",
+    name: "George - Warm, Captivating Storyteller",
+  },
   { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel" },
-  { id: "tJHJUEHzOkMoPmJJ5jo2", name: "Ryan Quinn" },
-  { id: "McVZB9hVxVSk3Equu8EH", name: "Audrey" },
+  {
+    id: "tJHJUEHzOkMoPmJJ5jo2",
+    name: "Ryan Quinn - a gentle, calm American boy’s voice, perfect for storytelling",
+  },
+  {
+    id: "McVZB9hVxVSk3Equu8EH",
+    name: "Audrey - Middle aged female voice",
+  },
+  {
+    id: "Z9ZHGvFZ90R0h0x1prsJ",
+    name: "Camille - Camille's voice is warm, expressive, and unmistakably French",
+  },
+  { id: "zwqMXWHsKBMIb9RPiWI0", name: "Dom - deep warm British male voice" },
+  {
+    id: "dY9fWBb7TNkZB7UPeFK1",
+    name: "Scoobie - American Male, enthusiastic, sharp, smart",
+  },
+  { id: "3gsg3cxXyFLcGIfNbM6C", name: "Raju - Relatable Indian Voice" },
+  {
+    id: "6aDn1KB0hjpdcocrUkmq",
+    name: "Tiffany (African American Female)",
+  },
+  {
+    id: "EkK5I93UQWFDigLMpZcX",
+    name: "JM - Husky & Engaging",
+  },
 ] as const;
 
 const DEFAULT_SETTINGS: AppSettings = {

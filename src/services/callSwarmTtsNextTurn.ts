@@ -64,7 +64,8 @@ export interface TtsTurnResultPayload {
 }
 
 export interface SwarmTtsStreamCallbacks {
-  onAgentStart?: (agentName: string) => void;
+  /** Called when the supervisor has chosen who speaks next. routeReason is the moderator’s explanation (for tooltip). */
+  onAgentStart?: (agentName: string, routeReason?: string) => void;
   onStreamChunk?: (agentName: string, chunk: string) => void;
   onAgentEnd?: (agentName: string) => void;
   onTurnResult?: (result: SwarmTtsNextTurnResponse) => void;
@@ -288,7 +289,8 @@ export async function callSwarmTtsNextTurnStream(
 
       if (currentEvent === "swarm_agent_start") {
         const agentName = (parsed.agentName ?? "") as string;
-        callbacks.onAgentStart?.(agentName);
+        const routeReason = (parsed.routeReason ?? "") as string;
+        callbacks.onAgentStart?.(agentName, routeReason || undefined);
       } else if (currentEvent === "swarm_chat_model_stream") {
         const agentName = (parsed.agentName ?? "") as string;
         const chunk = (parsed.data ?? parsed.content ?? "") as string;
