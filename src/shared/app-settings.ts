@@ -91,11 +91,15 @@ export const ELEVENLABS_VOICES = [
   },
   {
     id: "uOTaQ3KfK7rOT2MpeNyr",
-    name: "Middle aged Haitian American with a calm tone",
+    name: "Jerry - Middle aged Haitian American with a calm tone",
   },
   {
     id: "DS5zQQzzakuVi8Mip84y",
     name: "Tom - English Croatian Accent",
+  },
+  {
+    id: "W2BFXIBAz50X1hk8EohV",
+    name: "Martin - Calm and professional native French speaker recorded in English",
   },
 ] as const;
 

@@ -190,6 +190,8 @@ export async function callSwarmTtsNextTurn(
     if (data === "[DONE]" || data === "") return;
     try {
       const parsed = JSON.parse(data) as Record<string, unknown>;
+      const nestedData = parsed["data"];
+      const nestedResult = parsed["result"];
       const event = (parsed.event ?? parsed.type) as string | undefined;
 
       if (event === "error") {
@@ -200,8 +202,8 @@ export async function callSwarmTtsNextTurn(
       if (
         event === "tts_turn_result" ||
         isTurnResultPayload(parsed) ||
-        (parsed.data && isTurnResultPayload(parsed.data)) ||
-        (parsed.result && isTurnResultPayload(parsed.result))
+        (nestedData && isTurnResultPayload(nestedData)) ||
+        (nestedResult && isTurnResultPayload(nestedResult))
       ) {
         const next = extractTurnResult(parsed);
         if (next) result = next;
@@ -230,7 +232,8 @@ export async function callSwarmTtsNextTurn(
   if (!result && buffer.trim()) {
     try {
       const parsed = JSON.parse(buffer.trim()) as Record<string, unknown>;
-      if (isTurnResultPayload(parsed) || (parsed.data && isTurnResultPayload(parsed.data))) {
+      const nestedData = parsed["data"];
+      if (isTurnResultPayload(parsed) || (nestedData && isTurnResultPayload(nestedData))) {
         result = extractTurnResult(parsed);
       }
     } catch {
