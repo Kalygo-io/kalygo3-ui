@@ -105,6 +105,10 @@ export const ELEVENLABS_VOICES = [
     id: "D11AWvkESE7DJwqIVi7L",
     name: "Brian K. - Seasoned, older American male voice with a signature slight hoarseness",
   },
+  {
+    id: "KlyEVp7Cr4uWil0rM5Lq",
+    name: "Luke Cala v1.3 - An Italian man speaking English with an Italian accent. Perfect for conversations and social media.",
+  },
 ] as const;
 
 const DEFAULT_SETTINGS: AppSettings = {
