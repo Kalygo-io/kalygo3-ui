@@ -101,6 +101,10 @@ export const ELEVENLABS_VOICES = [
     id: "W2BFXIBAz50X1hk8EohV",
     name: "Martin - Calm and professional native French speaker recorded in English",
   },
+  {
+    id: "D11AWvkESE7DJwqIVi7L",
+    name: "Brian K. - Seasoned, older American male voice with a signature slight hoarseness",
+  },
 ] as const;
 
 const DEFAULT_SETTINGS: AppSettings = {
