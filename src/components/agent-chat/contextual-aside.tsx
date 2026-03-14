@@ -11,7 +11,7 @@ import {
   CpuChipIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
-import { Agent, KnowledgeBase, isAgentConfigV1, isAgentConfigV3, ToolV2, getAgentModelConfig } from "@/services/agentsService";
+import { Agent, KnowledgeBase, isAgentConfigV1, isAgentConfigV3, isAgentConfigV4, ToolV2, getAgentModelConfig } from "@/services/agentsService";
 
 interface ContextualAsideProps {
   isOpen: boolean;
@@ -141,7 +141,7 @@ export function ContextualAside({
                       <h4 className="text-md font-semibold text-white">
                         Agent Config v{agent.config.version}:
                       </h4>
-                      {agent.config.version === 3 && (
+                      {agent.config.version === 4 && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-600/20 text-green-300 border border-green-500/40">
                           Latest
                         </span>
@@ -164,8 +164,8 @@ export function ContextualAside({
                       </div>
                     )}
 
-                    {/* Model Configuration (V3 only) */}
-                    {isAgentConfigV3(agent.config) && (
+                    {/* Model Configuration (V3+) */}
+                    {(isAgentConfigV3(agent.config) || isAgentConfigV4(agent.config)) && (
                       <div className="bg-gray-800/50 rounded-lg p-3">
                         <div className="flex flex-col space-y-2">
                           <div className="flex items-center space-x-2">
@@ -188,6 +188,18 @@ export function ContextualAside({
                               </div>
                             </div>
                           </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ElevenLabs Voice ID (V4 only) */}
+                    {isAgentConfigV4(agent.config) && agent.config.data.elevenlabsVoiceId && (
+                      <div className="bg-gray-800/50 rounded-lg p-3">
+                        <div className="flex flex-col space-y-2">
+                          <span className="text-xs text-gray-400">ElevenLabs Voice ID</span>
+                          <span className="text-sm text-white font-mono">
+                            {agent.config.data.elevenlabsVoiceId}
+                          </span>
                         </div>
                       </div>
                     )}
