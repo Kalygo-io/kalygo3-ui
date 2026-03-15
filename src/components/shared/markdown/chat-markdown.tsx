@@ -86,8 +86,8 @@ function convertTableLinesToHTML(tableLines: string[]): string {
 }
 
 export function ChatMarkdown({ content, className }: ChatMarkdownProps) {
-  // Convert text-based tables to HTML tables
-  const processedContent = convertTextTableToHTML(content);
+  const safeContent = typeof content === "string" ? content : "";
+  const processedContent = convertTextTableToHTML(safeContent);
 
   return (
     <ReactMarkdown

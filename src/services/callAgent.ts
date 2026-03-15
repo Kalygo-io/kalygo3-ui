@@ -238,6 +238,23 @@ export async function callAgent(
   }
 }
 
+/**
+ * Extracts a plain string from the various shapes that `data` can arrive in
+ * depending on the LLM provider:
+ *   - OpenAI / legacy: plain string
+ *   - Anthropic: content-blocks array [{ type: "text", text: "...", index: 0 }]
+ */
+function extractTextContent(data: unknown): string {
+  if (typeof data === "string") return data;
+  if (Array.isArray(data)) {
+    return data
+      .filter((block: any) => block?.type === "text")
+      .map((block: any) => block?.text ?? "")
+      .join("");
+  }
+  return "";
+}
+
 function dispatchEventToState(
   parsedChunk: Record<string, any>,
   dispatch: React.Dispatch<Action>,
@@ -248,14 +265,12 @@ function dispatchEventToState(
   currentToolCall: any,
 ): { currentToolCall: any; accumulatedToolCalls: any[] } | void {
   try {
-    // console.log("Processing event:", parsedChunk.event, parsedChunk);
-
     // Only handle essential events to isolate the issue
     if (parsedChunk.event === "on_chat_model_start") {
       // Message already created upfront (before stream processing), so just log this event
       console.log("Chat model started");
     } else if (parsedChunk.event === "on_chat_model_stream") {
-      accMessage.content += parsedChunk.data || "";
+      accMessage.content += extractTextContent(parsedChunk.data);
       dispatch({
         type: "EDIT_MESSAGE",
         payload: {
@@ -264,7 +279,7 @@ function dispatchEventToState(
         },
       });
     } else if (parsedChunk.event === "on_chain_end") {
-      const finalContent = parsedChunk.data || accMessage.content;
+      const finalContent = extractTextContent(parsedChunk.data) || accMessage.content;
       dispatch({
         type: "EDIT_MESSAGE",
         payload: {
