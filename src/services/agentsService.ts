@@ -140,12 +140,15 @@ export const AVAILABLE_MODELS: Record<
     { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (Legacy)" },
   ],
   anthropic: [
+    { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
+    { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+    { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+    { value: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
+    { value: "claude-opus-4-5", label: "Claude Opus 4.5" },
     {
-      value: "claude-3-5-sonnet-20241022",
-      label: "Claude 3.5 Sonnet (Recommended)",
+      value: "claude-opus-4-1",
+      label: "Claude Opus 4.1",
     },
-    { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku (Fast)" },
-    { value: "claude-3-opus-20240229", label: "Claude 3 Opus (Most Capable)" },
   ],
   ollama: [
     { value: "llama3.2", label: "Llama 3.2" },
