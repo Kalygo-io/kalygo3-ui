@@ -232,7 +232,8 @@ export async function callSwarmTtsNextTurn(
   if (!result && buffer.trim()) {
     try {
       const parsed = JSON.parse(buffer.trim()) as Record<string, unknown>;
-      if (isTurnResultPayload(parsed) || (parsed.data && isTurnResultPayload(parsed.data))) {
+      const parsedData = parsed.data;
+      if (isTurnResultPayload(parsed) || (parsedData && isTurnResultPayload(parsedData))) {
         result = extractTurnResult(parsed);
       }
     } catch {
