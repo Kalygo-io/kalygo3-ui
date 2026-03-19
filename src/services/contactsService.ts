@@ -1,0 +1,219 @@
+function getApiBaseUrl(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    if (apiUrl.startsWith("http://")) {
+      return apiUrl.replace("http://", "https://");
+    }
+  }
+  return apiUrl;
+}
+
+const API_BASE_URL = getApiBaseUrl();
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface ContactEvent {
+  id: number;
+  contact_id: number;
+  account_id: number;
+  event_type: string;
+  title: string;
+  description?: string;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface Contact {
+  id: number;
+  account_id: number;
+  first_name: string;
+  last_name?: string;
+  /** Computed by API: `"${first_name} ${last_name}".trim()` */
+  name: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  title?: string;
+  source?: string;
+  status?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  events?: ContactEvent[];
+}
+
+export interface CreateContactRequest {
+  first_name: string;
+  last_name?: string;
+  email: string;
+  phone?: string;
+  company?: string;
+  title?: string;
+  source?: string;
+  status?: string;
+  notes?: string;
+}
+
+export interface UpdateContactRequest {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  title?: string;
+  source?: string;
+  status?: string;
+  notes?: string;
+}
+
+export interface CreateContactEventRequest {
+  event_type: string;
+  title: string;
+  description?: string;
+  occurred_at?: string;
+}
+
+export interface UpdateContactEventRequest {
+  event_type?: string;
+  title?: string;
+  description?: string;
+  occurred_at?: string;
+}
+
+// ============================================================================
+// Service
+// ============================================================================
+
+class ContactsService {
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `Request failed: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.detail || errorJson.message || errorMessage;
+      } catch {
+        // keep default
+      }
+      throw new Error(errorMessage);
+    }
+    if (response.status === 204) return undefined as T;
+    return response.json();
+  }
+
+  // ── Contacts ──────────────────────────────────────────────────────────────
+
+  async listContacts(params?: { status?: string; search?: string }): Promise<Contact[]> {
+    const url = new URL(`${API_BASE_URL}/api/contacts/`);
+    if (params?.status) url.searchParams.set("status", params.status);
+    if (params?.search) url.searchParams.set("search", params.search);
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return this.handleResponse<Contact[]>(response);
+  }
+
+  async getContact(contactId: number): Promise<Contact> {
+    const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return this.handleResponse<Contact>(response);
+  }
+
+  async createContact(data: CreateContactRequest): Promise<Contact> {
+    const response = await fetch(`${API_BASE_URL}/api/contacts/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse<Contact>(response);
+  }
+
+  async updateContact(contactId: number, data: UpdateContactRequest): Promise<Contact> {
+    const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse<Contact>(response);
+  }
+
+  async deleteContact(contactId: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return this.handleResponse<void>(response);
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────────
+
+  async listEvents(contactId: number): Promise<ContactEvent[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/events/`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+    return this.handleResponse<ContactEvent[]>(response);
+  }
+
+  async createEvent(
+    contactId: number,
+    data: CreateContactEventRequest
+  ): Promise<ContactEvent> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/events/`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+    return this.handleResponse<ContactEvent>(response);
+  }
+
+  async updateEvent(
+    contactId: number,
+    eventId: number,
+    data: UpdateContactEventRequest
+  ): Promise<ContactEvent> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/events/${eventId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+    return this.handleResponse<ContactEvent>(response);
+  }
+
+  async deleteEvent(contactId: number, eventId: number): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/events/${eventId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+    return this.handleResponse<void>(response);
+  }
+}
+
+export const contactsService = new ContactsService();
