@@ -197,11 +197,13 @@ export async function callSwarmTtsNextTurn(
         throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
       }
 
+      const parsedData = parsed.data;
+      const parsedResult = parsed.result;
       if (
         event === "tts_turn_result" ||
         isTurnResultPayload(parsed) ||
-        (parsed.data && isTurnResultPayload(parsed.data)) ||
-        (parsed.result && isTurnResultPayload(parsed.result))
+        (parsedData && isTurnResultPayload(parsedData)) ||
+        (parsedResult && isTurnResultPayload(parsedResult))
       ) {
         const next = extractTurnResult(parsed);
         if (next) result = next;
