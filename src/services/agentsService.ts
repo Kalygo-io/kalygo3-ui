@@ -88,7 +88,7 @@ export interface AgentConfigV2 {
 // V3 Schema Types (Model Configuration)
 // ============================================================================
 
-export type ModelProvider = "openai" | "anthropic" | "ollama";
+export type ModelProvider = "openai" | "anthropic" | "google" | "ollama";
 
 export interface ModelConfig {
   provider: ModelProvider;
@@ -149,6 +149,10 @@ export const AVAILABLE_MODELS: Record<
       value: "claude-opus-4-1",
       label: "Claude Opus 4.1",
     },
+  ],
+  google: [
+    { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro Preview" },
+    { value: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview" },
   ],
   ollama: [
     { value: "llama3.2", label: "Llama 3.2" },
