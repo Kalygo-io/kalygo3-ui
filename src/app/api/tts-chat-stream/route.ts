@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     try {
       // Step 1: Call the agent API
       const agentResponse = await fetch(
-        `${completionApiUrl}/api/agents/${encodeURIComponent(agentId)}/completion`,
+        `${completionApiUrl}/api/agents/${encodeURIComponent(agentId)}/stream`,
         {
           method: "POST",
           headers: {
