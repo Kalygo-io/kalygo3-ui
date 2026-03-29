@@ -22,6 +22,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Contact Lists",
+    href: "/dashboard/contact-lists",
+    enabled: true,
+  },
+  {
     name: "Prompts",
     href: "/dashboard/prompts",
     enabled: true,
