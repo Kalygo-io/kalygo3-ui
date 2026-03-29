@@ -13,8 +13,6 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 
-import { TbPlayFootball } from "react-icons/tb";
-
 // Social Media Icons
 const InstagramIcon = () => (
   <svg
@@ -107,22 +105,23 @@ export function LandingPage() {
       <div className="container mx-auto px-6 py-20">
         <div className="max-w-4xl mx-auto text-center overflow-visible">
           <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full mb-8">
-            <TbPlayFootball className="w-5 h-5" style={{ stroke: "#60a5fa" }} />
+            <SparklesIcon className="w-4 h-4 text-blue-400" />
             <span className="text-blue-400 text-sm font-medium">
-              Welcome to the playground
+              Introducing the Agentic CRM
             </span>
           </div>
 
           <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-[1.3] overflow-visible">
-            Build Custom
+            Kalygo
             <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent pb-3 relative">
-              Agentic Systems
+              The Agentic CRM
             </span>
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Interact with real-world applications through our battle-tested
-            platform. Experience not theory.
+            Your contacts, your AI agents, your knowledge — unified in one
+            platform. Kalygo brings intelligent automation to every customer
+            relationship.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-16">
@@ -151,8 +150,8 @@ export function LandingPage() {
               How It Works
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Kalygo is an experiential platform designed for do-ers where you
-              apply advanced open source software skills and techniques.
+              From first contact to closed deal — Kalygo gives your team AI
+              agents that know your customers and act on their behalf.
             </p>
           </div>
 
@@ -165,11 +164,11 @@ export function LandingPage() {
                 />
               </div>
               <h3 className="text-2xl font-semibold text-white mb-4">
-                1. Explore
+                1. Connect
               </h3>
               <p className="text-gray-400">
-                Browse the Kalygo playground to experience a variety of novel
-                applications.
+                Import your contacts, log activity, and build a full picture of
+                every lead, prospect, and customer in your CRM.
               </p>
             </div>
 
@@ -181,11 +180,11 @@ export function LandingPage() {
                 />
               </div>
               <h3 className="text-2xl font-semibold text-white mb-4">
-                2. Experiment
+                2. Configure
               </h3>
               <p className="text-gray-400">
-                Hands-on experimentation with real-world tools in a beautifully
-                crafted environment.
+                Deploy AI agents backed by your own knowledge bases. Choose your
+                model, craft your system prompt, and wire up the tools you need.
               </p>
             </div>
 
@@ -197,11 +196,12 @@ export function LandingPage() {
                 />
               </div>
               <h3 className="text-2xl font-semibold text-white mb-4">
-                3. Master
+                3. Engage
               </h3>
               <p className="text-gray-400">
-                Build confidence and expertise by using and analyzing
-                production-ready applications.
+                Let agents handle conversations, qualify leads, surface
+                insights, and take action — so your team focuses on what
+                matters.
               </p>
             </div>
           </div>
@@ -213,10 +213,11 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              What&apos;s inside?
+              Everything your CRM should be
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Explore powerful capabilities and applications
+              Purpose-built features that make Kalygo the only CRM your team
+              will ever need
             </p>
           </div>
 
@@ -231,10 +232,12 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    AI Agents
+                    AI Agents for Every Workflow
                   </h3>
                   <p className="text-gray-400">
-                    Interact with customizable LLM-based ReAct agents
+                    Deploy customizable LLM-powered agents that can answer
+                    questions, qualify leads, and take action — all within the
+                    context of your CRM data.
                   </p>
                 </div>
               </div>
@@ -250,11 +253,12 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    Vector Search & Retrieval
+                    Contact CRM with Activity Timelines
                   </h3>
                   <p className="text-gray-400">
-                    Leverage semantic search, hybrid search, and advanced
-                    reranking techniques.
+                    Track every lead, prospect, and customer with a full
+                    activity timeline — calls, emails, meetings, and notes — all
+                    in one place.
                   </p>
                 </div>
               </div>
@@ -270,11 +274,12 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    3rd Party Integrations
+                    Knowledge Bases & Vector Search
                   </h3>
                   <p className="text-gray-400">
-                    Extend functionality with custom tools and integrate with
-                    external APIs and services.
+                    Ground your agents in real knowledge. Upload documents,
+                    build vector indexes, and let semantic search surface the
+                    right answers at the right moment.
                   </p>
                 </div>
               </div>
@@ -290,10 +295,12 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    Production-Grade Systems
+                    Multi-Provider AI Support
                   </h3>
                   <p className="text-gray-400">
-                    State of the Art UI/UX across the board.
+                    Works with OpenAI, Anthropic, Google Gemini, and local
+                    Ollama models. You choose the model that fits your use case
+                    and budget.
                   </p>
                 </div>
               </div>
@@ -306,11 +313,11 @@ export function LandingPage() {
       <div className="container mx-auto px-6 py-20">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Join Our Community
+            Stay in the Loop
           </h2>
           <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-            Follow us on social media for updates, tutorials, and community
-            highlights
+            Follow us for product updates, AI workflows, and Agentic CRM tips
+            from the Kalygo team
           </p>
 
           <div className="grid grid-cols-2 gap-4 md:flex md:items-center md:justify-center md:space-x-8">
@@ -367,16 +374,17 @@ export function LandingPage() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="p-12 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-2xl border border-blue-500/30">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Ready to Get Started?
+              Ready to transform how you do business?
             </h2>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Join the Kalygo community to get started.
+              Start building intelligent customer relationships today. It&apos;s
+              free to get started.
             </p>
             <Link
               href="/signup"
               className="inline-flex items-center space-x-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-lg transition-all hover:scale-105 shadow-xl hover:shadow-blue-500/50"
             >
-              <span>Start Living Today</span>
+              <span>Start for Free</span>
               <ArrowRightIcon className="w-5 h-5" />
             </Link>
           </div>
@@ -395,7 +403,7 @@ export function LandingPage() {
                 <span className="text-2xl font-bold text-white">Kalygo</span>
               </div>
               <p className="text-gray-400 text-sm">
-                Master open source Agentic Systems through hands-on implementation.
+                Intelligent customer relationships powered by AI agents.
               </p>
             </div>
 
