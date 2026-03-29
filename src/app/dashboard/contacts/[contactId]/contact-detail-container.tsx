@@ -9,6 +9,7 @@ import {
   Contact,
   ContactEvent,
   CreateContactEventRequest,
+  UpdateContactRequest,
 } from "@/services/contactsService";
 import {
   ArrowLeftIcon,
@@ -67,6 +68,7 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
   const router = useRouter();
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editEvent, setEditEvent] = useState<ContactEvent | null>(null);
 
@@ -126,83 +128,99 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         Back to Contacts
       </button>
 
-      {/* Contact card */}
-      <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl font-bold text-blue-300">
-                {contact.first_name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-semibold text-white">
-                  {contact.first_name}{contact.last_name ? ` ${contact.last_name}` : ""}
-                </h1>
-                {contact.status && (
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeClass(contact.status)}`}
-                  >
-                    {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
-                  </span>
-                )}
+      {/* Contact card / inline edit */}
+      {isEditing ? (
+        <ContactEditSection
+          contact={contact}
+          onCancel={() => setIsEditing(false)}
+          onSave={async (data) => {
+            const updated = await contactsService.updateContact(
+              contact.id,
+              data as UpdateContactRequest,
+            );
+            setContact((prev) => (prev ? { ...updated, events: prev.events } : prev));
+            setIsEditing(false);
+            successToast(`Contact "${updated.name}" updated`);
+          }}
+        />
+      ) : (
+        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                <span className="text-xl font-bold text-blue-300">
+                  {contact.first_name.charAt(0).toUpperCase()}
+                </span>
               </div>
-              {contact.title && (
-                <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-1.5">
-                  <BriefcaseIcon className="h-4 w-4" />
-                  {contact.title}
-                  {contact.company && <span className="text-gray-600">·</span>}
-                  {contact.company && (
-                    <span className="flex items-center gap-1">
-                      <BuildingOfficeIcon className="h-4 w-4" />
-                      {contact.company}
+              <div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-2xl font-semibold text-white">
+                    {contact.first_name}{contact.last_name ? ` ${contact.last_name}` : ""}
+                  </h1>
+                  {contact.status && (
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeClass(contact.status)}`}
+                    >
+                      {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
                     </span>
                   )}
-                </p>
-              )}
-              {!contact.title && contact.company && (
-                <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-1.5">
-                  <BuildingOfficeIcon className="h-4 w-4" />
-                  {contact.company}
-                </p>
-              )}
+                </div>
+                {contact.title && (
+                  <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-1.5">
+                    <BriefcaseIcon className="h-4 w-4" />
+                    {contact.title}
+                    {contact.company && <span className="text-gray-600">·</span>}
+                    {contact.company && (
+                      <span className="flex items-center gap-1">
+                        <BuildingOfficeIcon className="h-4 w-4" />
+                        {contact.company}
+                      </span>
+                    )}
+                  </p>
+                )}
+                {!contact.title && contact.company && (
+                  <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-1.5">
+                    <BuildingOfficeIcon className="h-4 w-4" />
+                    {contact.company}
+                  </p>
+                )}
+              </div>
             </div>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
+            >
+              <PencilIcon className="h-4 w-4" />
+              Edit
+            </button>
           </div>
-          <button
-            onClick={() => router.push(`/dashboard/contacts?edit=${contact.id}`)}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
-          >
-            <PencilIcon className="h-4 w-4" />
-            Edit
-          </button>
-        </div>
 
-        {/* Contact details grid */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <DetailChip icon={EnvelopeIcon} label="Email" value={contact.email} />
-          {contact.phone && <DetailChip icon={PhoneIcon} label="Phone" value={contact.phone} />}
-          {contact.source && (
+          {/* Contact details grid */}
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <DetailChip icon={EnvelopeIcon} label="Email" value={contact.email} />
+            {contact.phone && <DetailChip icon={PhoneIcon} label="Phone" value={contact.phone} />}
+            {contact.source && (
+              <DetailChip
+                icon={TagIcon}
+                label="Source"
+                value={contact.source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              />
+            )}
             <DetailChip
-              icon={TagIcon}
-              label="Source"
-              value={contact.source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+              icon={ClockIcon}
+              label="Added"
+              value={new Date(contact.created_at).toLocaleDateString()}
             />
-          )}
-          <DetailChip
-            icon={ClockIcon}
-            label="Added"
-            value={new Date(contact.created_at).toLocaleDateString()}
-          />
-        </div>
-
-        {contact.notes && (
-          <div className="mt-4 p-4 bg-gray-900/50 rounded-lg">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Notes</p>
-            <p className="text-gray-300 text-sm whitespace-pre-wrap">{contact.notes}</p>
           </div>
-        )}
-      </div>
+
+          {contact.notes && (
+            <div className="mt-4 p-4 bg-gray-900/50 rounded-lg">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Notes</p>
+              <p className="text-gray-300 text-sm whitespace-pre-wrap">{contact.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Event timeline */}
       <div>
@@ -345,6 +363,204 @@ function DetailChip({
         <p className="text-xs text-gray-500">{label}</p>
         <p className="text-sm text-gray-200 truncate">{value}</p>
       </div>
+    </div>
+  );
+}
+
+// ── Inline contact edit section ───────────────────────────────────────────────
+
+const STATUS_OPTIONS = ["lead", "prospect", "customer", "churned"];
+const SOURCE_OPTIONS = [
+  "website", "referral", "chat_bot", "import", "cold_outreach", "event", "other",
+];
+
+function ContactEditSection({
+  contact,
+  onCancel,
+  onSave,
+}: {
+  contact: Contact;
+  onCancel: () => void;
+  onSave: (data: UpdateContactRequest) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    first_name: contact.first_name,
+    last_name: contact.last_name ?? "",
+    email: contact.email,
+    phone: contact.phone ?? "",
+    company: contact.company ?? "",
+    title: contact.title ?? "",
+    source: contact.source ?? "",
+    status: contact.status ?? "",
+    notes: contact.notes ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const set =
+    (key: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.first_name.trim()) return errorToast("First name is required");
+    if (!form.email.trim()) return errorToast("Email is required");
+    setSaving(true);
+    try {
+      await onSave({
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim() || undefined,
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        company: form.company.trim() || undefined,
+        title: form.title.trim() || undefined,
+        source: form.source || undefined,
+        status: form.status || undefined,
+        notes: form.notes.trim() || undefined,
+      });
+    } catch (error: any) {
+      errorToast(error.message || "Failed to save contact");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-white">Edit Contact</h2>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+          title="Cancel"
+        >
+          <XMarkIcon className="h-5 w-5" />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              First Name <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={form.first_name}
+              onChange={set("first_name")}
+              required
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Last Name</label>
+            <input
+              type="text"
+              value={form.last_name}
+              onChange={set("last_name")}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Email <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={set("email")}
+              required
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={set("phone")}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Company</label>
+            <input
+              type="text"
+              value={form.company}
+              onChange={set("company")}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Job Title</label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={set("title")}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
+            <select
+              value={form.status}
+              onChange={set("status")}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            >
+              <option value="">— Select —</option>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Source</label>
+            <select
+              value={form.source}
+              onChange={set("source")}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            >
+              <option value="">— Select —</option>
+              {SOURCE_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Notes</label>
+          <textarea
+            value={form.notes}
+            onChange={set("notes")}
+            rows={3}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+            placeholder="Any additional notes…"
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+          >
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
