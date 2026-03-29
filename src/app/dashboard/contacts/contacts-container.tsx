@@ -12,6 +12,7 @@ import {
 import { ContactFormModal } from "@/components/contacts/contact-form-modal";
 import {
   PlusIcon,
+  UserIcon,
   PencilIcon,
   TrashIcon,
   MagnifyingGlassIcon,
