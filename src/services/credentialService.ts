@@ -6,6 +6,7 @@ export enum ServiceName {
   PINECONE_API_KEY = "PINECONE_API_KEY",
   ELEVENLABS_API_KEY = "ELEVENLABS_API_KEY",
   SUPABASE = "SUPABASE",
+  AWS_SES = "AWS_SES",
 }
 
 // Credential types supported by the system

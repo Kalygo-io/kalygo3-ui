@@ -67,11 +67,19 @@ export interface DbTableWriteTool {
   injectChatSessionId?: boolean; // Auto-inject chat session UUID into the record
 }
 
+export interface SendTxtEmailTool {
+  type: "sendTxtEmail";
+  credentialId: number; // ID of stored AWS SES credential (service_name = AWS_SES)
+  name?: string; // Custom tool name seen by the LLM, defaults to 'send_txt_email'
+  description?: string; // Optional description to guide the LLM on when/how to use this tool
+}
+
 export type ToolV2 =
   | VectorSearchTool
   | VectorSearchWithRerankingTool
   | DbTableReadTool
-  | DbTableWriteTool;
+  | DbTableWriteTool
+  | SendTxtEmailTool;
 
 export interface AgentConfigDataV2 {
   systemPrompt: string;

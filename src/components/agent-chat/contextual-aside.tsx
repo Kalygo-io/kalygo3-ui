@@ -9,6 +9,7 @@ import {
   PencilSquareIcon,
   MagnifyingGlassIcon,
   CpuChipIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { Agent, KnowledgeBase, isAgentConfigV1, isAgentConfigV3, isAgentConfigV4, ToolV2, getAgentModelConfig } from "@/services/agentsService";
@@ -407,6 +408,41 @@ export function ContextualAside({
                                           {tool.injectChatSessionId && (
                                             <div>
                                               <span className="text-orange-400">+ Auto-inject chat_session_id</span>
+                                            </div>
+                                          )}
+                                          {tool.description && (
+                                            <div>
+                                              <span className="text-gray-400">Description: </span>
+                                              <span className="text-white">{tool.description}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // Send Text Email tool
+                                  if (tool.type === "sendTxtEmail") {
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="bg-gray-900/50 p-2 rounded border border-pink-700/30"
+                                      >
+                                        <div className="flex items-center space-x-2 mb-1">
+                                          <EnvelopeIcon className="w-4 h-4 text-pink-400" />
+                                          <span className="text-xs font-medium text-white">
+                                            Send Text Email
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-gray-300 space-y-1 pl-6">
+                                          <div>
+                                            <span className="text-gray-400">Credential ID: </span>
+                                            <span className="text-white">{tool.credentialId}</span>
+                                          </div>
+                                          {tool.name && (
+                                            <div>
+                                              <span className="text-gray-400">Tool Name: </span>
+                                              <span className="text-white font-mono">{tool.name}</span>
                                             </div>
                                           )}
                                           {tool.description && (

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
-import { ToolV2, DbTableReadTool, DbTableWriteTool } from "@/services/agentsService";
+import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { ToolV2, DbTableReadTool, DbTableWriteTool, SendTxtEmailTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
-import { credentialService, Credential, CredentialType, formatServiceName } from "@/services/credentialService";
+import { credentialService, Credential, CredentialType, ServiceName, formatServiceName } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
 
 interface AddToolModalProps {
@@ -19,7 +19,7 @@ export function AddToolModal({
   initialTool,
 }: AddToolModalProps) {
   // Tool category selection
-  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite">("vectorSearch");
+  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite" | "sendTxtEmail">("vectorSearch");
   
   // Vector search state
   const [vectorToolType, setVectorToolType] = useState<"vectorSearch" | "vectorSearchWithReranking">("vectorSearch");
@@ -52,7 +52,11 @@ export function AddToolModal({
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [loadingNamespaces, setLoadingNamespaces] = useState(false);
   const [dbCredentials, setDbCredentials] = useState<Credential[]>([]);
+  const [sesCredentials, setSesCredentials] = useState<Credential[]>([]);
   const [loadingCredentials, setLoadingCredentials] = useState(false);
+
+  // Send Text Email state
+  const [selectedSesCredentialId, setSelectedSesCredentialId] = useState<number | "">("");
 
   const isEditing = !!initialTool;
 
@@ -77,6 +81,10 @@ export function AddToolModal({
         setRequiredColumns(initialTool.requiredColumns?.join(", ") || "");
         setInjectAccountId(initialTool.injectAccountId || false);
         setInjectChatSessionId(initialTool.injectChatSessionId || false);
+      } else if (initialTool.type === "sendTxtEmail") {
+        setToolCategory("sendTxtEmail");
+        setSelectedSesCredentialId(initialTool.credentialId);
+        setToolName(initialTool.name || "");
       } else {
         setToolCategory("vectorSearch");
         setVectorToolType(initialTool.type);
@@ -136,14 +144,16 @@ export function AddToolModal({
     try {
       setLoadingCredentials(true);
       const allCredentials = await credentialService.listCredentials();
-      // Filter to only db_connection type credentials
       const dbCreds = allCredentials.filter(
         (c) => c.credential_type === CredentialType.DB_CONNECTION || c.credential_type === "db_connection"
       );
       setDbCredentials(dbCreds);
+      const sesCreds = allCredentials.filter(
+        (c) => c.service_name === ServiceName.AWS_SES || c.service_name === "AWS_SES"
+      );
+      setSesCredentials(sesCreds);
     } catch (error: any) {
       console.error("Failed to load credentials:", error);
-      // Don't show error toast as credentials might just not be set up yet
     } finally {
       setLoadingCredentials(false);
     }
@@ -262,7 +272,31 @@ export function AddToolModal({
         dbWriteTool.injectChatSessionId = true;
       }
 
-      tool = dbWriteTool;
+        tool = dbWriteTool;
+    } else if (toolCategory === "sendTxtEmail") {
+      if (!selectedSesCredentialId) {
+        errorToast("Please select an AWS SES credential");
+        return;
+      }
+
+      if (toolName.trim() && !/^[a-z_][a-z0-9_]*$/.test(toolName.trim())) {
+        errorToast("Tool name must be lowercase with underscores only (e.g., send_followup_email)");
+        return;
+      }
+
+      const sesTool: SendTxtEmailTool = {
+        type: "sendTxtEmail",
+        credentialId: selectedSesCredentialId as number,
+      };
+
+      if (toolName.trim()) {
+        sesTool.name = toolName.trim();
+      }
+      if (description.trim()) {
+        sesTool.description = description.trim();
+      }
+
+      tool = sesTool;
     } else {
       // Vector search tools
       if (!selectedIndex) {
@@ -301,12 +335,20 @@ export function AddToolModal({
   };
 
   const selectedCredential = dbCredentials.find((c) => c.id === selectedCredentialId);
+  const selectedSesCredential = sesCredentials.find((c) => c.id === selectedSesCredentialId);
   
   // Determine color theme based on tool category
   const isDbTool = toolCategory === "dbTableRead" || toolCategory === "dbTableWrite";
-  const accentColor = toolCategory === "dbTableWrite" ? "orange" : toolCategory === "dbTableRead" ? "green" : "blue";
-  const ringClass = toolCategory === "dbTableWrite" ? "focus:ring-orange-500" : toolCategory === "dbTableRead" ? "focus:ring-green-500" : "focus:ring-blue-500";
-  const buttonClass = toolCategory === "dbTableWrite" ? "bg-orange-600 hover:bg-orange-700" : toolCategory === "dbTableRead" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700";
+  const ringClass =
+    toolCategory === "dbTableWrite" ? "focus:ring-orange-500" :
+    toolCategory === "dbTableRead"  ? "focus:ring-green-500" :
+    toolCategory === "sendTxtEmail" ? "focus:ring-pink-500" :
+    "focus:ring-blue-500";
+  const buttonClass =
+    toolCategory === "dbTableWrite" ? "bg-orange-600 hover:bg-orange-700" :
+    toolCategory === "dbTableRead"  ? "bg-green-600 hover:bg-green-700" :
+    toolCategory === "sendTxtEmail" ? "bg-pink-600 hover:bg-pink-700" :
+    "bg-blue-600 hover:bg-blue-700";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -339,7 +381,7 @@ export function AddToolModal({
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 Tool Category *
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <button
                   type="button"
                   onClick={() => setToolCategory("vectorSearch")}
@@ -401,6 +443,27 @@ export function AddToolModal({
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     Insert records
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setToolCategory("sendTxtEmail")}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    toolCategory === "sendTxtEmail"
+                      ? "border-pink-500 bg-pink-500/10"
+                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
+                  }`}
+                >
+                  <EnvelopeIcon className={`h-8 w-8 mx-auto mb-2 ${
+                    toolCategory === "sendTxtEmail" ? "text-pink-400" : "text-gray-500"
+                  }`} />
+                  <div className={`text-sm font-medium ${
+                    toolCategory === "sendTxtEmail" ? "text-pink-300" : "text-gray-400"
+                  }`}>
+                    Send Email
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    AWS SES
                   </div>
                 </button>
               </div>
@@ -788,6 +851,105 @@ export function AddToolModal({
             </>
           )}
 
+          {/* Send Text Email Options */}
+          {toolCategory === "sendTxtEmail" && (
+            <>
+              {/* SES Credential Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  AWS SES Credential *
+                </label>
+                {loadingCredentials ? (
+                  <div className="text-gray-400 text-sm">Loading credentials...</div>
+                ) : sesCredentials.length === 0 ? (
+                  <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <KeyIcon className="h-5 w-5 text-yellow-400 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-yellow-300">
+                          No AWS SES Credentials Found
+                        </h4>
+                        <p className="text-xs text-yellow-400/80 mt-1">
+                          You need to create a credential with service name &quot;AWS_SES&quot; first.
+                          Go to Credentials → Add Credential and set the service name to AWS_SES.
+                          The credential must contain <code className="text-yellow-300">aws_access_key_id</code>,{" "}
+                          <code className="text-yellow-300">aws_secret_access_key</code>,{" "}
+                          <code className="text-yellow-300">aws_region</code>, and{" "}
+                          <code className="text-yellow-300">from_email</code>.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedSesCredentialId}
+                    onChange={(e) => setSelectedSesCredentialId(e.target.value ? parseInt(e.target.value) : "")}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    required
+                    disabled={isEditing}
+                  >
+                    <option value="">Select an AWS SES credential...</option>
+                    {sesCredentials.map((cred) => (
+                      <option key={cred.id} value={cred.id}>
+                        {formatServiceName(cred.service_name)}
+                        {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
+                        {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-gray-400 text-xs mt-2">
+                  Select a stored AWS SES credential containing the sender identity and access keys.
+                </p>
+                {isEditing && (
+                  <p className="text-gray-400 text-xs mt-1">
+                    Credential cannot be changed when editing.
+                  </p>
+                )}
+              </div>
+
+              {/* Selected SES Credential Info */}
+              {selectedSesCredential && (
+                <div className="bg-pink-900/20 border border-pink-700/50 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <EnvelopeIcon className="h-5 w-5 text-pink-400 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-medium text-white">
+                        {formatServiceName(selectedSesCredential.service_name)}
+                      </h4>
+                      {selectedSesCredential.credential_metadata?.label && (
+                        <p className="text-xs text-gray-300 mt-1">
+                          {selectedSesCredential.credential_metadata.label}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Credential ID: {selectedSesCredential.id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tool Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Tool Name
+                </label>
+                <input
+                  type="text"
+                  value={toolName}
+                  onChange={(e) => setToolName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+                  placeholder="e.g., send_followup_email"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 font-mono"
+                />
+                <p className="text-gray-400 text-xs mt-2">
+                  Optional custom name for the tool as seen by the LLM. Must be lowercase with
+                  underscores only. Defaults to <code className="text-pink-400">send_txt_email</code>.
+                </p>
+              </div>
+            </>
+          )}
+
           {/* Description (shared) */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -799,9 +961,11 @@ export function AddToolModal({
               placeholder={
                 toolCategory === "dbTableWrite"
                   ? "Describe what records this tool creates and when to use it..."
-                  : toolCategory === "dbTableRead" 
+                  : toolCategory === "dbTableRead"
                     ? "Describe what data this table contains and what queries are useful..."
-                    : "Describe what this knowledge base contains..."
+                    : toolCategory === "sendTxtEmail"
+                      ? "Describe when the agent should send an email and any guidelines for tone or content..."
+                      : "Describe what this knowledge base contains..."
               }
               rows={3}
               className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass} resize-none`}
@@ -822,7 +986,7 @@ export function AddToolModal({
             </button>
             <button
               type="submit"
-              disabled={isDbTool && dbCredentials.length === 0}
+              disabled={(isDbTool && dbCredentials.length === 0) || (toolCategory === "sendTxtEmail" && sesCredentials.length === 0)}
               className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-white disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
             >
               {isEditing ? "Update Tool" : "Add Tool"}

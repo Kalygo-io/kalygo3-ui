@@ -11,6 +11,7 @@ import {
   CircleStackIcon,
   PencilSquareIcon,
   MagnifyingGlassIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 
 export interface SessionAgentsConfigPanelProps {
@@ -116,6 +117,20 @@ function AgentConfigBlock({ agent, index }: { agent: Agent; index: number }) {
                     <span>DB Write</span>
                     <span className="text-gray-500">·</span>
                     <span className="truncate">{tool.table}</span>
+                  </div>
+                );
+              }
+              if (tool.type === "sendTxtEmail") {
+                return (
+                  <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
+                    <EnvelopeIcon className="w-3.5 h-3.5 text-pink-400 flex-shrink-0" />
+                    <span>Send Email</span>
+                    {tool.name && (
+                      <>
+                        <span className="text-gray-500">·</span>
+                        <span className="truncate font-mono">{tool.name}</span>
+                      </>
+                    )}
                   </div>
                 );
               }

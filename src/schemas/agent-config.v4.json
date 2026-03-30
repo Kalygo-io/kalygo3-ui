@@ -75,39 +75,9 @@
         "model": {
           "type": "string",
           "minLength": 1,
-          "description": "The model identifier. Examples: 'gpt-4o-mini', 'gpt-4o', 'claude-3-5-sonnet-20241022', 'gemini-2.5-pro', 'llama3.2'."
+          "description": "The model identifier. Examples: 'gpt-4o-mini', 'gpt-4o', 'claude-3-5-sonnet-20241022', 'llama3.2'."
         }
-      },
-      "examples": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini"
-        },
-        {
-          "provider": "openai",
-          "model": "gpt-4o"
-        },
-        {
-          "provider": "anthropic",
-          "model": "claude-3-5-sonnet-20241022"
-        },
-        {
-          "provider": "anthropic",
-          "model": "claude-3-5-haiku-20241022"
-        },
-        {
-          "provider": "google",
-          "model": "gemini-2.5-pro"
-        },
-        {
-          "provider": "google",
-          "model": "gemini-2.5-flash"
-        },
-        {
-          "provider": "ollama",
-          "model": "llama3.2"
-        }
-      ]
+      }
     },
     "tool": {
       "type": "object",
@@ -127,6 +97,9 @@
         },
         {
           "$ref": "#/$defs/dbTableWriteTool"
+        },
+        {
+          "$ref": "#/$defs/sendTxtEmailTool"
         }
       ]
     },
@@ -143,43 +116,37 @@
       "properties": {
         "type": {
           "type": "string",
-          "const": "vectorSearch",
-          "description": "Tool type identifier."
+          "const": "vectorSearch"
         },
         "provider": {
           "type": "string",
           "enum": [
             "pinecone"
-          ],
-          "description": "Vector database provider (currently supports: pinecone)."
+          ]
         },
         "index": {
           "type": "string",
-          "minLength": 1,
-          "description": "The name of the vector database index/collection to query."
+          "minLength": 1
         },
         "namespace": {
           "type": "string",
-          "minLength": 1,
-          "description": "The namespace/partition within the index to search."
+          "minLength": 1
         },
         "description": {
           "type": "string",
-          "minLength": 1,
-          "description": "Human-readable description of what this knowledge base contains. Helps the LLM decide when to use this tool."
+          "minLength": 1
         },
         "topK": {
           "type": "integer",
           "minimum": 1,
           "maximum": 100,
-          "default": 10,
-          "description": "Number of top results to return from vector search."
+          "default": 10
         }
       }
     },
     "vectorSearchWithRerankingTool": {
       "type": "object",
-      "description": "Vector database search with re-ranking for improved relevance. Retrieves more candidates (topK) and re-ranks them to return the most relevant subset (topN).",
+      "description": "Vector database search with re-ranking.",
       "additionalProperties": false,
       "required": [
         "type",
@@ -190,50 +157,43 @@
       "properties": {
         "type": {
           "type": "string",
-          "const": "vectorSearchWithReranking",
-          "description": "Tool type identifier."
+          "const": "vectorSearchWithReranking"
         },
         "provider": {
           "type": "string",
           "enum": [
             "pinecone"
-          ],
-          "description": "Vector database provider (currently supports: pinecone)."
+          ]
         },
         "index": {
           "type": "string",
-          "minLength": 1,
-          "description": "The name of the vector database index/collection to query."
+          "minLength": 1
         },
         "namespace": {
           "type": "string",
-          "minLength": 1,
-          "description": "The namespace/partition within the index to search."
+          "minLength": 1
         },
         "description": {
           "type": "string",
-          "minLength": 1,
-          "description": "Human-readable description of what this knowledge base contains. Helps the LLM decide when to use this tool."
+          "minLength": 1
         },
         "topK": {
           "type": "integer",
           "minimum": 1,
           "maximum": 100,
-          "default": 20,
-          "description": "Number of initial candidates to retrieve from vector search before re-ranking."
+          "default": 20
         },
         "topN": {
           "type": "integer",
           "minimum": 1,
           "maximum": 50,
-          "default": 5,
-          "description": "Number of final results to return after re-ranking."
+          "default": 5
         }
       }
     },
     "dbTableReadTool": {
       "type": "object",
-      "description": "Database read tool for querying structured data from an external database. Requires a stored credential with the database connection string.",
+      "description": "Database read tool.",
       "additionalProperties": false,
       "required": [
         "type",
@@ -243,30 +203,25 @@
       "properties": {
         "type": {
           "type": "string",
-          "const": "dbTableRead",
-          "description": "Tool type identifier."
+          "const": "dbTableRead"
         },
         "credentialId": {
           "type": "integer",
-          "minimum": 1,
-          "description": "ID of the stored credential containing the database connection string. The credential must have credential_type='db_connection' and contain a 'connection_string' key."
+          "minimum": 1
         },
         "table": {
           "type": "string",
-          "minLength": 1,
-          "description": "The database table to query."
+          "minLength": 1
         },
         "name": {
           "type": "string",
           "minLength": 1,
           "maxLength": 50,
-          "pattern": "^[a-z_][a-z0-9_]*$",
-          "description": "Optional custom name for the tool (e.g., 'query_users', 'query_orders'). If not provided, defaults to 'query_{table}'. Must be lowercase with underscores only."
+          "pattern": "^[a-z_][a-z0-9_]*$"
         },
         "description": {
           "type": "string",
-          "minLength": 1,
-          "description": "Human-readable description of what this table contains and what queries are useful. Helps the LLM decide when and how to use this tool."
+          "minLength": 1
         },
         "columns": {
           "type": "array",
@@ -274,21 +229,19 @@
             "type": "string",
             "minLength": 1
           },
-          "minItems": 1,
-          "description": "List of columns to expose to the agent. Only these columns can be queried and returned. Required for security - prevents exposing sensitive columns."
+          "minItems": 1
         },
         "maxLimit": {
           "type": "integer",
           "minimum": 1,
           "maximum": 1000,
-          "default": 100,
-          "description": "Maximum number of rows the agent can request in a single query."
+          "default": 100
         }
       }
     },
     "dbTableWriteTool": {
       "type": "object",
-      "description": "Database write tool for inserting records into an external database table. Requires a stored credential with the database connection string.",
+      "description": "Database write tool.",
       "additionalProperties": false,
       "required": [
         "type",
@@ -299,30 +252,25 @@
       "properties": {
         "type": {
           "type": "string",
-          "const": "dbTableWrite",
-          "description": "Tool type identifier."
+          "const": "dbTableWrite"
         },
         "credentialId": {
           "type": "integer",
-          "minimum": 1,
-          "description": "ID of the stored credential containing the database connection string. The credential must have credential_type='db_connection' and contain a 'connection_string' key."
+          "minimum": 1
         },
         "table": {
           "type": "string",
-          "minLength": 1,
-          "description": "The database table to insert records into."
+          "minLength": 1
         },
         "name": {
           "type": "string",
           "minLength": 1,
           "maxLength": 50,
-          "pattern": "^[a-z_][a-z0-9_]*$",
-          "description": "Optional custom name for the tool (e.g., 'create_lead', 'add_order'). If not provided, defaults to 'insert_{table}'. Must be lowercase with underscores only."
+          "pattern": "^[a-z_][a-z0-9_]*$"
         },
         "description": {
           "type": "string",
-          "minLength": 1,
-          "description": "Human-readable description of what records this tool creates. Helps the LLM decide when and how to use this tool."
+          "minLength": 1
         },
         "columns": {
           "type": "array",
@@ -330,8 +278,7 @@
             "type": "string",
             "minLength": 1
           },
-          "minItems": 1,
-          "description": "List of columns that can be written. Only these columns can be set when inserting. Required for security."
+          "minItems": 1
         },
         "requiredColumns": {
           "type": "array",
@@ -339,18 +286,47 @@
             "type": "string",
             "minLength": 1
           },
-          "default": [],
-          "description": "List of columns that must be provided when inserting. Must be a subset of 'columns'."
+          "default": []
         },
         "injectAccountId": {
           "type": "boolean",
-          "default": false,
-          "description": "If true, automatically inject the authenticated user's account_id into the record. Use this when the target table has an account_id column that should be set to the current user's account."
+          "default": false
         },
         "injectChatSessionId": {
           "type": "boolean",
-          "default": false,
-          "description": "If true, automatically inject the current chat session's UUID into the record. Use this when the target table has a chat_session_id column to track which conversation generated the record."
+          "default": false
+        }
+      }
+    },
+    "sendTxtEmailTool": {
+      "type": "object",
+      "description": "Plain-text email sending tool via AWS SES. Sends emails using AWS credentials stored in the caller's credentials database. The agent provides the recipient, subject, and body at runtime.",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "credentialId"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "sendTxtEmail"
+        },
+        "credentialId": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "ID of the stored AWS SES credential (service_name = AWS_SES). Must contain aws_access_key_id, aws_secret_access_key, aws_region, and from_email."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50,
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "description": "Optional custom name for the tool as seen by the LLM. Defaults to 'send_txt_email'."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional description shown to the LLM to guide when and how to use the tool."
         }
       }
     }
