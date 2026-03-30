@@ -1,5 +1,7 @@
+import React from "react";
+
 interface P {
-  content: string | JSX.Element;
+  content: string | React.ReactNode;
 }
 
 export function EmptyScreen(P: P) {
