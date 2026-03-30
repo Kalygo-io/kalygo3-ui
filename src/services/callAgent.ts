@@ -573,6 +573,28 @@ function dispatchEventToState(
       } catch (error) {
         console.error("Error handling error event:", error, parsedChunk);
       }
+    } else if (parsedChunk.event === "tool_approval_required") {
+      try {
+        console.log("Tool approval required event:", parsedChunk);
+        const { approval_id, tool_type, preview } = parsedChunk.data || {};
+
+        dispatch({
+          type: "ADD_MESSAGE",
+          payload: {
+            id: `approval-${approval_id}`,
+            content: "",
+            role: "tool_approval",
+            error: null,
+            toolApproval: {
+              approvalId: approval_id,
+              toolType: tool_type,
+              preview,
+            },
+          },
+        });
+      } catch (error) {
+        console.error("Error handling tool_approval_required:", error, parsedChunk);
+      }
     } else {
       console.log("Unhandled event:", parsedChunk.event);
     }

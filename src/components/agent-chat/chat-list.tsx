@@ -1,4 +1,5 @@
 import { ChatMessage } from "@/components/agent-chat/chat-message";
+import { ToolApprovalCard } from "@/components/agent-chat/tool-approval-card";
 import { ToolStatus } from "@/components/agent-chat/tool-status";
 import { Message } from "@/ts/types/Message";
 
@@ -16,6 +17,14 @@ export function ChatList(P: P) {
   return (
     <div className="relative mx-auto max-w-7xl px-4">
       {P.messages.map((message: Message, index: number) => {
+        if (message.role === "tool_approval" && message.toolApproval) {
+          return (
+            <ToolApprovalCard
+              key={message.id}
+              toolApproval={message.toolApproval}
+            />
+          );
+        }
         return <ChatMessage key={message.id} index={index} message={message} />;
       })}
 

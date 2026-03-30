@@ -1,7 +1,7 @@
 export interface Message {
   id: string;
   content: string;
-  role: "human" | "ai";
+  role: "human" | "ai" | "tool_approval";
   error: ErrorDetails | null;
   /** For swarm/hierarchical chat: which agent (e.g. Director, worker name) produced this message */
   agentName?: string;
@@ -15,6 +15,20 @@ export interface Message {
   kb_search_query?: string;
   retrievalCalls?: RetrievalCall[]; // Legacy - kept for backward compatibility
   toolCalls?: ToolCall[]; // New schema-based tool calls
+  /** Set when role === "tool_approval" */
+  toolApproval?: ToolApprovalMessage;
+}
+
+export interface ToolApprovalMessage {
+  approvalId: number;
+  toolType: string;
+  /** resolved status after the user acts; undefined while pending */
+  resolvedStatus?: "approved" | "rejected" | "expired";
+  preview: {
+    to_email: string;
+    subject: string;
+    body: string;
+  };
 }
 
 export interface ErrorDetails {

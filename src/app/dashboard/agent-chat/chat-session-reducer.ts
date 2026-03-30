@@ -18,7 +18,7 @@ export type Action =
       type: "EDIT_MESSAGE";
       payload: {
         id: string;
-        role?: "human" | "ai";
+        role?: "human" | "ai" | "tool_approval";
         content?: string;
         error?: ErrorDetails | null;
         retrievalCalls?: any[];
@@ -43,6 +43,14 @@ export type Action =
   | {
       type: "SET_AGENT_ID";
       payload: string;
+    }
+  | {
+      /** Update the resolved status of a tool_approval message after user acts */
+      type: "RESOLVE_TOOL_APPROVAL";
+      payload: {
+        approvalId: number;
+        resolvedStatus: "approved" | "rejected" | "expired";
+      };
     };
 
 export function chatReducer(
@@ -127,6 +135,26 @@ export function chatReducer(
       return {
         ...state,
         agentId: action.payload,
+      };
+    }
+    case "RESOLVE_TOOL_APPROVAL": {
+      return {
+        ...state,
+        messages: state.messages.map((m) => {
+          if (
+            m.role === "tool_approval" &&
+            m.toolApproval?.approvalId === action.payload.approvalId
+          ) {
+            return {
+              ...m,
+              toolApproval: {
+                ...m.toolApproval!,
+                resolvedStatus: action.payload.resolvedStatus,
+              },
+            };
+          }
+          return m;
+        }),
       };
     }
     default: {
