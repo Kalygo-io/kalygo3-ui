@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/shared/common/spinner";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import posthog from "posthog-js";
 
 export const LoginForm = () => {
   const router = useRouter();
@@ -20,6 +21,8 @@ export const LoginForm = () => {
       e.preventDefault();
       setIsLoading(true);
       await loginRequest(email, password);
+      posthog.identify(email, { email });
+      posthog.capture("user_logged_in", { email });
       router.push("/dashboard");
     } catch (err) {
       setIsLoading(false);

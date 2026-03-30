@@ -8,14 +8,15 @@ import { GroupDetailsContainer } from "./group-details-container";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: { group_id?: string };
+  searchParams: Promise<{ group_id?: string }>;
 }) {
   await protectedPageGuard();
+  const { group_id } = await searchParams;
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Suspense fallback={<div>Loading...</div>}>
-          <GroupDetailsContainer groupId={searchParams.group_id} />
+          <GroupDetailsContainer groupId={group_id} />
         </Suspense>
       </div>
     </DashboardLayout>

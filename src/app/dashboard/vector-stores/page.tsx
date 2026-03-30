@@ -9,12 +9,11 @@ import { IndexDetailsContainer } from "./index-details-container";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: { indexName?: string };
+  searchParams: Promise<{ indexName?: string }>;
 }) {
   await protectedPageGuard();
-  const indexName = searchParams.indexName
-    ? decodeURIComponent(searchParams.indexName)
-    : null;
+  const { indexName: rawIndexName } = await searchParams;
+  const indexName = rawIndexName ? decodeURIComponent(rawIndexName) : null;
 
   return (
     <DashboardLayout>

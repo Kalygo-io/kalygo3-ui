@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/shared/common/spinner";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import posthog from "posthog-js";
 
 export const SignupForm = () => {
   const router = useRouter();
@@ -24,6 +25,8 @@ export const SignupForm = () => {
       await registerAccount(email, password, newsletterSubscribed);
       console.log("after registerAccount...");
       await loginRequest(email, password);
+      posthog.identify(email, { email });
+      posthog.capture("user_signed_up", { email, newsletter_subscribed: newsletterSubscribed });
       router.push("/dashboard");
     } catch (err) {
       setIsLoading(false);

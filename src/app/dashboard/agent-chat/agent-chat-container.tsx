@@ -10,6 +10,7 @@ import {
   ArrowRightIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
+import posthog from "posthog-js";
 
 export function AgentChatContainer() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export function AgentChatContainer() {
       const newSession = await chatSessionService.createSession(
         parseInt(agent.id),
       );
+      posthog.capture("chat_session_started", { agent_id: agent.id, session_id: newSession.sessionId });
       // Navigate to the chat page with the session ID
       router.push(`/dashboard/agent-chat/${newSession.sessionId}`);
     } catch (error: any) {

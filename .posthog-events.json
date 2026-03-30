@@ -1,0 +1,52 @@
+[
+  {
+    "event": "user_logged_in",
+    "description": "User successfully logs in with email and password",
+    "file": "src/components/shared/forms/login-form.tsx"
+  },
+  {
+    "event": "user_signed_up",
+    "description": "User successfully creates a new account",
+    "file": "src/components/shared/forms/signup-form.tsx"
+  },
+  {
+    "event": "agent_created",
+    "description": "User creates a new AI agent with name, model, and configuration",
+    "file": "src/app/dashboard/agents/create/create-agent-container.tsx"
+  },
+  {
+    "event": "chat_session_started",
+    "description": "User starts a new chat session with an agent",
+    "file": "src/app/dashboard/agent-chat/agent-chat-container.tsx"
+  },
+  {
+    "event": "vector_index_created",
+    "description": "User creates a new vector store index",
+    "file": "src/app/dashboard/vector-stores/vector-stores-container.tsx"
+  },
+  {
+    "event": "vector_namespace_created",
+    "description": "User creates a new namespace within a vector store index",
+    "file": "src/app/dashboard/vector-stores/vector-stores-container.tsx"
+  },
+  {
+    "event": "prompt_created",
+    "description": "User creates a new prompt template",
+    "file": "src/app/dashboard/prompts/create/create-prompt-container.tsx"
+  },
+  {
+    "event": "credential_created",
+    "description": "User adds a new API credential or secret to their account",
+    "file": "src/app/dashboard/credentials/credentials-container.tsx"
+  },
+  {
+    "event": "credential_deleted",
+    "description": "User deletes an existing credential",
+    "file": "src/app/dashboard/credentials/credentials-container.tsx"
+  },
+  {
+    "event": "payment_method_created",
+    "description": "User successfully adds a payment method via Stripe (server-side)",
+    "file": "src/app/api/payments/create-payment-method/route.ts"
+  }
+]

@@ -18,6 +18,7 @@ import {
   TrashIcon,
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
+import posthog from "posthog-js";
 
 export function VectorStoresContainer() {
   const router = useRouter();
@@ -85,6 +86,7 @@ export function VectorStoresContainer() {
   const handleCreateIndex = async (data: CreateIndexRequest) => {
     try {
       await vectorStoresService.createIndex(data);
+      posthog.capture("vector_index_created", { index_name: data.name, dimension: data.dimension, metric: data.metric });
       successToast("Index created successfully");
       setShowCreateIndexForm(false);
       loadIndexes();
@@ -100,6 +102,7 @@ export function VectorStoresContainer() {
   ) => {
     try {
       await vectorStoresService.createNamespace(indexName, data);
+      posthog.capture("vector_namespace_created", { index_name: indexName, namespace: data.namespace });
       successToast("Namespace created successfully");
       setShowCreateNamespaceForm(null);
       // Reload namespaces for this index

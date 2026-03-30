@@ -8,7 +8,7 @@ export async function protectedPageGuard() {
   try {
     console.log("! protectedPageGuard !");
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     // console.log("cookieStore: ", cookieStore);
 

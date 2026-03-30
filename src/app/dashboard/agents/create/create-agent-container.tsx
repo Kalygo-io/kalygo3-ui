@@ -22,6 +22,7 @@ import {
 import { AddKnowledgeBaseModal } from "./add-knowledge-base-modal";
 import { KnowledgeBaseChip } from "./knowledge-base-chip";
 import { TemplateVariableHint } from "@/components/shared/template-variable-hint";
+import posthog from "posthog-js";
 
 export function CreateAgentContainer() {
   const router = useRouter();
@@ -69,6 +70,7 @@ export function CreateAgentContainer() {
       };
       
       const agent = await agentsService.createAgent(data);
+      posthog.capture("agent_created", { agent_id: agent.id, name: name.trim() });
       successToast("Agent created successfully");
       router.push(`/dashboard/agent?agent_id=${encodeURIComponent(agent.id)}`);
     } catch (error: any) {

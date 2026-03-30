@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getPostHogClient, shutdownPostHog } from "@/lib/posthog-server";
 
 export async function POST(request: Request) {
   try {
     // Get JWT token from cookies (server-side)
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const jwtCookie = cookieStore.get("jwt");
 
     if (!jwtCookie?.value) {
@@ -57,6 +58,9 @@ export async function POST(request: Request) {
     }
 
     const data = await resp.json();
+    const posthogClient = getPostHogClient();
+    posthogClient.capture({ distinctId: "server", event: "payment_method_created" });
+    await shutdownPostHog();
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error in create payment method API route:", error);
