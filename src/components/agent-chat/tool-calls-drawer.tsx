@@ -6,6 +6,8 @@ import {
   InformationCircleIcon,
   TableCellsIcon,
   CircleStackIcon,
+  EnvelopeIcon,
+  WrenchIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { ToolCall, RetrievalCall } from "@/ts/types/Message";
@@ -14,6 +16,8 @@ import {
   VectorSearchWithRerankingToolCall,
   DbTableReadToolCall,
   DbTableWriteToolCall,
+  SendTxtEmailToolCall,
+  CustomToolCall,
   VectorSearchResult,
   TextDocumentMetadata,
   QaMetadata,
@@ -57,12 +61,20 @@ function isDbTableWriteToolCall(
   return call.toolType === "dbTableWrite";
 }
 
+function isSendTxtEmailToolCall(call: any): call is SendTxtEmailToolCall {
+  return call.toolType === "sendTxtEmail";
+}
+
+function isCustomToolCall(call: any): call is CustomToolCall {
+  return call.toolType === "custom";
+}
+
 interface ToolCallsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   toolCalls?:
     | ToolCall[]
-    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall)[]; // Support both old and new schema
+    | (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall | SendTxtEmailToolCall | CustomToolCall)[]; // Support both old and new schema
   retrievalCalls?: RetrievalCall[]; // Legacy retrieval calls
 }
 
@@ -324,6 +336,34 @@ export function ToolCallsDrawer({
                         key={index}
                         index={index}
                         toolCall={dbWriteCall}
+                        isExpanded={expandedToolCalls.has(index)}
+                        onToggleExpand={() => toggleToolCallExpanded(index)}
+                        copyToClipboard={copyToClipboard}
+                      />
+                    );
+                  }
+
+                  // Check for sendTxtEmail tool
+                  if (isSendTxtEmailToolCall(call)) {
+                    return (
+                      <SendTxtEmailToolCallCard
+                        key={index}
+                        index={index}
+                        toolCall={call}
+                        isExpanded={expandedToolCalls.has(index)}
+                        onToggleExpand={() => toggleToolCallExpanded(index)}
+                        copyToClipboard={copyToClipboard}
+                      />
+                    );
+                  }
+
+                  // Check for generic custom action tool
+                  if (isCustomToolCall(call)) {
+                    return (
+                      <CustomToolCallCard
+                        key={index}
+                        index={index}
+                        toolCall={call}
                         isExpanded={expandedToolCalls.has(index)}
                         onToggleExpand={() => toggleToolCallExpanded(index)}
                         copyToClipboard={copyToClipboard}
@@ -1117,6 +1157,270 @@ function DbTableWriteToolCallCard({
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Send Text Email Tool Call Card ──────────────────────────────────────────
+
+interface SendTxtEmailToolCallCardProps {
+  index: number;
+  toolCall: SendTxtEmailToolCall;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  copyToClipboard: (text: string) => void;
+}
+
+function SendTxtEmailToolCallCard({
+  index,
+  toolCall,
+  isExpanded,
+  onToggleExpand,
+  copyToClipboard,
+}: SendTxtEmailToolCallCardProps) {
+  const success = toolCall.output?.success ?? false;
+  const messageId = toolCall.output?.messageId;
+  const error = toolCall.output?.error;
+  const to = toolCall.input?.to;
+  const subject = toolCall.input?.subject;
+  const body = toolCall.input?.body;
+
+  return (
+    <div className="bg-gray-800/50 border border-pink-600/40 rounded-lg p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-400">#{index + 1}</span>
+          <EnvelopeIcon className="w-5 h-5 text-pink-400" />
+          <h3 className="text-lg font-medium text-white">
+            {toolCall.toolName || "Send Text Email"}
+          </h3>
+        </div>
+        <div className="flex items-center space-x-3">
+          <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+            success
+              ? "bg-green-600/20 text-green-400 border border-green-500/40"
+              : "bg-red-600/20 text-red-400 border border-red-500/40"
+          }`}>
+            {success ? "Sent" : "Failed"}
+          </span>
+          <button
+            onClick={onToggleExpand}
+            className="text-sm text-pink-400 hover:text-pink-300 transition-colors flex items-center"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUpIcon className="w-4 h-4 mr-1" />
+                Hide Details
+              </>
+            ) : (
+              <>
+                <ChevronDownIcon className="w-4 h-4 mr-1" />
+                Show Details
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Always-visible summary */}
+      <div className="mb-3 space-y-1">
+        <div className="flex items-start space-x-2">
+          <span className="text-pink-400 font-medium text-sm">Tool Type:</span>
+          <span className="text-white text-sm bg-gray-800 p-2 rounded">
+            Send Text Email
+          </span>
+        </div>
+        {to && (
+          <div className="flex items-start space-x-2">
+            <span className="text-pink-400 font-medium text-sm">To:</span>
+            <span className="text-white text-sm bg-gray-800 p-2 rounded font-mono">
+              {to as string}
+            </span>
+          </div>
+        )}
+        {subject && (
+          <div className="flex items-start space-x-2">
+            <span className="text-pink-400 font-medium text-sm">Subject:</span>
+            <span className="text-white text-sm bg-gray-800 p-2 rounded">
+              {subject as string}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded details */}
+      {isExpanded && (
+        <div className="mt-4 pt-4 border-t border-gray-600/30 space-y-4">
+          {/* Body */}
+          {body && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-300">Email Body</h4>
+                <button
+                  onClick={() => copyToClipboard(body as string)}
+                  className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <div className="bg-gray-900/50 p-3 rounded border border-gray-600/30">
+                <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{body as string}</pre>
+              </div>
+            </div>
+          )}
+
+          {/* Result */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-300 mb-2">Result</h4>
+            {error ? (
+              <div className="bg-red-900/20 border border-red-700/30 rounded-lg p-3">
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+            ) : (
+              <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3 space-y-1">
+                <p className="text-green-400 text-sm">Email sent successfully</p>
+                {messageId && (
+                  <p className="text-gray-400 text-xs font-mono">
+                    Message ID: {messageId}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Generic Custom Action Tool Call Card ────────────────────────────────────
+
+interface CustomToolCallCardProps {
+  index: number;
+  toolCall: CustomToolCall;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  copyToClipboard: (text: string) => void;
+}
+
+function CustomToolCallCard({
+  index,
+  toolCall,
+  isExpanded,
+  onToggleExpand,
+  copyToClipboard,
+}: CustomToolCallCardProps) {
+  const inputEntries = Object.entries(toolCall.input || {});
+  const outputEntries = Object.entries(toolCall.output || {});
+  const success =
+    typeof toolCall.output?.success === "boolean"
+      ? toolCall.output.success
+      : undefined;
+
+  return (
+    <div className="bg-gray-800/50 border border-purple-600/40 rounded-lg p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-400">#{index + 1}</span>
+          <WrenchIcon className="w-5 h-5 text-purple-400" />
+          <h3 className="text-lg font-medium text-white">
+            {toolCall.toolName || "Custom Tool"}
+          </h3>
+        </div>
+        <div className="flex items-center space-x-3">
+          {success !== undefined && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+              success
+                ? "bg-green-600/20 text-green-400 border border-green-500/40"
+                : "bg-red-600/20 text-red-400 border border-red-500/40"
+            }`}>
+              {success ? "Success" : "Failed"}
+            </span>
+          )}
+          <button
+            onClick={onToggleExpand}
+            className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUpIcon className="w-4 h-4 mr-1" />
+                Hide Details
+              </>
+            ) : (
+              <>
+                <ChevronDownIcon className="w-4 h-4 mr-1" />
+                Show Details
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Tool type badge */}
+      <div className="mb-3">
+        <div className="flex items-start space-x-2">
+          <span className="text-purple-400 font-medium text-sm">Tool Type:</span>
+          <span className="text-white text-sm bg-gray-800 p-2 rounded">
+            Custom Action
+          </span>
+        </div>
+      </div>
+
+      {/* Expanded details */}
+      {isExpanded && (
+        <div className="mt-4 pt-4 border-t border-gray-600/30 space-y-4">
+          {/* Inputs */}
+          {inputEntries.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-300">Inputs</h4>
+                <button
+                  onClick={() => copyToClipboard(JSON.stringify(toolCall.input, null, 2))}
+                  className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <div className="bg-gray-900/50 p-3 rounded border border-gray-600/30">
+                <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                  {JSON.stringify(toolCall.input, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* Outputs */}
+          {outputEntries.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-300">Output</h4>
+                <button
+                  onClick={() => copyToClipboard(JSON.stringify(toolCall.output, null, 2))}
+                  className="text-xs text-gray-400 hover:text-gray-300 transition-colors flex items-center space-x-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <div className="bg-gray-900/50 p-3 rounded border border-gray-600/30">
+                <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">
+                  {JSON.stringify(toolCall.output, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

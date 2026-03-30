@@ -20,7 +20,14 @@ export interface ChatMessageV2 {
   /**
    * Array of tool calls made during the generation of this message. Only present for AI messages. Each tool call has a different schema depending on the tool type.
    */
-  toolCalls?: (VectorSearchToolCall | VectorSearchWithRerankingToolCall | DbTableReadToolCall | DbTableWriteToolCall)[];
+  toolCalls?: (
+    | VectorSearchToolCall
+    | VectorSearchWithRerankingToolCall
+    | DbTableReadToolCall
+    | DbTableWriteToolCall
+    | SendTxtEmailToolCall
+    | CustomToolCall
+  )[];
 }
 /**
  * Tool call for vector search (semantic retrieval)
@@ -268,6 +275,72 @@ export interface DbReadRow {
    * Dynamic properties from the database row
    */
   [k: string]: unknown;
+}
+
+/**
+ * Tool call for sending a plain-text email via AWS SES
+ */
+export interface SendTxtEmailToolCall {
+  /**
+   * The type of tool (sendTxtEmail)
+   */
+  toolType: "sendTxtEmail";
+  /**
+   * The specific tool instance name (e.g., 'send_txt_email')
+   */
+  toolName: string;
+  input: {
+    /**
+     * Recipient email address
+     */
+    to: string;
+    /**
+     * Email subject line
+     */
+    subject?: string;
+    /**
+     * Plain-text email body
+     */
+    body?: string;
+    [k: string]: unknown;
+  };
+  output: {
+    /**
+     * Whether the email was sent successfully
+     */
+    success: boolean;
+    /**
+     * SES message ID if sent successfully
+     */
+    messageId?: string;
+    /**
+     * Error message if send failed
+     */
+    error?: string;
+    [k: string]: unknown;
+  };
+}
+
+/**
+ * Generic custom tool call — used for action tools the backend labels as "custom"
+ */
+export interface CustomToolCall {
+  /**
+   * The type of tool (custom)
+   */
+  toolType: "custom";
+  /**
+   * The specific tool instance name
+   */
+  toolName: string;
+  /**
+   * Arbitrary key/value inputs passed to the tool
+   */
+  input: Record<string, unknown>;
+  /**
+   * Arbitrary key/value output returned by the tool
+   */
+  output: Record<string, unknown>;
 }
 
 /**
