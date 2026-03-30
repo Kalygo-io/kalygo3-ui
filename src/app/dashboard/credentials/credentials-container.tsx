@@ -33,6 +33,7 @@ import {
 function getCredentialTypeIcon(credentialType: CredentialType | string) {
   const icons: Record<string, React.ReactNode> = {
     [CredentialType.API_KEY]: <KeyIcon className="h-5 w-5" />,
+    [CredentialType.AWS_ACCESS_KEY_PAIR]: <KeyIcon className="h-5 w-5" />,
     [CredentialType.DB_CONNECTION]: <CircleStackIcon className="h-5 w-5" />,
     [CredentialType.CONNECTION_STRING]: <LinkIcon className="h-5 w-5" />,
     [CredentialType.OAUTH_TOKEN]: <ShieldCheckIcon className="h-5 w-5" />,
@@ -232,6 +233,7 @@ function CredentialCard({
   const typeIcon = getCredentialTypeIcon(credential.credential_type);
   const label = credential.credential_metadata?.label;
   const environment = credential.credential_metadata?.environment;
+  const isKeyPair = credential.credential_type === CredentialType.AWS_ACCESS_KEY_PAIR;
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-gray-600/50 transition-all duration-200">
@@ -262,6 +264,18 @@ function CredentialCard({
               </span>
             )}
           </div>
+          {isKeyPair && (
+            <div className="font-mono text-xs text-gray-400 space-y-1 mb-3 bg-gray-900/50 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 w-16 shrink-0">Key ID</span>
+                <span className="text-orange-300">••••••••</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 w-16 shrink-0">Secret</span>
+                <span className="text-orange-300">••••••••</span>
+              </div>
+            </div>
+          )}
           <div className="text-xs text-gray-400 space-y-1">
             <div>
               Created: {new Date(credential.created_at).toLocaleDateString()}
@@ -314,18 +328,61 @@ function CreateCredentialForm({
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Secret Key pair fields (key_id + secret_key) — used for SECRET_KEY type
+  const [keyId, setKeyId] = useState("");
+  const [showSecretPair, setShowSecretPair] = useState(false);
+
+  // AWS SES extra fields — shown on top of the key pair when AWS_SES service is selected
+  const [sesRegion, setSesRegion] = useState("");
+  const [sesFromEmail, setSesFromEmail] = useState("");
+
+  const isAwsSes = serviceName === ServiceName.AWS_SES;
+  const isAccessKeyPair = credentialType === CredentialType.AWS_ACCESS_KEY_PAIR;
+
+  const handleServiceNameChange = (value: ServiceName | "") => {
+    setServiceName(value);
+    if (value === ServiceName.AWS_SES) {
+      setCredentialType(CredentialType.AWS_ACCESS_KEY_PAIR);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!serviceName || !secretValue.trim()) {
-      errorToast("Please fill in all required fields");
+    if (!serviceName) {
+      errorToast("Please select a service");
       return;
     }
 
-    // Build credential_data based on credential type
-    const dataKey = getCredentialDataKey(credentialType);
-    const credentialData: CredentialData = {
-      [dataKey]: secretValue.trim(),
-    };
+    let credentialData: CredentialData;
+
+    if (isAwsSes) {
+      if (!keyId.trim() || !secretValue.trim() || !sesRegion.trim() || !sesFromEmail.trim()) {
+        errorToast("Please fill in all four AWS SES fields");
+        return;
+      }
+      credentialData = {
+        aws_access_key_id: keyId.trim(),
+        aws_secret_access_key: secretValue.trim(),
+        aws_region: sesRegion.trim(),
+        from_email: sesFromEmail.trim(),
+      };
+    } else if (isAccessKeyPair) {
+      if (!keyId.trim() || !secretValue.trim()) {
+        errorToast("Please fill in both the Key ID and Secret Key");
+        return;
+      }
+      credentialData = {
+        key_id: keyId.trim(),
+        secret_key: secretValue.trim(),
+      };
+    } else {
+      if (!secretValue.trim()) {
+        errorToast("Please fill in all required fields");
+        return;
+      }
+      const dataKey = getCredentialDataKey(credentialType);
+      credentialData = { [dataKey]: secretValue.trim() };
+    }
 
     // Build metadata
     const metadata: CredentialMetadata = {};
@@ -344,7 +401,10 @@ function CreateCredentialForm({
       // Reset form
       setServiceName("");
       setCredentialType(CredentialType.API_KEY);
+      setKeyId("");
       setSecretValue("");
+      setSesRegion("");
+      setSesFromEmail("");
       setLabel("");
       setEnvironment("");
       setNotes("");
@@ -390,7 +450,7 @@ function CreateCredentialForm({
             </label>
             <select
               value={serviceName}
-              onChange={(e) => setServiceName(e.target.value as ServiceName)}
+              onChange={(e) => handleServiceNameChange(e.target.value as ServiceName | "")}
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
@@ -403,69 +463,157 @@ function CreateCredentialForm({
             </select>
           </div>
 
-          {/* Credential Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Credential Type *
-            </label>
-            <select
-              value={credentialType}
-              onChange={(e) => setCredentialType(e.target.value as CredentialType)}
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              {Object.values(CredentialType).map((type) => (
-                <option key={type} value={type}>
-                  {formatCredentialType(type)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Credential Type — hidden for AWS SES (auto-set to Access Key Pair) */}
+          {!isAwsSes && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Credential Type *
+              </label>
+              <select
+                value={credentialType}
+                onChange={(e) => setCredentialType(e.target.value as CredentialType)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                {Object.values(CredentialType).map((type) => (
+                  <option key={type} value={type}>
+                    {formatCredentialType(type)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-          {/* Secret Value */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              {formatCredentialType(credentialType)} Value *
-            </label>
-            <div className="relative">
-              {credentialType === CredentialType.CERTIFICATE || 
-               credentialType === CredentialType.CONNECTION_STRING ||
-               credentialType === CredentialType.DB_CONNECTION ? (
-                <textarea
-                  value={secretValue}
-                  onChange={(e) => setSecretValue(e.target.value)}
-                  placeholder={getPlaceholder()}
-                  rows={4}
+          {/* Access Key Pair — two fields (key ID + secret) */}
+          {isAccessKeyPair && (
+            <div className="space-y-3">
+              {/* Field 1: Key ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  {isAwsSes ? "AWS Access Key ID" : "Key ID"} *
+                </label>
+                <input
+                  type="text"
+                  value={keyId}
+                  onChange={(e) => setKeyId(e.target.value)}
+                  placeholder={isAwsSes ? "AKIAIOSFODNN7EXAMPLE" : "Enter your key ID"}
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                   required
                 />
-              ) : (
-                <input
-                  type={showSecret ? "text" : "password"}
-                  value={secretValue}
-                  onChange={(e) => setSecretValue(e.target.value)}
-                  placeholder={getPlaceholder()}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              )}
-              {credentialType !== CredentialType.CERTIFICATE && 
-               credentialType !== CredentialType.CONNECTION_STRING &&
-               credentialType !== CredentialType.DB_CONNECTION && (
-                <button
-                  type="button"
-                  onClick={() => setShowSecret(!showSecret)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                >
-                  {showSecret ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
-                </button>
+              </div>
+
+              {/* Field 2: Secret Key */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  {isAwsSes ? "AWS Secret Access Key" : "Secret Key"} *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSecretPair ? "text" : "password"}
+                    value={secretValue}
+                    onChange={(e) => setSecretValue(e.target.value)}
+                    placeholder={isAwsSes ? "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" : "Enter your secret key"}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecretPair(!showSecretPair)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  >
+                    {showSecretPair ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* AWS SES extra fields */}
+              {isAwsSes && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      AWS Region *
+                    </label>
+                    <input
+                      type="text"
+                      value={sesRegion}
+                      onChange={(e) => setSesRegion(e.target.value)}
+                      placeholder="us-east-1"
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      From Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={sesFromEmail}
+                      onChange={(e) => setSesFromEmail(e.target.value)}
+                      placeholder="no-reply@yourdomain.com"
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <p className="text-gray-500 text-xs mt-1">
+                      Must be a verified sender identity in your AWS SES account.
+                    </p>
+                  </div>
+                </>
               )}
             </div>
-          </div>
+          )}
+
+          {/* Generic single-value input — all types except Access Key Pair */}
+          {!isAccessKeyPair && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                {formatCredentialType(credentialType)} Value *
+              </label>
+              <div className="relative">
+                {credentialType === CredentialType.CERTIFICATE || 
+                 credentialType === CredentialType.CONNECTION_STRING ||
+                 credentialType === CredentialType.DB_CONNECTION ? (
+                  <textarea
+                    value={secretValue}
+                    onChange={(e) => setSecretValue(e.target.value)}
+                    placeholder={getPlaceholder()}
+                    rows={4}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    required
+                  />
+                ) : (
+                  <input
+                    type={showSecret ? "text" : "password"}
+                    value={secretValue}
+                    onChange={(e) => setSecretValue(e.target.value)}
+                    placeholder={getPlaceholder()}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                )}
+                {credentialType !== CredentialType.CERTIFICATE && 
+                 credentialType !== CredentialType.CONNECTION_STRING &&
+                 credentialType !== CredentialType.DB_CONNECTION && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret(!showSecret)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  >
+                    {showSecret ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Optional Metadata */}
           <div className="border-t border-gray-700 pt-4 mt-4">
@@ -558,10 +706,26 @@ function EditCredentialModal({
     metadata?: CredentialMetadata
   ) => Promise<void>;
 }) {
-  // Get the current secret value using the helper
-  const currentSecret = getCredentialValue(credential);
-  
-  const [secretValue, setSecretValue] = useState(currentSecret);
+  const isAccessKeyPair = credential.credential_type === CredentialType.AWS_ACCESS_KEY_PAIR;
+  const isAwsSes = credential.service_name === ServiceName.AWS_SES;
+
+  // For key pairs, seed both halves from credential_data
+  const existingKeyId = isAwsSes
+    ? (credential.credential_data?.aws_access_key_id as string) || ""
+    : (credential.credential_data?.key_id as string) || "";
+  const existingSecret = isAwsSes
+    ? (credential.credential_data?.aws_secret_access_key as string) || ""
+    : getCredentialValue(credential);
+
+  const [keyId, setKeyId] = useState(existingKeyId);
+  const [secretValue, setSecretValue] = useState(existingSecret);
+  const [showSecretPair, setShowSecretPair] = useState(false);
+  const [sesRegion, setSesRegion] = useState(
+    (credential.credential_data?.aws_region as string) || ""
+  );
+  const [sesFromEmail, setSesFromEmail] = useState(
+    (credential.credential_data?.from_email as string) || ""
+  );
   const [label, setLabel] = useState(credential.credential_metadata?.label || "");
   const [environment, setEnvironment] = useState<"production" | "staging" | "development" | "">(
     credential.credential_metadata?.environment || ""
@@ -571,16 +735,37 @@ function EditCredentialModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!secretValue.trim()) {
-      errorToast("Credential value cannot be empty");
-      return;
-    }
 
-    // Build credential_data based on credential type
-    const dataKey = getCredentialDataKey(credential.credential_type);
-    const credentialData: CredentialData = {
-      [dataKey]: secretValue.trim(),
-    };
+    let credentialData: CredentialData;
+
+    if (isAwsSes) {
+      if (!keyId.trim() || !secretValue.trim() || !sesRegion.trim() || !sesFromEmail.trim()) {
+        errorToast("Please fill in all four AWS SES fields");
+        return;
+      }
+      credentialData = {
+        aws_access_key_id: keyId.trim(),
+        aws_secret_access_key: secretValue.trim(),
+        aws_region: sesRegion.trim(),
+        from_email: sesFromEmail.trim(),
+      };
+    } else if (isAccessKeyPair) {
+      if (!keyId.trim() || !secretValue.trim()) {
+        errorToast("Please fill in both the Key ID and Secret Key");
+        return;
+      }
+      credentialData = {
+        key_id: keyId.trim(),
+        secret_key: secretValue.trim(),
+      };
+    } else {
+      if (!secretValue.trim()) {
+        errorToast("Credential value cannot be empty");
+        return;
+      }
+      const dataKey = getCredentialDataKey(credential.credential_type);
+      credentialData = { [dataKey]: secretValue.trim() };
+    }
 
     // Build metadata
     const metadata: CredentialMetadata = {};
@@ -636,42 +821,118 @@ function EditCredentialModal({
             />
           </div>
 
-          {/* Secret Value */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              {formatCredentialType(credential.credential_type)} Value
-            </label>
-            <div className="relative">
-              {isMultiline ? (
-                <textarea
-                  value={secretValue}
-                  onChange={(e) => setSecretValue(e.target.value)}
-                  rows={4}
+          {/* AWS Access Key Pair — two-field edit */}
+          {isAccessKeyPair && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  {isAwsSes ? "AWS Access Key ID" : "Key ID"}
+                </label>
+                <input
+                  type="text"
+                  value={keyId}
+                  onChange={(e) => setKeyId(e.target.value)}
+                  placeholder={isAwsSes ? "AKIAIOSFODNN7EXAMPLE" : "Enter your key ID"}
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 />
-              ) : (
-                <input
-                  type={showSecret ? "text" : "password"}
-                  value={secretValue}
-                  onChange={(e) => setSecretValue(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              )}
-              {!isMultiline && (
-                <button
-                  type="button"
-                  onClick={onToggleVisibility}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                >
-                  {showSecret ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
-                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  {isAwsSes ? "AWS Secret Access Key" : "Secret Key"}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSecretPair ? "text" : "password"}
+                    value={secretValue}
+                    onChange={(e) => setSecretValue(e.target.value)}
+                    placeholder={isAwsSes ? "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" : "Enter your secret key"}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecretPair(!showSecretPair)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  >
+                    {showSecretPair ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {isAwsSes && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      AWS Region
+                    </label>
+                    <input
+                      type="text"
+                      value={sesRegion}
+                      onChange={(e) => setSesRegion(e.target.value)}
+                      placeholder="us-east-1"
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      From Email
+                    </label>
+                    <input
+                      type="email"
+                      value={sesFromEmail}
+                      onChange={(e) => setSesFromEmail(e.target.value)}
+                      placeholder="no-reply@yourdomain.com"
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </>
               )}
             </div>
-          </div>
+          )}
+
+          {/* Single-value field — all other credential types */}
+          {!isAccessKeyPair && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                {formatCredentialType(credential.credential_type)} Value
+              </label>
+              <div className="relative">
+                {isMultiline ? (
+                  <textarea
+                    value={secretValue}
+                    onChange={(e) => setSecretValue(e.target.value)}
+                    rows={4}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  />
+                ) : (
+                  <input
+                    type={showSecret ? "text" : "password"}
+                    value={secretValue}
+                    onChange={(e) => setSecretValue(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
+                {!isMultiline && (
+                  <button
+                    type="button"
+                    onClick={onToggleVisibility}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  >
+                    {showSecret ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Metadata */}
           <div className="border-t border-gray-700 pt-4">

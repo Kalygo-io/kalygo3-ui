@@ -12,6 +12,7 @@ export enum ServiceName {
 // Credential types supported by the system
 export enum CredentialType {
   API_KEY = "api_key",
+  AWS_ACCESS_KEY_PAIR = "aws_access_key_pair",
   DB_CONNECTION = "db_connection",
   CONNECTION_STRING = "connection_string",
   OAUTH_TOKEN = "oauth_token",
@@ -32,8 +33,9 @@ export interface CredentialMetadata {
 // Credential data - flexible object containing the actual secret(s)
 export interface CredentialData {
   api_key?: string;
-  connection_string?: string;
+  key_id?: string;      // Primary identifier for AWS_ACCESS_KEY_PAIR (or aws_access_key_id for AWS SES)
   secret_key?: string;
+  connection_string?: string;
   token?: string;
   certificate?: string;
   [key: string]: unknown; // Allow additional custom fields
@@ -197,6 +199,7 @@ export function formatServiceName(serviceName: ServiceName | string): string {
     [ServiceName.PINECONE_API_KEY]: "Pinecone",
     [ServiceName.ELEVENLABS_API_KEY]: "ElevenLabs",
     [ServiceName.SUPABASE]: "Supabase",
+    [ServiceName.AWS_SES]: "AWS SES",
   };
   return displayNames[serviceName] || serviceName;
 }
@@ -206,6 +209,7 @@ export function formatCredentialType(
 ): string {
   const displayNames: Record<string, string> = {
     [CredentialType.API_KEY]: "API Key",
+    [CredentialType.AWS_ACCESS_KEY_PAIR]: "AWS Access Key Pair",
     [CredentialType.DB_CONNECTION]: "Database Connection",
     [CredentialType.CONNECTION_STRING]: "Connection String",
     [CredentialType.OAUTH_TOKEN]: "OAuth Token",
@@ -221,6 +225,7 @@ export function getCredentialTypeColor(
 ): string {
   const colors: Record<string, string> = {
     [CredentialType.API_KEY]: "bg-blue-600/20 text-blue-300 border-blue-500/40",
+    [CredentialType.AWS_ACCESS_KEY_PAIR]: "bg-orange-600/20 text-orange-300 border-orange-500/40",
     [CredentialType.DB_CONNECTION]:
       "bg-teal-600/20 text-teal-300 border-teal-500/40",
     [CredentialType.CONNECTION_STRING]:
@@ -243,6 +248,8 @@ export function getCredentialDataKey(
   switch (credentialType) {
     case CredentialType.API_KEY:
       return "api_key";
+    case CredentialType.AWS_ACCESS_KEY_PAIR:
+      return "key_id"; // primary display key; secret_key holds the secret half
     case CredentialType.DB_CONNECTION:
     case CredentialType.CONNECTION_STRING:
       return "connection_string";

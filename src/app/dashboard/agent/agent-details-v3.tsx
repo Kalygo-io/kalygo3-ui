@@ -24,6 +24,7 @@ import {
   CircleStackIcon,
   PencilSquareIcon,
   CpuChipIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { AddToolModal } from "./add-tool-modal";
 import { AgentSharingPanel } from "@/components/agent-sharing/agent-sharing-panel";
@@ -122,6 +123,15 @@ export function AgentDetailsV3({ agentId }: { agentId?: string }) {
 
       const updatedAgent = await agentsService.updateAgent(agentId, updateData);
       setAgent(updatedAgent);
+
+      // Re-sync local form state from the saved response
+      if (updatedAgent.config && updatedAgent.config.version === 3) {
+        const saved = updatedAgent.config as AgentConfigV3;
+        setSystemPrompt(saved.data.systemPrompt || "");
+        setModelConfig(saved.data.model || DEFAULT_MODEL);
+        setTools(saved.data.tools || []);
+      }
+
       successToast("Agent updated successfully");
     } catch (error: any) {
       errorToast(error.message || "Failed to update agent");
@@ -182,6 +192,12 @@ export function AgentDetailsV3({ agentId }: { agentId?: string }) {
             existing.credentialId === tool.credentialId &&
             existing.table === tool.table
         );
+      } else if (tool.type === "sendTxtEmail") {
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "sendTxtEmail" &&
+            existing.credentialId === tool.credentialId
+        );
       } else {
         isDuplicate = tools.some(
           (existing) =>
@@ -201,7 +217,7 @@ export function AgentDetailsV3({ agentId }: { agentId?: string }) {
       }
 
       setTools((prev) => [...prev, tool]);
-      successToast("Tool added successfully");
+      successToast("Tool added — click Save Changes to persist");
     }
     setShowAddToolModal(false);
   };
@@ -750,6 +766,76 @@ export function AgentDetailsV3({ agentId }: { agentId?: string }) {
                               </tr>
                             );
                           }
+                          // Render sendTxtEmail tools
+                          if (tool.type === "sendTxtEmail") {
+                            const toolDisplayName = tool.name || "send_txt_email";
+
+                            return (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-800/30 transition-colors"
+                              >
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-600/20 text-pink-300 border border-pink-500/40">
+                                    <EnvelopeIcon className="h-3 w-3" />
+                                    Send Email
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="space-y-1">
+                                    <span className="text-sm text-white font-medium block">
+                                      AWS SES
+                                    </span>
+                                    <code className="text-xs text-pink-400 bg-pink-900/20 px-1.5 py-0.5 rounded">
+                                      {toolDisplayName}
+                                    </code>
+                                    <div className="text-xs text-gray-500">
+                                      Credential ID: {tool.credentialId}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="text-sm text-gray-300 block">
+                                    {tool.description || (
+                                      <span className="text-gray-500 italic">
+                                        No description
+                                      </span>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-xs text-gray-500">
+                                    Plain text
+                                  </div>
+                                </td>
+                                {isOwner && (
+                                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditTool(index)}
+                                        className="p-1.5 text-gray-400 hover:text-pink-400 hover:bg-pink-600/20 rounded-lg transition-colors duration-200"
+                                        title="Edit tool"
+                                        aria-label="Edit tool"
+                                      >
+                                        <PencilIcon className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveTool(index)}
+                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                        title="Remove tool"
+                                        aria-label="Remove tool"
+                                      >
+                                        <TrashIcon className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          }
+
                           return null;
                         })}
                       </tbody>
