@@ -57,7 +57,7 @@ export function DashboardLayout({
   const currentSessionId = searchParams.get("session");
   const handleCurrentSessionDeleted = useCallback(() => {
     if (currentSessionId && pathname.includes("/dashboard/")) {
-      router.push("/dashboard/tokenizers");
+      router.push("/dashboard/home");
     }
   }, [currentSessionId, pathname, router]);
 
