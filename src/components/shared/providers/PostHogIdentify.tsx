@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePostHog } from "posthog-js/react";
-import { getCurrentUser } from "@/services/getCurrentUser";
+import { getAccount } from "@/services/accountService";
 
 export function PostHogIdentify() {
   const posthog = usePostHog();
@@ -10,10 +10,10 @@ export function PostHogIdentify() {
   useEffect(() => {
     if (!posthog) return;
 
-    getCurrentUser()
-      .then((user) => {
-        posthog.identify(String(user.id), {
-          email: user.email,
+    getAccount()
+      .then((account) => {
+        posthog.identify(String(account.id), {
+          email: account.email,
         });
       })
       .catch(() => {
