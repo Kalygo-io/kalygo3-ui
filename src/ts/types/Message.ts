@@ -25,6 +25,7 @@ export interface ToolApprovalMessage {
   /** resolved status after the user acts; undefined while pending */
   resolvedStatus?: "approved" | "rejected" | "expired";
   preview: {
+    from_email?: string;
     to_email: string;
     subject: string;
     body: string;

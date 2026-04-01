@@ -87,10 +87,12 @@ export function ToolApprovalCard({ toolApproval }: Props) {
         className="flex items-center gap-3 px-5 py-3.5 border-b border-amber-600/50"
         style={{ backgroundColor: "#78350f" }}
       >
-        <EnvelopeIcon className="h-5 w-5 text-white shrink-0" />
+        <EnvelopeIcon className="h-5 w-5 shrink-0" style={{ color: "#ffffff" }} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white">Email approval required</p>
-          <p className="text-xs text-amber-200">
+          <p className="text-sm font-semibold" style={{ color: "#ffffff" }}>
+            Email approval required
+          </p>
+          <p className="text-xs" style={{ color: "#fde68a" }}>
             {isResolved
               ? "This request has been resolved."
               : "Review and optionally edit the message below before it is sent."}
@@ -123,6 +125,19 @@ export function ToolApprovalCard({ toolApproval }: Props) {
 
       {/* Editable email fields */}
       <div className="px-5 py-4 space-y-4">
+        {/* From — read-only */}
+        {preview?.from_email && (
+          <div>
+            <label className="flex items-center gap-1.5 text-xs text-gray-400 uppercase tracking-wider font-bold mb-1.5">
+              <EnvelopeIcon className="h-3.5 w-3.5 text-amber-400" />
+              From
+            </label>
+            <p className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 font-mono">
+              {preview.from_email}
+            </p>
+          </div>
+        )}
+
         {/* To */}
         <div>
           <label className="flex items-center gap-1.5 text-xs text-gray-400 uppercase tracking-wider font-bold mb-1.5">
