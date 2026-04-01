@@ -339,24 +339,21 @@ function CreateCredentialForm({
   const [sesRegion, setSesRegion] = useState("");
   const [sesFromEmail, setSesFromEmail] = useState("");
 
-  // Google OAuth fields
-  const [googleClientId, setGoogleClientId] = useState("");
-  const [googleClientSecret, setGoogleClientSecret] = useState("");
-  const [googleRefreshToken, setGoogleRefreshToken] = useState("");
+  // Google Gmail SMTP fields
   const [googleFromEmail, setGoogleFromEmail] = useState("");
-  const [showGoogleSecret, setShowGoogleSecret] = useState(false);
-  const [showGoogleRefreshToken, setShowGoogleRefreshToken] = useState(false);
+  const [googleAppPassword, setGoogleAppPassword] = useState("");
+  const [showGoogleAppPassword, setShowGoogleAppPassword] = useState(false);
 
   const isAwsSes = serviceName === ServiceName.AWS_SES;
-  const isGoogleOAuth = serviceName === ServiceName.GOOGLE_OAUTH;
+  const isGoogleGmailSmtp = serviceName === ServiceName.GOOGLE_GMAIL_SMTP;
   const isAccessKeyPair = credentialType === CredentialType.AWS_ACCESS_KEY_PAIR;
 
   const handleServiceNameChange = (value: ServiceName | "") => {
     setServiceName(value);
     if (value === ServiceName.AWS_SES) {
       setCredentialType(CredentialType.AWS_ACCESS_KEY_PAIR);
-    } else if (value === ServiceName.GOOGLE_OAUTH) {
-      setCredentialType(CredentialType.OAUTH_TOKEN);
+    } else if (value === ServiceName.GOOGLE_GMAIL_SMTP) {
+      setCredentialType(CredentialType.API_KEY);
     }
   };
 
@@ -380,16 +377,14 @@ function CreateCredentialForm({
         aws_region: sesRegion.trim(),
         from_email: sesFromEmail.trim(),
       };
-    } else if (isGoogleOAuth) {
-      if (!googleClientId.trim() || !googleClientSecret.trim() || !googleRefreshToken.trim() || !googleFromEmail.trim()) {
-        errorToast("Please fill in all four Google OAuth fields");
+    } else if (isGoogleGmailSmtp) {
+      if (!googleFromEmail.trim() || !googleAppPassword.trim()) {
+        errorToast("Please fill in both Gmail SMTP fields");
         return;
       }
       credentialData = {
-        client_id: googleClientId.trim(),
-        client_secret: googleClientSecret.trim(),
-        refresh_token: googleRefreshToken.trim(),
         from_email: googleFromEmail.trim(),
+        app_password: googleAppPassword.trim(),
       };
     } else if (isAccessKeyPair) {
       if (!keyId.trim() || !secretValue.trim()) {
@@ -430,10 +425,8 @@ function CreateCredentialForm({
       setSecretValue("");
       setSesRegion("");
       setSesFromEmail("");
-      setGoogleClientId("");
-      setGoogleClientSecret("");
-      setGoogleRefreshToken("");
       setGoogleFromEmail("");
+      setGoogleAppPassword("");
       setLabel("");
       setEnvironment("");
       setNotes("");
@@ -492,8 +485,8 @@ function CreateCredentialForm({
             </select>
           </div>
 
-          {/* Credential Type — hidden for AWS SES and Google OAuth (auto-set) */}
-          {!isAwsSes && !isGoogleOAuth && (
+          {/* Credential Type — hidden for AWS SES and Google Gmail SMTP (auto-set) */}
+          {!isAwsSes && !isGoogleGmailSmtp && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Credential Type *
@@ -597,72 +590,9 @@ function CreateCredentialForm({
             </div>
           )}
 
-          {/* Google OAuth — four dedicated fields */}
-          {isGoogleOAuth && (
+          {/* Google Gmail SMTP — two dedicated fields */}
+          {isGoogleGmailSmtp && (
             <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Client ID *
-                </label>
-                <input
-                  type="text"
-                  value={googleClientId}
-                  onChange={(e) => setGoogleClientId(e.target.value)}
-                  placeholder="123456789-abc.apps.googleusercontent.com"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Client Secret *
-                </label>
-                <div className="relative">
-                  <input
-                    type={showGoogleSecret ? "text" : "password"}
-                    value={googleClientSecret}
-                    onChange={(e) => setGoogleClientSecret(e.target.value)}
-                    placeholder="GOCSPX-..."
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowGoogleSecret(!showGoogleSecret)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showGoogleSecret ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Refresh Token *
-                </label>
-                <div className="relative">
-                  <input
-                    type={showGoogleRefreshToken ? "text" : "password"}
-                    value={googleRefreshToken}
-                    onChange={(e) => setGoogleRefreshToken(e.target.value)}
-                    placeholder="1//0g..."
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowGoogleRefreshToken(!showGoogleRefreshToken)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showGoogleRefreshToken ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  Obtain from Google OAuth Playground with the <code className="text-blue-400">gmail.send</code> scope.
-                </p>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   From Email *
@@ -676,14 +606,40 @@ function CreateCredentialForm({
                   required
                 />
                 <p className="text-gray-500 text-xs mt-1">
-                  The Gmail address the refresh token was authorized for.
+                  The Gmail address to send from.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  App Password *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showGoogleAppPassword ? "text" : "password"}
+                    value={googleAppPassword}
+                    onChange={(e) => setGoogleAppPassword(e.target.value)}
+                    placeholder="xxxx xxxx xxxx xxxx"
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleAppPassword(!showGoogleAppPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  >
+                    {showGoogleAppPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                  </button>
+                </div>
+                <p className="text-gray-500 text-xs mt-1">
+                  Generate at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">myaccount.google.com/apppasswords</a>. Requires 2-Step Verification to be enabled.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Generic single-value input — all types except Access Key Pair and Google OAuth */}
-          {!isAccessKeyPair && !isGoogleOAuth && (
+          {/* Generic single-value input — all types except Access Key Pair and Google Gmail SMTP */}
+          {!isAccessKeyPair && !isGoogleGmailSmtp && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 {formatCredentialType(credentialType)} Value *
@@ -822,7 +778,7 @@ function EditCredentialModal({
 }) {
   const isAccessKeyPair = credential.credential_type === CredentialType.AWS_ACCESS_KEY_PAIR;
   const isAwsSes = credential.service_name === ServiceName.AWS_SES;
-  const isGoogleOAuth = credential.service_name === ServiceName.GOOGLE_OAUTH;
+  const isGoogleGmailSmtp = credential.service_name === ServiceName.GOOGLE_GMAIL_SMTP;
 
   // For key pairs, seed both halves from credential_data
   const existingKeyId = isAwsSes
@@ -841,20 +797,13 @@ function EditCredentialModal({
   const [sesFromEmail, setSesFromEmail] = useState(
     (credential.credential_data?.from_email as string) || ""
   );
-  const [googleClientId, setGoogleClientId] = useState(
-    (credential.credential_data?.client_id as string) || ""
-  );
-  const [googleClientSecret, setGoogleClientSecret] = useState(
-    (credential.credential_data?.client_secret as string) || ""
-  );
-  const [googleRefreshToken, setGoogleRefreshToken] = useState(
-    (credential.credential_data?.refresh_token as string) || ""
-  );
   const [googleFromEmail, setGoogleFromEmail] = useState(
     (credential.credential_data?.from_email as string) || ""
   );
-  const [showGoogleSecret, setShowGoogleSecret] = useState(false);
-  const [showGoogleRefreshToken, setShowGoogleRefreshToken] = useState(false);
+  const [googleAppPassword, setGoogleAppPassword] = useState(
+    (credential.credential_data?.app_password as string) || ""
+  );
+  const [showGoogleAppPassword, setShowGoogleAppPassword] = useState(false);
   const [label, setLabel] = useState(credential.credential_metadata?.label || "");
   const [environment, setEnvironment] = useState<"production" | "staging" | "development" | "">(
     credential.credential_metadata?.environment || ""
@@ -878,16 +827,14 @@ function EditCredentialModal({
         aws_region: sesRegion.trim(),
         from_email: sesFromEmail.trim(),
       };
-    } else if (isGoogleOAuth) {
-      if (!googleClientId.trim() || !googleClientSecret.trim() || !googleRefreshToken.trim() || !googleFromEmail.trim()) {
-        errorToast("Please fill in all four Google OAuth fields");
+    } else if (isGoogleGmailSmtp) {
+      if (!googleFromEmail.trim() || !googleAppPassword.trim()) {
+        errorToast("Please fill in both Gmail SMTP fields");
         return;
       }
       credentialData = {
-        client_id: googleClientId.trim(),
-        client_secret: googleClientSecret.trim(),
-        refresh_token: googleRefreshToken.trim(),
         from_email: googleFromEmail.trim(),
+        app_password: googleAppPassword.trim(),
       };
     } else if (isAccessKeyPair) {
       if (!keyId.trim() || !secretValue.trim()) {
@@ -1035,66 +982,9 @@ function EditCredentialModal({
             </div>
           )}
 
-          {/* Google OAuth — four dedicated fields */}
-          {isGoogleOAuth && (
+          {/* Google Gmail SMTP — two dedicated fields */}
+          {isGoogleGmailSmtp && (
             <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Client ID
-                </label>
-                <input
-                  type="text"
-                  value={googleClientId}
-                  onChange={(e) => setGoogleClientId(e.target.value)}
-                  placeholder="123456789-abc.apps.googleusercontent.com"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Client Secret
-                </label>
-                <div className="relative">
-                  <input
-                    type={showGoogleSecret ? "text" : "password"}
-                    value={googleClientSecret}
-                    onChange={(e) => setGoogleClientSecret(e.target.value)}
-                    placeholder="GOCSPX-..."
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowGoogleSecret(!showGoogleSecret)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showGoogleSecret ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Refresh Token
-                </label>
-                <div className="relative">
-                  <input
-                    type={showGoogleRefreshToken ? "text" : "password"}
-                    value={googleRefreshToken}
-                    onChange={(e) => setGoogleRefreshToken(e.target.value)}
-                    placeholder="1//0g..."
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowGoogleRefreshToken(!showGoogleRefreshToken)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showGoogleRefreshToken ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   From Email
@@ -1107,11 +997,36 @@ function EditCredentialModal({
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  App Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showGoogleAppPassword ? "text" : "password"}
+                    value={googleAppPassword}
+                    onChange={(e) => setGoogleAppPassword(e.target.value)}
+                    placeholder="xxxx xxxx xxxx xxxx"
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleAppPassword(!showGoogleAppPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  >
+                    {showGoogleAppPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                  </button>
+                </div>
+                <p className="text-gray-500 text-xs mt-1">
+                  Generate at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">myaccount.google.com/apppasswords</a>.
+                </p>
+              </div>
             </div>
           )}
 
           {/* Single-value field — all other credential types */}
-          {!isAccessKeyPair && !isGoogleOAuth && (
+          {!isAccessKeyPair && !isGoogleGmailSmtp && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 {formatCredentialType(credential.credential_type)} Value

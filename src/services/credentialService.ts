@@ -8,6 +8,7 @@ export enum ServiceName {
   SUPABASE = "SUPABASE",
   AWS_SES = "AWS_SES",
   GOOGLE_OAUTH = "GOOGLE_OAUTH",
+  GOOGLE_GMAIL_SMTP = "GOOGLE_GMAIL_SMTP",
 }
 
 // Credential types supported by the system
@@ -202,6 +203,7 @@ export function formatServiceName(serviceName: ServiceName | string): string {
     [ServiceName.SUPABASE]: "Supabase",
     [ServiceName.AWS_SES]: "AWS SES",
     [ServiceName.GOOGLE_OAUTH]: "Google OAuth",
+    [ServiceName.GOOGLE_GMAIL_SMTP]: "Google Gmail (SMTP)",
   };
   return displayNames[serviceName] || serviceName;
 }

@@ -156,7 +156,7 @@ export function AddToolModal({
       );
       setSesCredentials(sesCreds);
       const googleCreds = allCredentials.filter(
-        (c) => c.service_name === ServiceName.GOOGLE_OAUTH || c.service_name === "GOOGLE_OAUTH"
+        (c) => c.service_name === ServiceName.GOOGLE_GMAIL_SMTP || c.service_name === "GOOGLE_GMAIL_SMTP"
       );
       setGoogleCredentials(googleCreds);
     } catch (error: any) {
@@ -944,15 +944,13 @@ export function AddToolModal({
                       <KeyIcon className="h-5 w-5 text-yellow-400 mt-0.5" />
                       <div>
                         <h4 className="text-sm font-medium text-yellow-300">
-                          No Google OAuth Credentials Found
+                          No Gmail SMTP Credentials Found
                         </h4>
                         <p className="text-xs text-yellow-400/80 mt-1">
-                          You need to create a credential with service name &quot;GOOGLE_OAUTH&quot; first.
-                          Go to Credentials → Add Credential and set the service name to GOOGLE_OAUTH.
-                          The credential must contain <code className="text-yellow-300">client_id</code>,{" "}
-                          <code className="text-yellow-300">client_secret</code>,{" "}
-                          <code className="text-yellow-300">refresh_token</code>, and{" "}
-                          <code className="text-yellow-300">from_email</code>.
+                          You need to create a credential with service name &quot;Google Gmail (SMTP)&quot; first.
+                          Go to Credentials → Add Credential and set the service name to GOOGLE_GMAIL_SMTP.
+                          The credential must contain <code className="text-yellow-300">from_email</code> and{" "}
+                          <code className="text-yellow-300">app_password</code> (a Gmail App Password).
                         </p>
                       </div>
                     </div>
