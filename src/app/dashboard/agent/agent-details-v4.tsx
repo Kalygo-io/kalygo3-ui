@@ -12,6 +12,7 @@ import {
   ModelProvider,
   AVAILABLE_MODELS,
   DEFAULT_MODEL,
+  TOOL_TYPE_METADATA,
 } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
@@ -21,11 +22,8 @@ import {
   PlusIcon,
   PencilIcon,
   LinkIcon,
-  CircleStackIcon,
-  PencilSquareIcon,
   CpuChipIcon,
   SpeakerWaveIcon,
-  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { AddToolModal } from "./add-tool-modal";
 import { AgentSharingPanel } from "@/components/agent-sharing/agent-sharing-panel";
@@ -553,232 +551,75 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                       </thead>
                       <tbody className="divide-y divide-gray-700/50">
                         {tools.map((tool, index) => {
-                          // Render dbTableRead tools
-                          if (tool.type === "dbTableRead") {
-                            const formatTableName = (name: string) =>
-                              name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+                          const meta = TOOL_TYPE_METADATA[tool.type];
+                          return (
+                            <tr
+                              key={index}
+                              className="hover:bg-gray-800/30 transition-colors"
+                            >
+                              {/* Type badge */}
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-800/50 ${meta.borderClass} ${meta.iconClass}`}>
+                                  {meta.label}
+                                </span>
+                              </td>
 
-                            const toolDisplayName = `query_${tool.table}`;
-
-                            return (
-                              <tr
-                                key={index}
-                                className="hover:bg-gray-800/30 transition-colors"
-                              >
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-600/20 text-green-300 border border-green-500/40">
-                                    <CircleStackIcon className="h-3 w-3" />
-                                    Database Query
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="space-y-1">
-                                    <span className="text-sm text-white font-medium block">
-                                      {formatTableName(tool.table)}
-                                    </span>
-                                    <code className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded">
-                                      {toolDisplayName}
-                                    </code>
-                                    <div className="text-xs text-gray-500">
-                                      Credential ID: {tool.credentialId}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="space-y-1">
-                                    <span className="text-sm text-gray-300 block">
-                                      {tool.description || (
-                                        <span className="text-gray-500 italic">
-                                          No description
-                                        </span>
-                                      )}
-                                    </span>
-                                    {tool.columns && tool.columns.length > 0 && (
-                                      <div className="text-xs text-gray-500">
-                                        Columns: {tool.columns.join(", ")}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
+                              {/* Tool name + summary */}
+                              <td className="px-4 py-3">
+                                <div className="space-y-1">
+                                  <code className="text-xs text-gray-200 bg-gray-800 px-1.5 py-0.5 rounded font-mono">
+                                    {tool.type}
+                                  </code>
                                   <div className="text-xs text-gray-500">
-                                    Max: {tool.maxLimit || 100} rows
+                                    {meta.summary(tool)}
                                   </div>
-                                </td>
-                                {isOwner && (
-                                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
-                                        title="Edit tool"
-                                        aria-label="Edit tool"
-                                      >
-                                        <PencilIcon className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                        title="Remove tool"
-                                        aria-label="Remove tool"
-                                      >
-                                        <TrashIcon className="h-4 w-4" />
-                                      </button>
-                                    </div>
-                                  </td>
+                                </div>
+                              </td>
+
+                              {/* Description */}
+                              <td className="px-4 py-3">
+                                <span className="text-sm text-gray-300 block">
+                                  {tool.description || (
+                                    <span className="text-gray-500 italic">
+                                      No description
+                                    </span>
+                                  )}
+                                </span>
+                              </td>
+
+                              {/* Settings */}
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {tool.type === "vectorSearch" && (
+                                  <div className="text-xs text-gray-500">Top K: {tool.topK || 10}</div>
                                 )}
-                              </tr>
-                            );
-                          }
-
-                          // Render dbTableWrite tools
-                          if (tool.type === "dbTableWrite") {
-                            const formatTableName = (name: string) =>
-                              name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-
-                            const toolDisplayName = tool.name || `insert_${tool.table}`;
-
-                            return (
-                              <tr
-                                key={index}
-                                className="hover:bg-gray-800/30 transition-colors"
-                              >
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-600/20 text-orange-300 border border-orange-500/40">
-                                    <PencilSquareIcon className="h-3 w-3" />
-                                    Database Write
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
+                                {tool.type === "vectorSearchWithReranking" && (
+                                  <div className="text-xs text-gray-500">K: {tool.topK || 20}, N: {tool.topN || 5}</div>
+                                )}
+                                {tool.type === "dbTableRead" && (
+                                  <div className="text-xs text-gray-500">Max: {tool.maxLimit || 100} rows</div>
+                                )}
+                                {tool.type === "dbTableWrite" && (
                                   <div className="space-y-1">
-                                    <span className="text-sm text-white font-medium block">
-                                      {formatTableName(tool.table)}
-                                    </span>
-                                    <code className="text-xs text-orange-400 bg-orange-900/20 px-1.5 py-0.5 rounded">
-                                      {toolDisplayName}
-                                    </code>
-                                    <div className="text-xs text-gray-500">
-                                      Credential ID: {tool.credentialId}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="space-y-1">
-                                    <span className="text-sm text-gray-300 block">
-                                      {tool.description || (
-                                        <span className="text-gray-500 italic">
-                                          No description
-                                        </span>
-                                      )}
-                                    </span>
-                                    <div className="text-xs text-gray-500">
-                                      Columns: {tool.columns.join(", ")}
-                                    </div>
-                                    {tool.requiredColumns && tool.requiredColumns.length > 0 && (
-                                      <div className="text-xs text-orange-400/80">
-                                        Required: {tool.requiredColumns.join(", ")}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="space-y-1">
-                                    <div className="text-xs text-gray-500">
-                                      {tool.columns.length} columns
-                                    </div>
+                                    <div className="text-xs text-gray-500">{tool.columns.length} columns</div>
                                     {tool.injectAccountId && (
-                                      <div className="text-xs text-orange-400">
-                                        + account_id
-                                      </div>
+                                      <div className="text-xs text-orange-400">+ account_id</div>
                                     )}
                                     {tool.injectChatSessionId && (
-                                      <div className="text-xs text-orange-400">
-                                        + chat_session_id
-                                      </div>
+                                      <div className="text-xs text-orange-400">+ chat_session_id</div>
                                     )}
                                   </div>
-                                </td>
-                                {isOwner && (
-                                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-600/20 rounded-lg transition-colors duration-200"
-                                        title="Edit tool"
-                                        aria-label="Edit tool"
-                                      >
-                                        <PencilIcon className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                        title="Remove tool"
-                                        aria-label="Remove tool"
-                                      >
-                                        <TrashIcon className="h-4 w-4" />
-                                      </button>
-                                    </div>
-                                  </td>
                                 )}
-                              </tr>
-                            );
-                          }
-                          
-                          // Render vector search tools
-                          if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
-                            const canNavigate = tool.provider === "pinecone" && tool.index;
-                            const isReranking = tool.type === "vectorSearchWithReranking";
+                                {(tool.type === "sendTxtEmail" || tool.type === "sendTxtEmailWithGoogle") && (
+                                  <div className="text-xs text-gray-500">Plain text</div>
+                                )}
+                              </td>
 
-                            return (
-                              <tr
-                                key={index}
-                                className="hover:bg-gray-800/30 transition-colors"
-                              >
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    isReranking
-                                      ? "bg-blue-600/20 text-blue-300 border border-blue-500/40"
-                                      : "bg-purple-600/20 text-purple-300 border border-purple-500/40"
-                                  }`}>
-                                    {isReranking ? "Vector Search + Rerank" : "Vector Search"}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="space-y-1">
-                                    <span className="text-sm text-white font-medium capitalize block">
-                                      {tool.provider}
-                                    </span>
-                                    <span className="text-xs text-gray-400">
-                                      {tool.index} / {tool.namespace}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="text-sm text-gray-300 block">
-                                    {tool.description || (
-                                      <span className="text-gray-500 italic">
-                                        No description
-                                      </span>
-                                    )}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="text-xs text-gray-500">
-                                    {isReranking ? (
-                                      <>K: {tool.topK || 20}, N: {tool.topN || 5}</>
-                                    ) : (
-                                      <>Top K: {tool.topK || 10}</>
-                                    )}
-                                  </div>
-                                </td>
-                                {isOwner && (
-                                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      {canNavigate && (
+                              {/* Actions */}
+                              {isOwner && (
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    {(tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") &&
+                                      tool.provider === "pinecone" && tool.index && (
                                         <button
                                           type="button"
                                           onClick={() =>
@@ -793,163 +634,29 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                                           View Details
                                         </button>
                                       )}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
-                                        title="Edit tool"
-                                        aria-label="Edit tool"
-                                      >
-                                        <PencilIcon className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                        title="Remove tool"
-                                        aria-label="Remove tool"
-                                      >
-                                        <TrashIcon className="h-4 w-4" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                )}
-                              </tr>
-                            );
-                          }
-                          // Render sendTxtEmail (SES) tools
-                          if (tool.type === "sendTxtEmail") {
-                            return (
-                              <tr
-                                key={index}
-                                className="hover:bg-gray-800/30 transition-colors"
-                              >
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-600/20 text-pink-300 border border-pink-500/40">
-                                    <EnvelopeIcon className="h-3 w-3" />
-                                    Send Email
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="space-y-1">
-                                    <span className="text-sm text-white font-medium block">
-                                      AWS SES
-                                    </span>
-                                    <code className="text-xs text-pink-400 bg-pink-900/20 px-1.5 py-0.5 rounded">
-                                      send_txt_email_with_ses
-                                    </code>
-                                    <div className="text-xs text-gray-500">
-                                      Credential ID: {tool.credentialId}
-                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditTool(index)}
+                                      className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
+                                      title="Edit tool"
+                                      aria-label="Edit tool"
+                                    >
+                                      <PencilIcon className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTool(index)}
+                                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                                      title="Remove tool"
+                                      aria-label="Remove tool"
+                                    >
+                                      <TrashIcon className="h-4 w-4" />
+                                    </button>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3">
-                                  <span className="text-sm text-gray-300 block">
-                                    {tool.description || (
-                                      <span className="text-gray-500 italic">
-                                        No description
-                                      </span>
-                                    )}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="text-xs text-gray-500">Plain text</div>
-                                </td>
-                                {isOwner && (
-                                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-pink-400 hover:bg-pink-600/20 rounded-lg transition-colors duration-200"
-                                        title="Edit tool"
-                                        aria-label="Edit tool"
-                                      >
-                                        <PencilIcon className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                        title="Remove tool"
-                                        aria-label="Remove tool"
-                                      >
-                                        <TrashIcon className="h-4 w-4" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                )}
-                              </tr>
-                            );
-                          }
-
-                          // Render sendTxtEmailWithGoogle tools
-                          if (tool.type === "sendTxtEmailWithGoogle") {
-                            return (
-                              <tr
-                                key={index}
-                                className="hover:bg-gray-800/30 transition-colors"
-                              >
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-600/20 text-blue-300 border border-blue-500/40">
-                                    <EnvelopeIcon className="h-3 w-3" />
-                                    Send Email
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="space-y-1">
-                                    <span className="text-sm text-white font-medium block">
-                                      Google Gmail
-                                    </span>
-                                    <code className="text-xs text-blue-400 bg-blue-900/20 px-1.5 py-0.5 rounded">
-                                      send_txt_email_with_google
-                                    </code>
-                                    <div className="text-xs text-gray-500">
-                                      Credential ID: {tool.credentialId}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="text-sm text-gray-300 block">
-                                    {tool.description || (
-                                      <span className="text-gray-500 italic">
-                                        No description
-                                      </span>
-                                    )}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="text-xs text-gray-500">Plain text</div>
-                                </td>
-                                {isOwner && (
-                                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
-                                        title="Edit tool"
-                                        aria-label="Edit tool"
-                                      >
-                                        <PencilIcon className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveTool(index)}
-                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                        title="Remove tool"
-                                        aria-label="Remove tool"
-                                      >
-                                        <TrashIcon className="h-4 w-4" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                )}
-                              </tr>
-                            );
-                          }
-
-                          return null;
+                              )}
+                            </tr>
+                          );
                         })}
                       </tbody>
                     </table>
