@@ -11,6 +11,7 @@ import {
   ModelProvider,
   AVAILABLE_MODELS,
   DEFAULT_MODEL,
+  TOOL_TYPE_METADATA,
 } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
@@ -19,8 +20,6 @@ import {
   PlusIcon,
   TrashIcon,
   PencilIcon,
-  CircleStackIcon,
-  PencilSquareIcon,
   CpuChipIcon,
   SpeakerWaveIcon,
 } from "@heroicons/react/24/outline";
@@ -319,207 +318,52 @@ export function CreateAgentV4Container() {
               <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
                 <div className="divide-y divide-gray-700/50">
                   {tools.map((tool, index) => {
-                    if (tool.type === "dbTableRead") {
-                      const formatTableName = (name: string) =>
-                        name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-                      const toolDisplayName = tool.name || `query_${tool.table}`;
-                      return (
-                        <div
-                          key={index}
-                          className="p-4 hover:bg-gray-800/30 transition-colors"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-600/20 text-green-300 border border-green-500/40">
-                                  <CircleStackIcon className="h-3 w-3" />
-                                  Database Query
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm text-gray-300">
-                                  <span className="font-medium">Table:</span>{" "}
-                                  <span className="text-white">{formatTableName(tool.table)}</span>{" "}
-                                  <code className="text-xs text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded ml-1">
-                                    {toolDisplayName}
-                                  </code>
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Credential ID: {tool.credentialId}
-                                </p>
-                                {tool.description && (
-                                  <p className="text-sm text-gray-400">{tool.description}</p>
-                                )}
-                                {tool.columns && tool.columns.length > 0 && (
-                                  <p className="text-xs text-gray-500">
-                                    Columns: {tool.columns.join(", ")}
-                                  </p>
-                                )}
-                                <p className="text-xs text-gray-500">
-                                  Max: {tool.maxLimit || 100} rows
-                                </p>
-                              </div>
+                    const meta = TOOL_TYPE_METADATA[tool.type];
+                    return (
+                      <div
+                        key={index}
+                        className="p-4 hover:bg-gray-800/30 transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-800/50 ${meta.borderClass} ${meta.iconClass}`}>
+                                {meta.label}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-2 ml-4">
-                              <button
-                                type="button"
-                                onClick={() => handleEditTool(index)}
-                                className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-600/20 rounded-lg transition-colors duration-200"
-                                title="Edit tool"
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTool(index)}
-                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                title="Remove tool"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </button>
+                            <div className="space-y-1">
+                              <p className="text-sm text-gray-300">
+                                <code className="text-xs text-gray-200 bg-gray-800 px-1.5 py-0.5 rounded font-mono">
+                                  {tool.type}
+                                </code>
+                              </p>
+                              <p className="text-xs text-gray-500">{meta.summary(tool)}</p>
+                              {tool.description && (
+                                <p className="text-sm text-gray-400">{tool.description}</p>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      );
-                    }
-
-                    if (tool.type === "dbTableWrite") {
-                      const formatTableName = (name: string) =>
-                        name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-                      const toolDisplayName = tool.name || `insert_${tool.table}`;
-                      return (
-                        <div
-                          key={index}
-                          className="p-4 hover:bg-gray-800/30 transition-colors"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-600/20 text-orange-300 border border-orange-500/40">
-                                  <PencilSquareIcon className="h-3 w-3" />
-                                  Database Write
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm text-gray-300">
-                                  <span className="font-medium">Table:</span>{" "}
-                                  <span className="text-white">{formatTableName(tool.table)}</span>{" "}
-                                  <code className="text-xs text-orange-400 bg-orange-900/20 px-1.5 py-0.5 rounded ml-1">
-                                    {toolDisplayName}
-                                  </code>
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Credential ID: {tool.credentialId}
-                                </p>
-                                {tool.description && (
-                                  <p className="text-sm text-gray-400">{tool.description}</p>
-                                )}
-                                <p className="text-xs text-gray-500">
-                                  Columns: {tool.columns.join(", ")}
-                                </p>
-                                {tool.requiredColumns && tool.requiredColumns.length > 0 && (
-                                  <p className="text-xs text-orange-400/80">
-                                    Required: {tool.requiredColumns.join(", ")}
-                                  </p>
-                                )}
-                                {(tool.injectAccountId || tool.injectChatSessionId) && (
-                                  <p className="text-xs text-orange-400">
-                                    {tool.injectAccountId && "+ Auto-inject account_id "}
-                                    {tool.injectChatSessionId && "+ Auto-inject chat_session_id"}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 ml-4">
-                              <button
-                                type="button"
-                                onClick={() => handleEditTool(index)}
-                                className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-600/20 rounded-lg transition-colors duration-200"
-                                title="Edit tool"
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTool(index)}
-                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                title="Remove tool"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </button>
-                            </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <button
+                              type="button"
+                              onClick={() => handleEditTool(index)}
+                              className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
+                              title="Edit tool"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTool(index)}
+                              className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                              title="Remove tool"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
-                      );
-                    }
-
-                    if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
-                      const isReranking = tool.type === "vectorSearchWithReranking";
-                      return (
-                        <div
-                          key={index}
-                          className="p-4 hover:bg-gray-800/30 transition-colors"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    isReranking
-                                      ? "bg-blue-600/20 text-blue-300 border border-blue-500/40"
-                                      : "bg-purple-600/20 text-purple-300 border border-purple-500/40"
-                                  }`}
-                                >
-                                  {isReranking ? "Vector Search + Rerank" : "Vector Search"}
-                                </span>
-                                <span className="text-sm font-medium text-white capitalize">
-                                  {tool.provider}
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm text-gray-300">
-                                  <span className="font-medium">Index:</span> {tool.index}
-                                </p>
-                                <p className="text-sm text-gray-300">
-                                  <span className="font-medium">Namespace:</span> {tool.namespace}
-                                </p>
-                                {tool.description && (
-                                  <p className="text-sm text-gray-400">{tool.description}</p>
-                                )}
-                                <p className="text-xs text-gray-500">
-                                  {isReranking ? (
-                                    <>
-                                      K: {tool.topK || 20}, N: {tool.topN || 5}
-                                    </>
-                                  ) : (
-                                    <>Top K: {tool.topK || 10}</>
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 ml-4">
-                              <button
-                                type="button"
-                                onClick={() => handleEditTool(index)}
-                                className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
-                                title="Edit tool"
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTool(index)}
-                                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                                title="Remove tool"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
+                      </div>
+                    );
                   })}
                 </div>
               </div>
