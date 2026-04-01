@@ -47,12 +47,19 @@ export interface SendTxtEmailTool {
   description?: string;
 }
 
+export interface SendTxtEmailWithGoogleTool {
+  type: "sendTxtEmailWithGoogle";
+  credentialId: number;
+  description?: string;
+}
+
 export type AgentTool =
   | VectorSearchTool
   | VectorSearchWithRerankingTool
   | DbTableReadTool
   | DbTableWriteTool
-  | SendTxtEmailTool;
+  | SendTxtEmailTool
+  | SendTxtEmailWithGoogleTool;
 
 // ============================================================================
 // Agent Config (V4)
@@ -126,10 +133,16 @@ export const TOOL_TYPE_METADATA: Record<AgentTool["type"], ToolTypeMeta> = {
     summary: (t) => (t as DbTableWriteTool).table,
   },
   sendTxtEmail: {
-    label: "Send Email",
+    label: "Send Email (SES)",
     borderClass: "border-pink-700/30",
     iconClass: "text-pink-400",
     summary: () => "AWS SES · requires human approval",
+  },
+  sendTxtEmailWithGoogle: {
+    label: "Send Email (Google)",
+    borderClass: "border-blue-700/30",
+    iconClass: "text-blue-400",
+    summary: () => "Google Gmail · requires human approval",
   },
 };
 

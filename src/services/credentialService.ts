@@ -7,6 +7,7 @@ export enum ServiceName {
   ELEVENLABS_API_KEY = "ELEVENLABS_API_KEY",
   SUPABASE = "SUPABASE",
   AWS_SES = "AWS_SES",
+  GOOGLE_OAUTH = "GOOGLE_OAUTH",
 }
 
 // Credential types supported by the system
@@ -158,7 +159,7 @@ class CredentialService {
     data: UpdateCredentialRequest,
   ): Promise<Credential> {
     const response = await fetch(
-      `${API_BASE_URL}/api/credentials/${credentialId}`,
+      `${API_BASE_URL}/api/credentials/${credentialId}/full`,
       {
         method: "PUT",
         headers: {
@@ -200,6 +201,7 @@ export function formatServiceName(serviceName: ServiceName | string): string {
     [ServiceName.ELEVENLABS_API_KEY]: "ElevenLabs",
     [ServiceName.SUPABASE]: "Supabase",
     [ServiceName.AWS_SES]: "AWS SES",
+    [ServiceName.GOOGLE_OAUTH]: "Google OAuth",
   };
   return displayNames[serviceName] || serviceName;
 }

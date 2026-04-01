@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
-import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailTool } from "@/services/agentsService";
+import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailTool, SendTxtEmailWithGoogleTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { credentialService, Credential, CredentialType, ServiceName, formatServiceName } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -19,7 +19,7 @@ export function AddToolModal({
   initialTool,
 }: AddToolModalProps) {
   // Tool category selection
-  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite" | "sendTxtEmail">("vectorSearch");
+  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite" | "sendTxtEmail" | "sendTxtEmailWithGoogle">("vectorSearch");
   
   // Vector search state
   const [vectorToolType, setVectorToolType] = useState<"vectorSearch" | "vectorSearchWithReranking">("vectorSearch");
@@ -54,8 +54,12 @@ export function AddToolModal({
   const [sesCredentials, setSesCredentials] = useState<Credential[]>([]);
   const [loadingCredentials, setLoadingCredentials] = useState(false);
 
-  // Send Text Email state
+  // Send Text Email (SES) state
   const [selectedSesCredentialId, setSelectedSesCredentialId] = useState<number | "">("");
+
+  // Send Text Email (Google) state
+  const [selectedGoogleCredentialId, setSelectedGoogleCredentialId] = useState<number | "">("");
+  const [googleCredentials, setGoogleCredentials] = useState<Credential[]>([]);
 
   const isEditing = !!initialTool;
 
@@ -68,14 +72,12 @@ export function AddToolModal({
         setToolCategory("dbTableRead");
         setSelectedCredentialId(initialTool.credentialId);
         setTableName(initialTool.table);
-        setToolName(initialTool.name || "");
         setColumns(initialTool.columns?.join(", ") || "");
         setMaxLimit(initialTool.maxLimit || 100);
       } else if (initialTool.type === "dbTableWrite") {
         setToolCategory("dbTableWrite");
         setSelectedCredentialId(initialTool.credentialId);
         setTableName(initialTool.table);
-        setToolName(initialTool.name || "");
         setColumns(initialTool.columns.join(", "));
         setRequiredColumns(initialTool.requiredColumns?.join(", ") || "");
         setInjectAccountId(initialTool.injectAccountId || false);
@@ -83,7 +85,9 @@ export function AddToolModal({
       } else if (initialTool.type === "sendTxtEmail") {
         setToolCategory("sendTxtEmail");
         setSelectedSesCredentialId(initialTool.credentialId);
-        setToolName(initialTool.name || "");
+      } else if (initialTool.type === "sendTxtEmailWithGoogle") {
+        setToolCategory("sendTxtEmailWithGoogle");
+        setSelectedGoogleCredentialId(initialTool.credentialId);
       } else {
         setToolCategory("vectorSearch");
         setVectorToolType(initialTool.type);
@@ -151,6 +155,10 @@ export function AddToolModal({
         (c) => c.service_name === ServiceName.AWS_SES || c.service_name === "AWS_SES"
       );
       setSesCredentials(sesCreds);
+      const googleCreds = allCredentials.filter(
+        (c) => c.service_name === ServiceName.GOOGLE_OAUTH || c.service_name === "GOOGLE_OAUTH"
+      );
+      setGoogleCredentials(googleCreds);
     } catch (error: any) {
       console.error("Failed to load credentials:", error);
     } finally {
@@ -270,6 +278,22 @@ export function AddToolModal({
       }
 
       tool = sesTool;
+    } else if (toolCategory === "sendTxtEmailWithGoogle") {
+      if (!selectedGoogleCredentialId) {
+        errorToast("Please select a Google OAuth credential");
+        return;
+      }
+
+      const googleTool: SendTxtEmailWithGoogleTool = {
+        type: "sendTxtEmailWithGoogle",
+        credentialId: selectedGoogleCredentialId as number,
+      };
+
+      if (description.trim()) {
+        googleTool.description = description.trim();
+      }
+
+      tool = googleTool;
     } else {
       // Vector search tools
       if (!selectedIndex) {
@@ -309,18 +333,21 @@ export function AddToolModal({
 
   const selectedCredential = dbCredentials.find((c) => c.id === selectedCredentialId);
   const selectedSesCredential = sesCredentials.find((c) => c.id === selectedSesCredentialId);
-  
+  const selectedGoogleCredential = googleCredentials.find((c) => c.id === selectedGoogleCredentialId);
+
   // Determine color theme based on tool category
   const isDbTool = toolCategory === "dbTableRead" || toolCategory === "dbTableWrite";
   const ringClass =
-    toolCategory === "dbTableWrite" ? "focus:ring-orange-500" :
-    toolCategory === "dbTableRead"  ? "focus:ring-green-500" :
-    toolCategory === "sendTxtEmail" ? "focus:ring-pink-500" :
+    toolCategory === "dbTableWrite"          ? "focus:ring-orange-500" :
+    toolCategory === "dbTableRead"           ? "focus:ring-green-500" :
+    toolCategory === "sendTxtEmail"          ? "focus:ring-pink-500" :
+    toolCategory === "sendTxtEmailWithGoogle"? "focus:ring-blue-500" :
     "focus:ring-blue-500";
   const buttonClass =
-    toolCategory === "dbTableWrite" ? "bg-orange-600 hover:bg-orange-700" :
-    toolCategory === "dbTableRead"  ? "bg-green-600 hover:bg-green-700" :
-    toolCategory === "sendTxtEmail" ? "bg-pink-600 hover:bg-pink-700" :
+    toolCategory === "dbTableWrite"          ? "bg-orange-600 hover:bg-orange-700" :
+    toolCategory === "dbTableRead"           ? "bg-green-600 hover:bg-green-700" :
+    toolCategory === "sendTxtEmail"          ? "bg-pink-600 hover:bg-pink-700" :
+    toolCategory === "sendTxtEmailWithGoogle"? "bg-blue-600 hover:bg-blue-700" :
     "bg-blue-600 hover:bg-blue-700";
 
   return (
@@ -437,6 +464,27 @@ export function AddToolModal({
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     AWS SES
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setToolCategory("sendTxtEmailWithGoogle")}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    toolCategory === "sendTxtEmailWithGoogle"
+                      ? "border-blue-500 bg-blue-500/10"
+                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
+                  }`}
+                >
+                  <EnvelopeIcon className={`h-8 w-8 mx-auto mb-2 ${
+                    toolCategory === "sendTxtEmailWithGoogle" ? "text-blue-400" : "text-gray-500"
+                  }`} />
+                  <div className={`text-sm font-medium ${
+                    toolCategory === "sendTxtEmailWithGoogle" ? "text-blue-300" : "text-gray-400"
+                  }`}>
+                    Send Email
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Google Gmail
                   </div>
                 </button>
               </div>
@@ -880,6 +928,87 @@ export function AddToolModal({
             </>
           )}
 
+          {/* Send Text Email via Google Options */}
+          {toolCategory === "sendTxtEmailWithGoogle" && (
+            <>
+              {/* Google OAuth Credential Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Google OAuth Credential *
+                </label>
+                {loadingCredentials ? (
+                  <div className="text-gray-400 text-sm">Loading credentials...</div>
+                ) : googleCredentials.length === 0 ? (
+                  <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <KeyIcon className="h-5 w-5 text-yellow-400 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-yellow-300">
+                          No Google OAuth Credentials Found
+                        </h4>
+                        <p className="text-xs text-yellow-400/80 mt-1">
+                          You need to create a credential with service name &quot;GOOGLE_OAUTH&quot; first.
+                          Go to Credentials → Add Credential and set the service name to GOOGLE_OAUTH.
+                          The credential must contain <code className="text-yellow-300">client_id</code>,{" "}
+                          <code className="text-yellow-300">client_secret</code>,{" "}
+                          <code className="text-yellow-300">refresh_token</code>, and{" "}
+                          <code className="text-yellow-300">from_email</code>.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedGoogleCredentialId}
+                    onChange={(e) => setSelectedGoogleCredentialId(e.target.value ? parseInt(e.target.value) : "")}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                    disabled={isEditing}
+                  >
+                    <option value="">Select a Google OAuth credential...</option>
+                    {googleCredentials.map((cred) => (
+                      <option key={cred.id} value={cred.id}>
+                        {formatServiceName(cred.service_name)}
+                        {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
+                        {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-gray-400 text-xs mt-2">
+                  Select a stored Google OAuth credential. Requires the <code className="text-blue-400">gmail.send</code> scope.
+                </p>
+                {isEditing && (
+                  <p className="text-gray-400 text-xs mt-1">
+                    Credential cannot be changed when editing.
+                  </p>
+                )}
+              </div>
+
+              {/* Selected Google Credential Info */}
+              {selectedGoogleCredential && (
+                <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <EnvelopeIcon className="h-5 w-5 text-blue-400 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-medium text-white">
+                        {formatServiceName(selectedGoogleCredential.service_name)}
+                      </h4>
+                      {selectedGoogleCredential.credential_metadata?.label && (
+                        <p className="text-xs text-gray-300 mt-1">
+                          {selectedGoogleCredential.credential_metadata.label}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Credential ID: {selectedGoogleCredential.id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Description (shared) */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -893,7 +1022,7 @@ export function AddToolModal({
                   ? "Describe what records this tool creates and when to use it..."
                   : toolCategory === "dbTableRead"
                     ? "Describe what data this table contains and what queries are useful..."
-                    : toolCategory === "sendTxtEmail"
+                    : toolCategory === "sendTxtEmail" || toolCategory === "sendTxtEmailWithGoogle"
                       ? "Describe when the agent should send an email and any guidelines for tone or content..."
                       : "Describe what this knowledge base contains..."
               }
@@ -916,7 +1045,11 @@ export function AddToolModal({
             </button>
             <button
               type="submit"
-              disabled={(isDbTool && dbCredentials.length === 0) || (toolCategory === "sendTxtEmail" && sesCredentials.length === 0)}
+              disabled={
+                (isDbTool && dbCredentials.length === 0) ||
+                (toolCategory === "sendTxtEmail" && sesCredentials.length === 0) ||
+                (toolCategory === "sendTxtEmailWithGoogle" && googleCredentials.length === 0)
+              }
               className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-white disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
             >
               {isEditing ? "Update Tool" : "Add Tool"}
