@@ -215,10 +215,16 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
             existing.type === "sendTxtEmail" &&
             existing.credentialId === tool.credentialId
         );
-      } else if (tool.type === "sendTxtEmailWithGoogle") {
+      } else if (tool.type === "sendTxtEmailWithGoogleOAuth") {
         isDuplicate = tools.some(
           (existing) =>
-            existing.type === "sendTxtEmailWithGoogle" &&
+            existing.type === "sendTxtEmailWithGoogleOAuth" &&
+            existing.credentialId === tool.credentialId
+        );
+      } else if (tool.type === "sendTxtEmailWithGoogleSmtp") {
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "sendTxtEmailWithGoogleSmtp" &&
             existing.credentialId === tool.credentialId
         );
       } else {
@@ -551,7 +557,12 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                       </thead>
                       <tbody className="divide-y divide-gray-700/50">
                         {tools.map((tool, index) => {
-                          const meta = TOOL_TYPE_METADATA[tool.type];
+                          const meta = TOOL_TYPE_METADATA[tool.type] ?? {
+                            label: tool.type,
+                            borderClass: "border-gray-600/30",
+                            iconClass: "text-gray-400",
+                            summary: () => "unknown tool type",
+                          };
                           return (
                             <tr
                               key={index}
@@ -609,7 +620,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                                     )}
                                   </div>
                                 )}
-                                {(tool.type === "sendTxtEmail" || tool.type === "sendTxtEmailWithGoogle") && (
+                                {(tool.type === "sendTxtEmail" || tool.type === "sendTxtEmailWithGoogleOAuth" || tool.type === "sendTxtEmailWithGoogleSmtp") && (
                                   <div className="text-xs text-gray-500">Plain text</div>
                                 )}
                               </td>
