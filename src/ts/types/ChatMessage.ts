@@ -286,7 +286,7 @@ export interface SendTxtEmailToolCall {
    */
   toolType: "sendTxtEmail";
   /**
-   * The specific tool instance name (e.g., 'send_txt_email')
+   * The specific tool instance name (e.g., 'send_txt_email_with_ses')
    */
   toolName: string;
   input: {

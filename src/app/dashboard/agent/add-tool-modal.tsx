@@ -32,7 +32,6 @@ export function AddToolModal({
   // DB Read/Write shared state
   const [selectedCredentialId, setSelectedCredentialId] = useState<number | "">("");
   const [tableName, setTableName] = useState("");
-  const [toolName, setToolName] = useState("");
   const [columns, setColumns] = useState("");
   
   // DB Read specific
@@ -261,19 +260,11 @@ export function AddToolModal({
         return;
       }
 
-      if (toolName.trim() && !/^[a-z_][a-z0-9_]*$/.test(toolName.trim())) {
-        errorToast("Tool name must be lowercase with underscores only (e.g., send_followup_email)");
-        return;
-      }
-
       const sesTool: SendTxtEmailTool = {
         type: "sendTxtEmail",
         credentialId: selectedSesCredentialId as number,
       };
 
-      if (toolName.trim()) {
-        sesTool.name = toolName.trim();
-      }
       if (description.trim()) {
         sesTool.description = description.trim();
       }
@@ -886,23 +877,6 @@ export function AddToolModal({
                 </div>
               )}
 
-              {/* Tool Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Tool Name
-                </label>
-                <input
-                  type="text"
-                  value={toolName}
-                  onChange={(e) => setToolName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
-                  placeholder="e.g., send_followup_email"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 font-mono"
-                />
-                <p className="text-gray-400 text-xs mt-2">
-                  Optional custom name for the tool as seen by the LLM. Must be lowercase with
-                  underscores only. Defaults to <code className="text-pink-400">send_txt_email</code>.
-                </p>
-              </div>
             </>
           )}
 

@@ -801,7 +801,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                           }
                           // Render sendTxtEmail tools
                           if (tool.type === "sendTxtEmail") {
-                            const toolDisplayName = tool.name || "send_txt_email";
+                            const toolDisplayName = "send_txt_email_with_ses";
 
                             return (
                               <tr

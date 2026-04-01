@@ -44,7 +44,6 @@ export interface DbTableWriteTool {
 export interface SendTxtEmailTool {
   type: "sendTxtEmail";
   credentialId: number;
-  name?: string;
   description?: string;
 }
 
