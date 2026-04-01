@@ -29,10 +29,16 @@ class ToolApprovalsService {
 
   async approveToolApproval(
     approvalId: number,
+    overrides?: { to_email?: string; subject?: string; body?: string },
   ): Promise<{ id: number; status: string; message: string }> {
     const resp = await fetch(
       `${process.env.NEXT_PUBLIC_AI_API_URL}/api/tool-approvals/${approvalId}/approve`,
-      { method: "POST", credentials: "include" },
+      {
+        method: "POST",
+        credentials: "include",
+        headers: overrides ? { "Content-Type": "application/json" } : undefined,
+        body: overrides ? JSON.stringify(overrides) : undefined,
+      },
     );
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
