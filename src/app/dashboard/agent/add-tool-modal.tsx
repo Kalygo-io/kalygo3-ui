@@ -176,12 +176,6 @@ export function AddToolModal({
         return;
       }
 
-      // Validate tool name format if provided
-      if (toolName.trim() && !/^[a-z_][a-z0-9_]*$/.test(toolName.trim())) {
-        errorToast("Tool name must be lowercase with underscores only (e.g., query_users)");
-        return;
-      }
-
       // Parse columns
       const columnsArray = columns.trim()
         ? columns.split(",").map((c) => c.trim()).filter((c) => c.length > 0)
@@ -193,9 +187,6 @@ export function AddToolModal({
         table: tableName.trim(),
       };
 
-      if (toolName.trim()) {
-        dbTool.name = toolName.trim();
-      }
       if (description.trim()) {
         dbTool.description = description.trim();
       }
@@ -216,12 +207,6 @@ export function AddToolModal({
 
       if (!tableName.trim()) {
         errorToast("Please enter a table name");
-        return;
-      }
-
-      // Validate tool name format if provided
-      if (toolName.trim() && !/^[a-z_][a-z0-9_]*$/.test(toolName.trim())) {
-        errorToast("Tool name must be lowercase with underscores only (e.g., create_lead)");
         return;
       }
 
@@ -256,9 +241,6 @@ export function AddToolModal({
         columns: columnsArray,
       };
 
-      if (toolName.trim()) {
-        dbWriteTool.name = toolName.trim();
-      }
       if (description.trim()) {
         dbWriteTool.description = description.trim();
       }
@@ -712,32 +694,6 @@ export function AddToolModal({
                   {toolCategory === "dbTableWrite" 
                     ? "The database table to insert records into."
                     : "The database table the agent can query."}
-                </p>
-              </div>
-
-              {/* Tool Name (optional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Tool Name
-                </label>
-                <input
-                  type="text"
-                  value={toolName}
-                  onChange={(e) => setToolName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
-                  placeholder={
-                    tableName 
-                      ? toolCategory === "dbTableWrite" 
-                        ? `insert_${tableName.toLowerCase()}` 
-                        : `query_${tableName.toLowerCase()}`
-                      : toolCategory === "dbTableWrite"
-                        ? "e.g., create_lead"
-                        : "e.g., query_users"
-                  }
-                  className={`w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${ringClass} font-mono`}
-                />
-                <p className="text-gray-400 text-xs mt-2">
-                  Optional custom name. Must be lowercase with underscores only.
-                  Defaults to &quot;{toolCategory === "dbTableWrite" ? "insert" : "query"}_{"{table}"}&quot;.
                 </p>
               </div>
 

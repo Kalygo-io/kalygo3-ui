@@ -213,12 +213,6 @@
           "type": "string",
           "minLength": 1
         },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 50,
-          "pattern": "^[a-z_][a-z0-9_]*$"
-        },
         "description": {
           "type": "string",
           "minLength": 1
@@ -261,12 +255,6 @@
         "table": {
           "type": "string",
           "minLength": 1
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 50,
-          "pattern": "^[a-z_][a-z0-9_]*$"
         },
         "description": {
           "type": "string",

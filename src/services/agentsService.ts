@@ -25,7 +25,6 @@ export interface DbTableReadTool {
   type: "dbTableRead";
   credentialId: number;
   table: string;
-  name?: string;
   description?: string;
   columns?: string[];
   maxLimit?: number;
@@ -35,7 +34,6 @@ export interface DbTableWriteTool {
   type: "dbTableWrite";
   credentialId: number;
   table: string;
-  name?: string;
   description?: string;
   columns: string[];
   requiredColumns?: string[];
@@ -120,19 +118,13 @@ export const TOOL_TYPE_METADATA: Record<AgentTool["type"], ToolTypeMeta> = {
     label: "DB Read",
     borderClass: "border-green-700/30",
     iconClass: "text-green-400",
-    summary: (t) => {
-      const v = t as DbTableReadTool;
-      return v.name ? `${v.table} (${v.name})` : v.table;
-    },
+    summary: (t) => (t as DbTableReadTool).table,
   },
   dbTableWrite: {
     label: "DB Write",
     borderClass: "border-orange-700/30",
     iconClass: "text-orange-400",
-    summary: (t) => {
-      const v = t as DbTableWriteTool;
-      return v.name ? `${v.table} (${v.name})` : v.table;
-    },
+    summary: (t) => (t as DbTableWriteTool).table,
   },
   sendTxtEmail: {
     label: "Send Email",
