@@ -558,7 +558,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                             const formatTableName = (name: string) =>
                               name.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
-                            const toolDisplayName = tool.name || `query_${tool.table}`;
+                            const toolDisplayName = `query_${tool.table}`;
 
                             return (
                               <tr
