@@ -1,6 +1,6 @@
 "use client";
 
-import { Agent, getAgentModelConfig, getAgentVersion, getAgentElevenLabsVoiceId, isAgentConfigV1, isAgentConfigV3, isAgentConfigV4, type ToolV2 } from "@/services/agentsService";
+import { Agent, getAgentModelConfig, getAgentElevenLabsVoiceId, type AgentTool } from "@/services/agentsService";
 import { ELEVENLABS_VOICES } from "@/shared/app-settings";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import {
@@ -23,7 +23,6 @@ export interface SessionAgentsConfigPanelProps {
 }
 
 function AgentConfigBlock({ agent, index }: { agent: Agent; index: number }) {
-  const version = getAgentVersion(agent);
   const modelConfig = getAgentModelConfig(agent);
   const elevenLabsVoiceId = getAgentElevenLabsVoiceId(agent);
   const voiceName = elevenLabsVoiceId
@@ -32,14 +31,7 @@ function AgentConfigBlock({ agent, index }: { agent: Agent; index: number }) {
 
   return (
     <div className="space-y-3 rounded-xl border border-gray-700/50 bg-gray-800/30 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h4 className="text-sm font-semibold text-white truncate">
-          {agent.name}
-        </h4>
-        <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-600/50 text-gray-300 border border-gray-600/50">
-          v{version}
-        </span>
-      </div>
+      <h4 className="text-sm font-semibold text-white truncate">{agent.name}</h4>
 
       {agent.config?.data?.systemPrompt && (
         <div className="bg-gray-800/50 rounded-lg p-3">
@@ -52,44 +44,38 @@ function AgentConfigBlock({ agent, index }: { agent: Agent; index: number }) {
         </div>
       )}
 
-      {(isAgentConfigV3(agent.config) || isAgentConfigV4(agent.config)) && (
-        <div className="bg-gray-800/50 rounded-lg p-3">
-          <div className="flex items-center space-x-2 mb-1">
-            <CpuChipIcon className="w-4 h-4 text-green-400" />
-            <span className="text-xs text-gray-400">Model</span>
+      <div className="bg-gray-800/50 rounded-lg p-3">
+        <div className="flex items-center space-x-2 mb-1">
+          <CpuChipIcon className="w-4 h-4 text-green-400" />
+          <span className="text-xs text-gray-400">Model</span>
+        </div>
+        <div className="text-xs text-gray-300 space-y-0.5">
+          <div>
+            <span className="text-gray-400">Provider: </span>
+            <span className="text-white capitalize">{modelConfig.provider}</span>
           </div>
-          <div className="text-xs text-gray-300 space-y-0.5">
-            <div>
-              <span className="text-gray-400">Provider: </span>
-              <span className="text-white capitalize">{modelConfig.provider}</span>
-            </div>
-            <div>
-              <span className="text-gray-400">Model: </span>
-              <span className="text-green-400 font-mono">{modelConfig.model}</span>
-            </div>
+          <div>
+            <span className="text-gray-400">Model: </span>
+            <span className="text-green-400 font-mono">{modelConfig.model}</span>
           </div>
         </div>
-      )}
+      </div>
 
-      {isAgentConfigV4(agent.config) && (
-        <div className="bg-gray-800/50 rounded-lg p-3">
-          <div className="flex items-center space-x-2 mb-1">
-            <SpeakerWaveIcon className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs text-gray-400">TTS Voice</span>
-          </div>
-          <p className="text-sm text-white">
-            {voiceName ?? "Default (app setting)"}
-          </p>
+      <div className="bg-gray-800/50 rounded-lg p-3">
+        <div className="flex items-center space-x-2 mb-1">
+          <SpeakerWaveIcon className="w-4 h-4 text-cyan-400" />
+          <span className="text-xs text-gray-400">TTS Voice</span>
         </div>
-      )}
+        <p className="text-sm text-white">{voiceName ?? "Default (app setting)"}</p>
+      </div>
 
-      {agent.config && !isAgentConfigV1(agent.config) && agent.config.data?.tools && (agent.config.data.tools as ToolV2[]).length > 0 && (
+      {agent.config?.data?.tools && agent.config.data.tools.length > 0 && (
         <div className="bg-gray-800/50 rounded-lg p-3">
           <span className="text-xs text-gray-400 block mb-2">
-            Tools ({(agent.config.data.tools as ToolV2[]).length})
+            Tools ({agent.config.data.tools.length})
           </span>
           <div className="space-y-1.5">
-            {(agent.config.data.tools as ToolV2[]).map((tool: ToolV2, i: number) => {
+            {agent.config.data.tools.map((tool: AgentTool, i: number) => {
               if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
                 return (
                   <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
@@ -137,7 +123,7 @@ function AgentConfigBlock({ agent, index }: { agent: Agent; index: number }) {
               return (
                 <div key={i} className="flex items-center gap-2 text-xs text-gray-400">
                   <DocumentTextIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{(tool as ToolV2 & { type?: string }).type ?? "Tool"}</span>
+                  <span>{(tool as any).type ?? "Tool"}</span>
                 </div>
               );
             })}

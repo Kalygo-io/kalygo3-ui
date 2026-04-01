@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { VectorSearchTool, VectorSearchWithRerankingTool, ToolV2 } from "@/services/agentsService";
+import { VectorSearchTool, VectorSearchWithRerankingTool, AgentTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
 
 interface AddVectorSearchToolModalProps {
   onClose: () => void;
-  onAdd: (tool: ToolV2) => void;
-  initialTool?: ToolV2;
+  onAdd: (tool: AgentTool) => void;
+  initialTool?: AgentTool;
 }
 
 export function AddVectorSearchToolModal({
@@ -103,7 +103,7 @@ export function AddVectorSearchToolModal({
       return;
     }
 
-    let tool: ToolV2;
+    let tool: AgentTool;
 
     if (toolType === "vectorSearch") {
       tool = {

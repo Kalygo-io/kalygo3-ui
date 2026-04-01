@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
-import { ToolV2, DbTableReadTool, DbTableWriteTool, SendTxtEmailTool } from "@/services/agentsService";
+import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { credentialService, Credential, CredentialType, ServiceName, formatServiceName } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
 
 interface AddToolModalProps {
   onClose: () => void;
-  onAdd: (tool: ToolV2) => void;
-  initialTool?: ToolV2;
+  onAdd: (tool: AgentTool) => void;
+  initialTool?: AgentTool;
 }
 
 export function AddToolModal({
@@ -162,7 +162,7 @@ export function AddToolModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    let tool: ToolV2;
+    let tool: AgentTool;
 
     if (toolCategory === "dbTableRead") {
       // DB Read tool validation

@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   agentsService,
   Agent,
-  AgentConfigV4,
-  AgentConfigDataV4,
-  ToolV2,
+  AgentConfig,
+  AgentConfigData,
+  AgentTool,
   ModelConfig,
   ModelProvider,
   AVAILABLE_MODELS,
@@ -44,7 +44,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [modelConfig, setModelConfig] = useState<ModelConfig>(DEFAULT_MODEL);
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState("");
-  const [tools, setTools] = useState<ToolV2[]>([]);
+  const [tools, setTools] = useState<AgentTool[]>([]);
   const [showAddToolModal, setShowAddToolModal] = useState(false);
   const [editingToolIndex, setEditingToolIndex] = useState<number | null>(null);
 
@@ -69,7 +69,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
       
       // Extract V4 config data
       if (data.config && data.config.version === 4) {
-        const v4Config = data.config as AgentConfigV4;
+        const v4Config = data.config as AgentConfig;
         setName(data.name || "");
         setSystemPrompt(v4Config.data.systemPrompt || "");
         setModelConfig(v4Config.data.model || DEFAULT_MODEL);
@@ -110,7 +110,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
     try {
       setSaving(true);
       
-      const configData: AgentConfigDataV4 = {
+      const configData: AgentConfigData = {
         systemPrompt: systemPrompt.trim(),
         model: modelConfig,
         tools: tools.length > 0 ? tools : undefined,
@@ -132,7 +132,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
       // Re-sync local form state from the saved response so the UI
       // always reflects what the backend actually persisted.
       if (updatedAgent.config && updatedAgent.config.version === 4) {
-        const saved = updatedAgent.config as AgentConfigV4;
+        const saved = updatedAgent.config as AgentConfig;
         setSystemPrompt(saved.data.systemPrompt || "");
         setModelConfig(saved.data.model || DEFAULT_MODEL);
         setElevenlabsVoiceId(saved.data.elevenlabsVoiceId || "");
@@ -170,7 +170,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
     }
   };
 
-  const handleAddTool = (tool: ToolV2) => {
+  const handleAddTool = (tool: AgentTool) => {
     if (editingToolIndex !== null) {
       // Update existing tool
       setTools((prev) => {

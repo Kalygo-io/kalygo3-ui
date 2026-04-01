@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   agentsService,
   CreateAgentRequest,
-  ToolV2,
-  AgentConfigDataV4,
+  AgentTool,
+  AgentConfigData,
   ModelConfig,
   ModelProvider,
   AVAILABLE_MODELS,
@@ -34,7 +34,7 @@ export function CreateAgentV4Container() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [modelConfig, setModelConfig] = useState<ModelConfig>(DEFAULT_MODEL);
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState("");
-  const [tools, setTools] = useState<ToolV2[]>([]);
+  const [tools, setTools] = useState<AgentTool[]>([]);
   const [showAddToolModal, setShowAddToolModal] = useState(false);
   const [editingToolIndex, setEditingToolIndex] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -60,7 +60,7 @@ export function CreateAgentV4Container() {
     try {
       setSubmitting(true);
 
-      const configData: AgentConfigDataV4 = {
+      const configData: AgentConfigData = {
         systemPrompt: systemPrompt.trim(),
         model: modelConfig,
         tools: tools.length > 0 ? tools : undefined,
@@ -86,7 +86,7 @@ export function CreateAgentV4Container() {
     }
   };
 
-  const handleAddTool = (tool: ToolV2) => {
+  const handleAddTool = (tool: AgentTool) => {
     if (editingToolIndex !== null) {
       setTools((prev) => {
         const updated = [...prev];
