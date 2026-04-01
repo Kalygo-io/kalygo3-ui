@@ -83,6 +83,66 @@ export interface AgentConfig {
 }
 
 // ============================================================================
+// Tool Type Metadata — single source of truth for display across the UI
+// ============================================================================
+
+export type ToolTypeMeta = {
+  /** Human-readable label shown in the UI */
+  label: string;
+  /** Full Tailwind border class — must be a complete string for JIT purging */
+  borderClass: string;
+  /** Full Tailwind icon/text color class */
+  iconClass: string;
+  /** One-line summary of the tool's runtime config */
+  summary: (tool: AgentTool) => string;
+};
+
+export const TOOL_TYPE_METADATA: Record<AgentTool["type"], ToolTypeMeta> = {
+  vectorSearch: {
+    label: "Vector Search",
+    borderClass: "border-purple-700/30",
+    iconClass: "text-purple-400",
+    summary: (t) => {
+      const v = t as VectorSearchTool;
+      return `${v.provider} · ${v.index} / ${v.namespace} (top ${v.topK ?? 10})`;
+    },
+  },
+  vectorSearchWithReranking: {
+    label: "Vector Search + Rerank",
+    borderClass: "border-purple-700/30",
+    iconClass: "text-purple-400",
+    summary: (t) => {
+      const v = t as VectorSearchWithRerankingTool;
+      return `${v.provider} · ${v.index} / ${v.namespace} (K=${v.topK ?? 20}, N=${v.topN ?? 5})`;
+    },
+  },
+  dbTableRead: {
+    label: "DB Read",
+    borderClass: "border-green-700/30",
+    iconClass: "text-green-400",
+    summary: (t) => {
+      const v = t as DbTableReadTool;
+      return v.name ? `${v.table} (${v.name})` : v.table;
+    },
+  },
+  dbTableWrite: {
+    label: "DB Write",
+    borderClass: "border-orange-700/30",
+    iconClass: "text-orange-400",
+    summary: (t) => {
+      const v = t as DbTableWriteTool;
+      return v.name ? `${v.table} (${v.name})` : v.table;
+    },
+  },
+  sendTxtEmail: {
+    label: "Send Email",
+    borderClass: "border-pink-700/30",
+    iconClass: "text-pink-400",
+    summary: () => "AWS SES · requires human approval",
+  },
+};
+
+// ============================================================================
 // Available Models
 // ============================================================================
 

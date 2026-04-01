@@ -3,15 +3,11 @@
 import {
   InformationCircleIcon,
   CogIcon,
-  DocumentTextIcon,
-  CircleStackIcon,
-  PencilSquareIcon,
-  MagnifyingGlassIcon,
   CpuChipIcon,
-  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { Agent, AgentTool, getAgentModelConfig } from "@/services/agentsService";
+import { ToolDisplayCard } from "@/components/shared/tool-display-card";
 
 interface ContextualAsideProps {
   isOpen: boolean;
@@ -163,102 +159,19 @@ export function ContextualAside({
                     {/* Tools */}
                     {agent.config.data?.tools && agent.config.data.tools.length > 0 ? (
                       <div className="bg-gray-800/50 rounded-lg p-3">
-                        <div className="flex flex-col space-y-2">
-                          <span className="text-xs text-gray-400">Tools ({agent.config.data.tools.length})</span>
-                          <div className="space-y-2">
-                            {agent.config.data.tools.map((tool: AgentTool, index: number) => {
-                              if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
-                                return (
-                                  <div key={index} className="bg-gray-900/50 p-2 rounded border border-gray-700/50">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <MagnifyingGlassIcon className="w-4 h-4 text-purple-400" />
-                                      <span className="text-xs font-medium text-white">
-                                        {tool.type === "vectorSearchWithReranking" ? "Vector Search + Rerank" : "Vector Search"}
-                                      </span>
-                                    </div>
-                                    <div className="text-xs text-gray-300 space-y-1 pl-6">
-                                      <div><span className="text-gray-400">Provider: </span><span className="text-white">{tool.provider}</span></div>
-                                      <div><span className="text-gray-400">Index: </span><span className="text-white">{tool.index}</span></div>
-                                      <div><span className="text-gray-400">Namespace: </span><span className="text-white">{tool.namespace}</span></div>
-                                      {tool.description && <div><span className="text-gray-400">Description: </span><span className="text-white">{tool.description}</span></div>}
-                                      {tool.type === "vectorSearchWithReranking"
-                                        ? <div><span className="text-gray-400">K: {tool.topK || 20}, N: {tool.topN || 5}</span></div>
-                                        : <div><span className="text-gray-400">Top K: {tool.topK || 10}</span></div>}
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              if (tool.type === "dbTableRead") {
-                                return (
-                                  <div key={index} className="bg-gray-900/50 p-2 rounded border border-green-700/30">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <CircleStackIcon className="w-4 h-4 text-green-400" />
-                                      <span className="text-xs font-medium text-white">Database Table Read</span>
-                                    </div>
-                                    <div className="text-xs text-gray-300 space-y-1 pl-6">
-                                      <div><span className="text-gray-400">Table: </span><span className="text-white">{tool.table}</span></div>
-                                      {tool.name && <div><span className="text-gray-400">Tool Name: </span><span className="text-white font-mono">{tool.name}</span></div>}
-                                      <div><span className="text-gray-400">Credential ID: </span><span className="text-white">{tool.credentialId}</span></div>
-                                      {tool.columns && tool.columns.length > 0 && <div><span className="text-gray-400">Columns: </span><span className="text-white">{tool.columns.join(", ")}</span></div>}
-                                      <div><span className="text-gray-400">Max Limit: </span><span className="text-white">{tool.maxLimit || 100}</span></div>
-                                      {tool.description && <div><span className="text-gray-400">Description: </span><span className="text-white">{tool.description}</span></div>}
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              if (tool.type === "dbTableWrite") {
-                                return (
-                                  <div key={index} className="bg-gray-900/50 p-2 rounded border border-orange-700/30">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <PencilSquareIcon className="w-4 h-4 text-orange-400" />
-                                      <span className="text-xs font-medium text-white">Database Table Write</span>
-                                    </div>
-                                    <div className="text-xs text-gray-300 space-y-1 pl-6">
-                                      <div><span className="text-gray-400">Table: </span><span className="text-white">{tool.table}</span></div>
-                                      {tool.name && <div><span className="text-gray-400">Tool Name: </span><span className="text-white font-mono">{tool.name}</span></div>}
-                                      <div><span className="text-gray-400">Credential ID: </span><span className="text-white">{tool.credentialId}</span></div>
-                                      <div><span className="text-gray-400">Columns: </span><span className="text-white">{tool.columns.join(", ")}</span></div>
-                                      {tool.requiredColumns && tool.requiredColumns.length > 0 && <div><span className="text-gray-400">Required: </span><span className="text-orange-400">{tool.requiredColumns.join(", ")}</span></div>}
-                                      {tool.injectAccountId && <div><span className="text-orange-400">+ Auto-inject account_id</span></div>}
-                                      {tool.injectChatSessionId && <div><span className="text-orange-400">+ Auto-inject chat_session_id</span></div>}
-                                      {tool.description && <div><span className="text-gray-400">Description: </span><span className="text-white">{tool.description}</span></div>}
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              if (tool.type === "sendTxtEmail") {
-                                return (
-                                  <div key={index} className="bg-gray-900/50 p-2 rounded border border-pink-700/30">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <EnvelopeIcon className="w-4 h-4 text-pink-400" />
-                                      <span className="text-xs font-medium text-white">Send Text Email</span>
-                                    </div>
-                                    <div className="text-xs text-gray-300 space-y-1 pl-6">
-                                      <div><span className="text-gray-400">Credential ID: </span><span className="text-white">{tool.credentialId}</span></div>
-                                      {tool.name && <div><span className="text-gray-400">Tool Name: </span><span className="text-white font-mono">{tool.name}</span></div>}
-                                      {tool.description && <div><span className="text-gray-400">Description: </span><span className="text-white">{tool.description}</span></div>}
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              return (
-                                <div key={index} className="bg-gray-900/50 p-2 rounded border border-gray-700/50">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <DocumentTextIcon className="w-4 h-4 text-gray-400" />
-                                    <span className="text-xs font-medium text-white">{(tool as any).type || "Unknown Tool"}</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                        <span className="text-xs text-gray-400 block mb-2">
+                          Tools ({agent.config.data.tools.length})
+                        </span>
+                        <div className="space-y-2">
+                          {agent.config.data.tools.map((tool: AgentTool, i: number) => (
+                            <ToolDisplayCard key={i} tool={tool} />
+                          ))}
                         </div>
                       </div>
                     ) : (
                       <div className="bg-gray-800/50 rounded-lg p-3">
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-xs text-gray-400">Tools</span>
-                          <span className="text-sm text-gray-500 italic">No tools configured</span>
-                        </div>
+                        <span className="text-xs text-gray-400">Tools</span>
+                        <p className="text-sm text-gray-500 italic mt-1">No tools configured</p>
                       </div>
                     )}
                   </div>

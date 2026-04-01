@@ -3,15 +3,11 @@
 import { Agent, getAgentModelConfig, getAgentElevenLabsVoiceId, type AgentTool } from "@/services/agentsService";
 import { ELEVENLABS_VOICES } from "@/shared/app-settings";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
+import { ToolDisplayCard } from "@/components/shared/tool-display-card";
 import {
   CogIcon,
   CpuChipIcon,
   SpeakerWaveIcon,
-  DocumentTextIcon,
-  CircleStackIcon,
-  PencilSquareIcon,
-  MagnifyingGlassIcon,
-  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 
 export interface SessionAgentsConfigPanelProps {
@@ -75,58 +71,9 @@ function AgentConfigBlock({ agent, index }: { agent: Agent; index: number }) {
             Tools ({agent.config.data.tools.length})
           </span>
           <div className="space-y-1.5">
-            {agent.config.data.tools.map((tool: AgentTool, i: number) => {
-              if (tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") {
-                return (
-                  <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
-                    <MagnifyingGlassIcon className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
-                    <span>{tool.type === "vectorSearchWithReranking" ? "Vector + Rerank" : "Vector"}</span>
-                    <span className="text-gray-500">·</span>
-                    <span className="truncate">{tool.provider} / {tool.index}</span>
-                  </div>
-                );
-              }
-              if (tool.type === "dbTableRead") {
-                return (
-                  <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
-                    <CircleStackIcon className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                    <span>DB Read</span>
-                    <span className="text-gray-500">·</span>
-                    <span className="truncate">{tool.table}</span>
-                  </div>
-                );
-              }
-              if (tool.type === "dbTableWrite") {
-                return (
-                  <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
-                    <PencilSquareIcon className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
-                    <span>DB Write</span>
-                    <span className="text-gray-500">·</span>
-                    <span className="truncate">{tool.table}</span>
-                  </div>
-                );
-              }
-              if (tool.type === "sendTxtEmail") {
-                return (
-                  <div key={i} className="flex items-center gap-2 text-xs text-gray-300">
-                    <EnvelopeIcon className="w-3.5 h-3.5 text-pink-400 flex-shrink-0" />
-                    <span>Send Email</span>
-                    {tool.name && (
-                      <>
-                        <span className="text-gray-500">·</span>
-                        <span className="truncate font-mono">{tool.name}</span>
-                      </>
-                    )}
-                  </div>
-                );
-              }
-              return (
-                <div key={i} className="flex items-center gap-2 text-xs text-gray-400">
-                  <DocumentTextIcon className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{(tool as any).type ?? "Tool"}</span>
-                </div>
-              );
-            })}
+            {agent.config.data.tools.map((tool: AgentTool, i: number) => (
+              <ToolDisplayCard key={i} tool={tool} />
+            ))}
           </div>
         </div>
       )}
