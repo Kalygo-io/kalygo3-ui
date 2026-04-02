@@ -14,13 +14,76 @@ async function fileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
-      // Remove the data URL prefix to get raw base64
       const result = reader.result as string;
       const base64 = result.split(",")[1];
       resolve(base64);
     };
     reader.onerror = reject;
   });
+}
+
+/**
+ * Extracts a plain string from the various shapes that `data` can arrive in
+ * depending on the LLM provider:
+ *   - OpenAI / legacy: plain string
+ *   - Anthropic: content-blocks array [{ type: "text", text: "...", index: 0 }]
+ */
+function extractTextContent(data: unknown): string {
+  if (typeof data === "string") return data;
+  if (Array.isArray(data)) {
+    return data
+      .filter((block: any) => block?.type === "text")
+      .map((block: any) => block?.text ?? "")
+      .join("");
+  }
+  return "";
+}
+
+/**
+ * Scans `buffer` for the next complete, top-level JSON object ({...}).
+ * Returns the parsed value and the remaining unprocessed string, or null if
+ * no complete object is available yet (caller should wait for more data).
+ *
+ * This handles the case where a single JSON object spans multiple TCP reads,
+ * which would otherwise silently drop large payloads (e.g. on_chain_end with
+ * full vector-search results).
+ */
+function extractNextJsonObject(
+  buffer: string
+): { parsed: any; remaining: string } | null {
+  // Find the first opening brace
+  const start = buffer.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+
+  for (let i = start; i < buffer.length; i++) {
+    const c = buffer[i];
+    if (esc) { esc = false; continue; }
+    if (c === "\\" && inStr) { esc = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+
+    if (c === "{") {
+      depth++;
+    } else if (c === "}") {
+      if (--depth === 0) {
+        const jsonStr = buffer.slice(start, i + 1);
+        try {
+          return { parsed: JSON.parse(jsonStr), remaining: buffer.slice(i + 1) };
+        } catch {
+          // Malformed JSON at this position – skip past this brace and keep scanning
+          return null;
+        }
+      }
+    }
+  }
+
+  // Incomplete JSON: keep the buffer from `start` so the prefix before the
+  // opening brace (e.g. whitespace) is discarded but the partial object is kept.
+  return null;
 }
 
 export async function callAgent(
@@ -75,16 +138,18 @@ export async function callAgent(
   const decoder = new TextDecoder("utf-8", { fatal: false });
 
   const aiMessageId = nanoid();
-  let accMessage = {
-    content: "",
-  };
-  let retrievalCalls: any[] = [];
+  const accMessage = { content: "" };
 
-  // Accumulate tool calls from stream events
+  // Accumulated tool calls keyed by run_id while tools are pending, then
+  // replaced with the formatted output when on_tool_end arrives.
+  // Using an object so handleEvent can mutate it by reference.
+  const pendingToolCalls: Record<string, any> = {}; // run_id -> pending entry
   let accumulatedToolCalls: any[] = [];
-  let currentToolCall: any = null;
 
-  // Create the AI message immediately so EDIT_MESSAGE never races ADD_MESSAGE
+  // Persistent parse buffer – survives across reader.read() calls so large
+  // JSON objects (e.g. on_chain_end with full results) are never dropped.
+  let parseBuffer = "";
+
   dispatch({
     type: "ADD_MESSAGE",
     payload: {
@@ -102,91 +167,22 @@ export async function callAgent(
       const { done, value } = await reader.read();
       if (done) break;
 
-      // stream: true handles multi-byte characters that span chunk boundaries
-      let chunk = decoder.decode(value, { stream: true });
+      parseBuffer += decoder.decode(value, { stream: true });
 
-      try {
-        const parsedChunk = JSON.parse(chunk);
-        const result = dispatchEventToState(
-          parsedChunk,
+      // Drain all complete JSON objects from the buffer
+      let extracted: ReturnType<typeof extractNextJsonObject>;
+      while ((extracted = extractNextJsonObject(parseBuffer)) !== null) {
+        parseBuffer = extracted.remaining;
+        const result = handleEvent(
+          extracted.parsed,
           dispatch,
           aiMessageId,
           accMessage,
-          retrievalCalls,
+          pendingToolCalls,
           accumulatedToolCalls,
-          currentToolCall,
         );
-        // Update currentToolCall reference if returned
-        if (result?.currentToolCall !== undefined) {
-          currentToolCall = result.currentToolCall;
-        }
-        if (result?.accumulatedToolCalls) {
-          accumulatedToolCalls = result.accumulatedToolCalls;
-        }
-      } catch (e) {
-        // Chunk contains multiple concatenated JSON objects — parse them one by one
-        let multiChunkAcc = "";
-        let idx = 0;
-        let braceCount = 0;
-        let inString = false;
-        let escapeNext = false;
-
-        while (idx < chunk.length) {
-          const char = chunk[idx];
-
-          if (escapeNext) {
-            multiChunkAcc += char;
-            escapeNext = false;
-          } else if (char === "\\") {
-            multiChunkAcc += char;
-            escapeNext = true;
-          } else if (char === '"' && !escapeNext) {
-            multiChunkAcc += char;
-            inString = !inString;
-          } else if (!inString) {
-            if (char === "{") {
-              braceCount++;
-            } else if (char === "}") {
-              braceCount--;
-            }
-            multiChunkAcc += char;
-
-            // Try to parse when we have a complete JSON object
-            if (braceCount === 0 && multiChunkAcc.trim()) {
-              try {
-                const parsedChunk = JSON.parse(multiChunkAcc.trim());
-                const result = dispatchEventToState(
-                  parsedChunk,
-                  dispatch,
-                  aiMessageId,
-                  accMessage,
-                  retrievalCalls,
-                  accumulatedToolCalls,
-                  currentToolCall,
-                );
-                // Update currentToolCall reference if returned
-                if (result?.currentToolCall !== undefined) {
-                  currentToolCall = result.currentToolCall;
-                }
-                if (result?.accumulatedToolCalls) {
-                  accumulatedToolCalls = result.accumulatedToolCalls;
-                }
-
-                // Move to next character after the parsed JSON
-                chunk = chunk.substring(idx + 1);
-                idx = 0;
-                multiChunkAcc = "";
-                braceCount = 0;
-                continue;
-              } catch (parseError) {
-                // Continue accumulating if this isn't valid JSON yet
-              }
-            }
-          } else {
-            multiChunkAcc += char;
-          }
-
-          idx++;
+        if (result !== undefined) {
+          accumulatedToolCalls = result;
         }
       }
     }
@@ -199,7 +195,6 @@ export async function callAgent(
   } finally {
     // Flush any remaining bytes held by the streaming decoder
     decoder.decode();
-
     if (reader) {
       reader.releaseLock();
     }
@@ -207,267 +202,155 @@ export async function callAgent(
 }
 
 /**
- * Extracts a plain string from the various shapes that `data` can arrive in
- * depending on the LLM provider:
- *   - OpenAI / legacy: plain string
- *   - Anthropic: content-blocks array [{ type: "text", text: "...", index: 0 }]
+ * Processes a single parsed SSE event and updates React state via dispatch.
+ * Returns the updated accumulatedToolCalls array when tool calls change,
+ * or undefined otherwise.
  */
-function extractTextContent(data: unknown): string {
-  if (typeof data === "string") return data;
-  if (Array.isArray(data)) {
-    return data
-      .filter((block: any) => block?.type === "text")
-      .map((block: any) => block?.text ?? "")
-      .join("");
-  }
-  return "";
-}
-
-function dispatchEventToState(
-  parsedChunk: Record<string, any>,
+function handleEvent(
+  event: Record<string, any>,
   dispatch: React.Dispatch<Action>,
   aiMessageId: string,
   accMessage: { content: string },
-  retrievalCalls: any[],
+  pendingToolCalls: Record<string, any>,
   accumulatedToolCalls: any[],
-  currentToolCall: any,
-): { currentToolCall: any; accumulatedToolCalls: any[] } | void {
+): any[] | undefined {
   try {
-    // Only handle essential events to isolate the issue
-    if (parsedChunk.event === "on_chat_model_start") {
-      // Message already created upfront before stream processing
-    } else if (parsedChunk.event === "on_chat_model_stream") {
-      accMessage.content += extractTextContent(parsedChunk.data);
+    const eventType = event.event;
+    const data = event.data;
+    const runId: string = event.run_id ?? "";
+
+    if (eventType === "on_chat_model_stream") {
+      accMessage.content += extractTextContent(data);
       dispatch({
         type: "EDIT_MESSAGE",
-        payload: {
-          id: aiMessageId,
-          content: accMessage.content,
-        },
+        payload: { id: aiMessageId, content: accMessage.content },
       });
-    } else if (parsedChunk.event === "on_chain_end") {
-      const finalContent = extractTextContent(parsedChunk.data) || accMessage.content;
+
+    } else if (eventType === "on_chain_end") {
+      // Update final content
+      const finalContent = extractTextContent(data) || accMessage.content;
       dispatch({
         type: "EDIT_MESSAGE",
-        payload: {
-          id: aiMessageId,
-          content: finalContent,
-        },
+        payload: { id: aiMessageId, content: finalContent },
       });
 
-      // Check multiple possible locations for toolCalls (new schema)
-      const toolCallsData =
-        parsedChunk.toolCalls || // Direct property
-        parsedChunk.data?.toolCalls || // Nested in data
-        parsedChunk.tool_calls || // Snake case variant
-        parsedChunk.data?.tool_calls || // Snake case in data
-        null;
-
-      // Check for legacy retrieval_calls
-      const retrievalCallsData =
-        parsedChunk.retrieval_calls ||
-        parsedChunk.data?.retrieval_calls ||
-        null;
-
-      if (toolCallsData && Array.isArray(toolCallsData)) {
-        try {
-          dispatch({
-            type: "EDIT_MESSAGE",
-            payload: { id: aiMessageId, toolCalls: toolCallsData },
-          });
-        } catch (error) {
-          console.error("[callAgent] Error processing tool calls:", error);
-        }
-      } else if (accumulatedToolCalls.length > 0) {
-        try {
-          dispatch({
-            type: "EDIT_MESSAGE",
-            payload: { id: aiMessageId, toolCalls: accumulatedToolCalls },
-          });
-        } catch (error) {
-          console.error("[callAgent] Error processing accumulated tool calls:", error);
-        }
-      } else if (retrievalCallsData && Array.isArray(retrievalCallsData)) {
-        try {
-          dispatch({
-            type: "EDIT_MESSAGE",
-            payload: { id: aiMessageId, retrievalCalls: retrievalCallsData },
-          });
-        } catch (error) {
-          console.error("[callAgent] Error processing retrieval calls:", error);
-        }
-      }
-    } else if (parsedChunk.event === "on_tool_start") {
-      try {
-        const toolName =
-          parsedChunk.name ||
-          parsedChunk.tool_name ||
-          parsedChunk.data?.name ||
-          parsedChunk.data?.tool_name ||
-          (typeof parsedChunk.data === "string" ? parsedChunk.data : null) ||
-          "unknown_tool";
-
-        const toolInput =
-          parsedChunk.input ||
-          parsedChunk.tool_input ||
-          parsedChunk.data?.input ||
-          parsedChunk.data?.tool_input ||
-          parsedChunk.data?.query ||
-          {};
-
-        // Get tool type from event data (backend provides this)
-        const toolType =
-          parsedChunk.toolType ||
-          parsedChunk.tool_type ||
-          parsedChunk.data?.toolType ||
-          parsedChunk.data?.tool_type ||
-          "unknown"; // Default fallback only if backend doesn't provide
-
-        const newToolCall = {
-          toolType: toolType,
-          toolName: toolName,
-          input:
-            typeof toolInput === "object" ? toolInput : { query: toolInput },
-          output: null,
-          startTime: Date.now(),
-        };
-
-        dispatch({ type: "SET_CURRENT_TOOL", payload: toolName });
-
-        return {
-          currentToolCall: newToolCall,
-          accumulatedToolCalls: accumulatedToolCalls,
-        };
-      } catch (error) {
-        console.error("[callAgent] Error handling tool start:", error);
-      }
-    } else if (parsedChunk.event === "on_tool_end") {
-      try {
-        const toolOutput =
-          parsedChunk.output ||
-          parsedChunk.tool_output ||
-          parsedChunk.data?.output ||
-          parsedChunk.data?.tool_output ||
-          parsedChunk.data?.results ||
-          parsedChunk.data ||
-          {};
-
-        if (currentToolCall) {
-          const completedToolCall = {
-            ...currentToolCall,
-            output:
-              typeof toolOutput === "object"
-                ? toolOutput
-                : { result: toolOutput },
-            endTime: Date.now(),
-          };
-
-          const updatedToolCalls = [...accumulatedToolCalls, completedToolCall];
-
-          dispatch({
-            type: "EDIT_MESSAGE",
-            payload: { id: aiMessageId, toolCalls: updatedToolCalls },
-          });
-          dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
-
-          return {
-            currentToolCall: null,
-            accumulatedToolCalls: updatedToolCalls,
-          };
-        } else {
-          const toolName =
-            parsedChunk.name ||
-            parsedChunk.tool_name ||
-            parsedChunk.data?.name ||
-            "unknown_tool";
-
-          // Get tool type from event data (backend provides this)
-          const toolType =
-            parsedChunk.toolType ||
-            parsedChunk.tool_type ||
-            parsedChunk.data?.toolType ||
-            parsedChunk.data?.tool_type ||
-            "unknown"; // Default fallback only if backend doesn't provide
-
-          const newCompletedToolCall = {
-            toolType: toolType,
-            toolName: toolName,
-            input: {},
-            output:
-              typeof toolOutput === "object"
-                ? toolOutput
-                : { result: toolOutput },
-            endTime: Date.now(),
-          };
-
-          const updatedToolCalls = [
-            ...accumulatedToolCalls,
-            newCompletedToolCall,
-          ];
-
-          dispatch({
-            type: "EDIT_MESSAGE",
-            payload: { id: aiMessageId, toolCalls: updatedToolCalls },
-          });
-          dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
-
-          return {
-            currentToolCall: null,
-            accumulatedToolCalls: updatedToolCalls,
-          };
-        }
-      } catch (error) {
-        console.error("[callAgent] Error handling tool end:", error);
-      }
-    } else if (parsedChunk.event === "error") {
-      try {
-        const errorData = parsedChunk.data || {};
-        const errorDetails = {
-          error: errorData.error || "Unknown error",
-          message: errorData.message || "An error occurred",
-          timestamp: Date.now(),
-          stack: errorData.stack,
-        };
-
-        console.error("[callAgent] Agent error:", errorDetails);
-
+      // on_chain_end carries the authoritative server-formatted toolCalls list.
+      // Use it to replace any accumulated state (handles edge cases where an
+      // on_tool_end event was missed or formatted differently).
+      const serverToolCalls: any[] | undefined = event.toolCalls;
+      if (serverToolCalls && serverToolCalls.length > 0) {
         dispatch({
           type: "EDIT_MESSAGE",
-          payload: {
-            id: aiMessageId,
-            error: errorDetails,
-            content:
-              accMessage.content ||
-              "Error occurred while processing your request.",
-          },
+          payload: { id: aiMessageId, toolCalls: serverToolCalls },
         });
-        dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
-      } catch (error) {
-        console.error("[callAgent] Error handling error event:", error);
+        return serverToolCalls;
       }
-    } else if (parsedChunk.event === "tool_approval_required") {
-      try {
-        const { approval_id, tool_type, preview } = parsedChunk.data || {};
 
-        dispatch({
-          type: "ADD_MESSAGE",
-          payload: {
-            id: `approval-${approval_id}`,
-            content: "",
-            role: "tool_approval",
-            error: null,
-            toolApproval: {
-              approvalId: approval_id,
-              toolType: tool_type,
-              preview,
-            },
-          },
-        });
-      } catch (error) {
-        console.error("[callAgent] Error handling tool_approval_required:", error);
+    } else if (eventType === "on_tool_start") {
+      // Show this tool as "pending" in the drawer immediately so the user
+      // can see the tool name and its input parameters before results arrive.
+      const toolName: string = data?.name ?? "unknown_tool";
+      const toolInput: Record<string, any> = data?.input ?? {};
+
+      const pendingEntry = {
+        toolName,
+        input: toolInput,
+        output: null,
+        _pending: true,
+        _runId: runId,
+      };
+
+      pendingToolCalls[runId] = pendingEntry;
+      const updated = [...accumulatedToolCalls, pendingEntry];
+
+      dispatch({ type: "SET_CURRENT_TOOL", payload: toolName });
+      dispatch({
+        type: "EDIT_MESSAGE",
+        payload: { id: aiMessageId, toolCalls: updated },
+      });
+      return updated;
+
+    } else if (eventType === "on_tool_end") {
+      dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
+
+      // data is the backend-formatted tool call object (v2 schema), or null
+      // if the call was skipped (e.g. embedding error).
+      const formattedCall: any | null = data ?? null;
+
+      // Replace the matching pending entry, falling back to appending.
+      let updated: any[];
+      const pendingIdx = accumulatedToolCalls.findIndex(
+        (tc) => tc._pending && tc._runId === runId,
+      );
+
+      if (formattedCall) {
+        if (pendingIdx !== -1) {
+          updated = [
+            ...accumulatedToolCalls.slice(0, pendingIdx),
+            formattedCall,
+            ...accumulatedToolCalls.slice(pendingIdx + 1),
+          ];
+        } else {
+          updated = [...accumulatedToolCalls, formattedCall];
+        }
+      } else {
+        // Tool failed / was skipped — remove the pending placeholder
+        updated =
+          pendingIdx !== -1
+            ? [
+                ...accumulatedToolCalls.slice(0, pendingIdx),
+                ...accumulatedToolCalls.slice(pendingIdx + 1),
+              ]
+            : accumulatedToolCalls;
       }
+
+      delete pendingToolCalls[runId];
+
+      if (updated.length > 0) {
+        dispatch({
+          type: "EDIT_MESSAGE",
+          payload: { id: aiMessageId, toolCalls: updated },
+        });
+      }
+      return updated;
+
+    } else if (eventType === "error") {
+      const errorData = event.data || {};
+      console.error("[callAgent] Agent error:", errorData);
+      dispatch({
+        type: "EDIT_MESSAGE",
+        payload: {
+          id: aiMessageId,
+          error: {
+            error: errorData.error || "Unknown error",
+            message: errorData.message || "An error occurred",
+            timestamp: Date.now(),
+            stack: errorData.stack,
+          },
+          content: accMessage.content || "Error occurred while processing your request.",
+        },
+      });
+      dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
+
+    } else if (eventType === "tool_approval_required") {
+      const { approval_id, tool_type, preview } = event.data || {};
+      dispatch({
+        type: "ADD_MESSAGE",
+        payload: {
+          id: `approval-${approval_id}`,
+          content: "",
+          role: "tool_approval",
+          error: null,
+          toolApproval: {
+            approvalId: approval_id,
+            toolType: tool_type,
+            preview,
+          },
+        },
+      });
     }
-  } catch (error) {
-    console.error("Error in dispatchEventToState:", error, parsedChunk);
+  } catch (err) {
+    console.error("[callAgent] Error in handleEvent:", err, event);
   }
+  return undefined;
 }
