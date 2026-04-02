@@ -11,7 +11,7 @@ import { StreamingAudioPlayer } from "@/components/tts-chat/streaming-audio-play
 import { TtsChatContextualAside } from "@/components/tts-chat/contextual-aside";
 import { useScrollAnchor } from "@/shared/hooks/use-scroll-anchor";
 import { cn } from "@/shared/utils";
-import { useContext, useEffect, useState, useCallback, useRef } from "react";
+import { useContext, useEffect, useRef, useState, useCallback } from "react";
 import { Agent } from "@/services/agentsService";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
@@ -29,17 +29,10 @@ export function Chat({
   setIsDrawerOpen,
 }: ChatProps) {
   const [input, setInput] = useState("");
-  const [showScrollButton, setShowScrollButton] = useState(false);
   const [isAudioStreaming, setIsAudioStreaming] = useState(false);
   const chatState = useContext(ChatContext);
   const dispatch = useContext(ChatDispatchContext);
-  const {
-    messagesRef,
-    scrollRef,
-    scrollToBottom,
-    visibilityRef,
-    isAtBottom,
-  } = useScrollAnchor();
+  const { scrollRef, scrollToBottom, isAtBottom } = useScrollAnchor();
 
   // Ref to the streaming audio player
   const audioPlayerRef = useRef<{
@@ -47,54 +40,29 @@ export function Chat({
     reset: () => void;
   } | null>(null);
 
-  // Check scroll position and update button visibility
-  const checkScrollPosition = useCallback(() => {
-    if (scrollRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      const hasScrollableContent = scrollHeight > clientHeight;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+  // Track previous message count to detect when a new message is added
+  const prevMessageCountRef = useRef(0);
 
-      setShowScrollButton(hasScrollableContent && !isNearBottom);
-    }
-  }, [scrollRef]);
-
-  // Check if we need to show the scroll button
+  // Smooth-scroll to bottom whenever a new message is added (count increases).
+  // This fires once per message, not per token.
   useEffect(() => {
-    const handleScroll = () => {
-      checkScrollPosition();
-    };
-
-    const scrollElement = scrollRef.current;
-    if (scrollElement) {
-      scrollElement.addEventListener("scroll", handleScroll);
-      checkScrollPosition();
-      return () => scrollElement.removeEventListener("scroll", handleScroll);
+    const count = chatState.messages.length;
+    if (count > prevMessageCountRef.current) {
+      scrollToBottom();
     }
-  }, [scrollRef, checkScrollPosition]);
+    prevMessageCountRef.current = count;
+  }, [chatState.messages.length, scrollToBottom]);
 
-  // Also check when messages change to catch new content
+  // During streaming, keep following the content — but ONLY if the user is
+  // already at the bottom. Uses instant scrollTop so rapid updates don't
+  // queue up competing smooth animations.
   useEffect(() => {
-    const timer = setTimeout(checkScrollPosition, 100);
-    return () => clearTimeout(timer);
-  }, [chatState?.messages, checkScrollPosition]);
-
-  // Auto-scroll to bottom when messages are streaming and user is at bottom
-  useEffect(() => {
-    if (
-      chatState.messages.length > 0 &&
-      (isAtBottom || chatState.completionLoading)
-    ) {
-      const timer = setTimeout(() => {
-        scrollToBottom();
-      }, 50);
-      return () => clearTimeout(timer);
+    if (chatState.completionLoading && isAtBottom && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [
-    chatState.messages,
-    chatState.completionLoading,
-    isAtBottom,
-    scrollToBottom,
-  ]);
+    // scrollRef is a stable ref — intentionally omitted from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatState.messages, chatState.completionLoading, isAtBottom]);
 
   // Queue for audio chunks that arrive before player is ready
   const audioChunkQueueRef = useRef<string[]>([]);
@@ -217,20 +185,17 @@ export function Chat({
     );
   }
 
-  const handleScrollToBottom = () => {
-    scrollToBottom();
-  };
-
   return (
     <>
-      {/* Floating Scroll to Bottom Button */}
-      {showScrollButton && (
+      {/* Scroll-to-bottom button — only visible when the user has scrolled up */}
+      {!isAtBottom && (
         <button
-          onClick={handleScrollToBottom}
+          onClick={scrollToBottom}
           className={cn(
-            "fixed bottom-6 z-40 p-2 rounded-full bg-gray-700/90 hover:bg-gray-600/90 border border-white/20 hover:border-white/30 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-sm",
-            "text-gray-300 hover:text-white",
-            "right-4 sm:right-6"
+            "fixed bottom-6 right-4 sm:right-6 z-40 p-2 rounded-full",
+            "bg-gray-700/90 hover:bg-gray-600/90 border border-white/20 hover:border-white/30",
+            "text-gray-300 hover:text-white shadow-lg hover:shadow-xl backdrop-blur-sm",
+            "transition-all duration-200"
           )}
           title="Scroll to bottom"
         >
@@ -244,10 +209,7 @@ export function Chat({
           className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 custom-scrollbar"
           ref={scrollRef}
         >
-          <div
-            className={cn("pb-[280px] chat-messages-fade", className)}
-            ref={messagesRef}
-          >
+          <div className={cn("pb-[280px] chat-messages-fade", className)}>
             {chatState.messages.length ? (
               <TtsChatList
                 messages={chatState.messages}
@@ -268,8 +230,6 @@ export function Chat({
                 }
               />
             )}
-            {/* Visibility anchor for auto-scroll */}
-            <div ref={visibilityRef} className="h-px" />
           </div>
         </div>
 
