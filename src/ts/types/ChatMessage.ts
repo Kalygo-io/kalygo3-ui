@@ -25,7 +25,7 @@ export interface ChatMessageV2 {
     | VectorSearchWithRerankingToolCall
     | DbTableReadToolCall
     | DbTableWriteToolCall
-    | SendTxtEmailToolCall
+    | SendTxtEmailWithSesToolCall
     | CustomToolCall
   )[];
 }
@@ -280,11 +280,11 @@ export interface DbReadRow {
 /**
  * Tool call for sending a plain-text email via AWS SES
  */
-export interface SendTxtEmailToolCall {
+export interface SendTxtEmailWithSesToolCall {
   /**
-   * The type of tool (sendTxtEmail)
+   * The type of tool (sendTxtEmailWithSes)
    */
-  toolType: "sendTxtEmail";
+  toolType: "sendTxtEmailWithSes";
   /**
    * The specific tool instance name (e.g., 'send_txt_email_with_ses')
    */

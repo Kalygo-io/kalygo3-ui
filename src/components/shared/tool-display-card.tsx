@@ -17,7 +17,7 @@ const TOOL_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   vectorSearchWithReranking: MagnifyingGlassIcon,
   dbTableRead: CircleStackIcon,
   dbTableWrite: PencilSquareIcon,
-  sendTxtEmail: EnvelopeIcon,
+  sendTxtEmailWithSes: EnvelopeIcon,
 };
 
 interface ToolDisplayCardProps {

@@ -41,8 +41,8 @@ export interface DbTableWriteTool {
   injectChatSessionId?: boolean;
 }
 
-export interface SendTxtEmailTool {
-  type: "sendTxtEmail";
+export interface SendTxtEmailWithSesTool {
+  type: "sendTxtEmailWithSes";
   credentialId: number;
   description?: string;
 }
@@ -64,7 +64,7 @@ export type AgentTool =
   | VectorSearchWithRerankingTool
   | DbTableReadTool
   | DbTableWriteTool
-  | SendTxtEmailTool
+  | SendTxtEmailWithSesTool
   | SendTxtEmailWithGoogleOAuthTool
   | SendTxtEmailWithGoogleSmtpTool;
 
@@ -139,7 +139,7 @@ export const TOOL_TYPE_METADATA: Record<AgentTool["type"], ToolTypeMeta> = {
     iconClass: "text-orange-400",
     summary: (t) => (t as DbTableWriteTool).table,
   },
-  sendTxtEmail: {
+  sendTxtEmailWithSes: {
     label: "Send Email (SES)",
     borderClass: "border-pink-700/30",
     iconClass: "text-pink-400",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
-import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailTool, SendTxtEmailWithGoogleOAuthTool, SendTxtEmailWithGoogleSmtpTool } from "@/services/agentsService";
+import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailWithSesTool, SendTxtEmailWithGoogleOAuthTool, SendTxtEmailWithGoogleSmtpTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { credentialService, Credential, CredentialType, ServiceName, formatServiceName } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -19,7 +19,7 @@ export function AddToolModal({
   initialTool,
 }: AddToolModalProps) {
   // Tool category selection
-  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite" | "sendTxtEmail" | "sendTxtEmailWithGoogleOAuth" | "sendTxtEmailWithGoogleSmtp">("vectorSearch");
+  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite" | "sendTxtEmailWithSes" | "sendTxtEmailWithGoogleOAuth" | "sendTxtEmailWithGoogleSmtp">("vectorSearch");
   
   // Vector search state
   const [vectorToolType, setVectorToolType] = useState<"vectorSearch" | "vectorSearchWithReranking">("vectorSearch");
@@ -86,8 +86,8 @@ export function AddToolModal({
         setRequiredColumns(initialTool.requiredColumns?.join(", ") || "");
         setInjectAccountId(initialTool.injectAccountId || false);
         setInjectChatSessionId(initialTool.injectChatSessionId || false);
-      } else if (initialTool.type === "sendTxtEmail") {
-        setToolCategory("sendTxtEmail");
+      } else if (initialTool.type === "sendTxtEmailWithSes") {
+        setToolCategory("sendTxtEmailWithSes");
         setSelectedSesCredentialId(initialTool.credentialId);
       } else if (initialTool.type === "sendTxtEmailWithGoogleOAuth") {
         setToolCategory("sendTxtEmailWithGoogleOAuth");
@@ -273,14 +273,14 @@ export function AddToolModal({
       }
 
         tool = dbWriteTool;
-    } else if (toolCategory === "sendTxtEmail") {
+    } else if (toolCategory === "sendTxtEmailWithSes") {
       if (!selectedSesCredentialId) {
         errorToast("Please select an AWS SES credential");
         return;
       }
 
-      const sesTool: SendTxtEmailTool = {
-        type: "sendTxtEmail",
+      const sesTool: SendTxtEmailWithSesTool = {
+        type: "sendTxtEmailWithSes",
         credentialId: selectedSesCredentialId as number,
       };
 
@@ -368,14 +368,14 @@ export function AddToolModal({
   const ringClass =
     toolCategory === "dbTableWrite"               ? "focus:ring-orange-500" :
     toolCategory === "dbTableRead"                ? "focus:ring-green-500" :
-    toolCategory === "sendTxtEmail"               ? "focus:ring-pink-500" :
+    toolCategory === "sendTxtEmailWithSes"               ? "focus:ring-pink-500" :
     toolCategory === "sendTxtEmailWithGoogleOAuth"? "focus:ring-blue-500" :
     toolCategory === "sendTxtEmailWithGoogleSmtp" ? "focus:ring-cyan-500" :
     "focus:ring-blue-500";
   const buttonClass =
     toolCategory === "dbTableWrite"               ? "bg-orange-600 hover:bg-orange-700" :
     toolCategory === "dbTableRead"                ? "bg-green-600 hover:bg-green-700" :
-    toolCategory === "sendTxtEmail"               ? "bg-pink-600 hover:bg-pink-700" :
+    toolCategory === "sendTxtEmailWithSes"               ? "bg-pink-600 hover:bg-pink-700" :
     toolCategory === "sendTxtEmailWithGoogleOAuth"? "bg-blue-600 hover:bg-blue-700" :
     toolCategory === "sendTxtEmailWithGoogleSmtp" ? "bg-cyan-600 hover:bg-cyan-700" :
     "bg-blue-600 hover:bg-blue-700";
@@ -477,18 +477,18 @@ export function AddToolModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setToolCategory("sendTxtEmail")}
+                  onClick={() => setToolCategory("sendTxtEmailWithSes")}
                   className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "sendTxtEmail"
+                    toolCategory === "sendTxtEmailWithSes"
                       ? "border-pink-500 bg-pink-500/10"
                       : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
                   }`}
                 >
                   <EnvelopeIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "sendTxtEmail" ? "text-pink-400" : "text-gray-500"
+                    toolCategory === "sendTxtEmailWithSes" ? "text-pink-400" : "text-gray-500"
                   }`} />
                   <div className={`text-sm font-medium ${
-                    toolCategory === "sendTxtEmail" ? "text-pink-300" : "text-gray-400"
+                    toolCategory === "sendTxtEmailWithSes" ? "text-pink-300" : "text-gray-400"
                   }`}>
                     Send Email
                   </div>
@@ -898,7 +898,7 @@ export function AddToolModal({
           )}
 
           {/* Send Text Email Options */}
-          {toolCategory === "sendTxtEmail" && (
+          {toolCategory === "sendTxtEmailWithSes" && (
             <>
               {/* SES Credential Selection */}
               <div>
@@ -1132,7 +1132,7 @@ export function AddToolModal({
                   ? "Describe what records this tool creates and when to use it..."
                   : toolCategory === "dbTableRead"
                     ? "Describe what data this table contains and what queries are useful..."
-                    : toolCategory === "sendTxtEmail" || toolCategory === "sendTxtEmailWithGoogleOAuth" || toolCategory === "sendTxtEmailWithGoogleSmtp"
+                    : toolCategory === "sendTxtEmailWithSes" || toolCategory === "sendTxtEmailWithGoogleOAuth" || toolCategory === "sendTxtEmailWithGoogleSmtp"
                       ? "Describe when the agent should send an email and any guidelines for tone or content..."
                       : "Describe what this knowledge base contains..."
               }
@@ -1157,7 +1157,7 @@ export function AddToolModal({
               type="submit"
               disabled={
                 (isDbTool && dbCredentials.length === 0) ||
-                (toolCategory === "sendTxtEmail" && sesCredentials.length === 0) ||
+                (toolCategory === "sendTxtEmailWithSes" && sesCredentials.length === 0) ||
                 (toolCategory === "sendTxtEmailWithGoogleOAuth" && googleOAuthCredentials.length === 0) ||
                 (toolCategory === "sendTxtEmailWithGoogleSmtp" && googleSmtpCredentials.length === 0)
               }

@@ -209,10 +209,10 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
             existing.credentialId === tool.credentialId &&
             existing.table === tool.table
         );
-      } else if (tool.type === "sendTxtEmail") {
+      } else if (tool.type === "sendTxtEmailWithSes") {
         isDuplicate = tools.some(
           (existing) =>
-            existing.type === "sendTxtEmail" &&
+            existing.type === "sendTxtEmailWithSes" &&
             existing.credentialId === tool.credentialId
         );
       } else if (tool.type === "sendTxtEmailWithGoogleOAuth") {
@@ -620,7 +620,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                                     )}
                                   </div>
                                 )}
-                                {(tool.type === "sendTxtEmail" || tool.type === "sendTxtEmailWithGoogleOAuth" || tool.type === "sendTxtEmailWithGoogleSmtp") && (
+                                {(tool.type === "sendTxtEmailWithSes" || tool.type === "sendTxtEmailWithGoogleOAuth" || tool.type === "sendTxtEmailWithGoogleSmtp") && (
                                   <div className="text-xs text-gray-500">Plain text</div>
                                 )}
                               </td>
