@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/nextjs";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
@@ -16,9 +15,6 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Kalygo",
   description: "Made in Miami",
-  other: {
-    ...Sentry.getTraceData(),
-  },
 };
 
 export default function RootLayout({
