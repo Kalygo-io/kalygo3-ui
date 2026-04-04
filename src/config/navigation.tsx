@@ -37,21 +37,6 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
-    name: "Multi Agent Chat",
-    href: "/dashboard/multi-agent-chat",
-    enabled: true,
-  },
-  {
-    name: "TTS Chat",
-    href: "/dashboard/tts-chat",
-    enabled: true,
-  },
-  {
-    name: "Multi-Agent TTS Chat",
-    href: "/dashboard/multi-agent-tts-chat",
-    enabled: true,
-  },
-  {
     name: "Vector Stores",
     href: "/dashboard/vector-stores",
     enabled: true,
