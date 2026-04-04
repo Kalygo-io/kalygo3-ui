@@ -215,6 +215,12 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
             existing.type === "sendTxtEmailWithSes" &&
             existing.credentialId === tool.credentialId
         );
+      } else if (tool.type === "sendHtmlEmailWithSes") {
+        isDuplicate = tools.some(
+          (existing) =>
+            existing.type === "sendHtmlEmailWithSes" &&
+            existing.credentialId === tool.credentialId
+        );
       } else if (tool.type === "sendTxtEmailWithGoogleOAuth") {
         isDuplicate = tools.some(
           (existing) =>
@@ -620,7 +626,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                                     )}
                                   </div>
                                 )}
-                                {(tool.type === "sendTxtEmailWithSes" || tool.type === "sendTxtEmailWithGoogleOAuth" || tool.type === "sendTxtEmailWithGoogleSmtp") && (
+                                {(tool.type === "sendTxtEmailWithSes" || tool.type === "sendHtmlEmailWithSes" || tool.type === "sendTxtEmailWithGoogleOAuth" || tool.type === "sendTxtEmailWithGoogleSmtp") && (
                                   <div className="text-xs text-gray-500">Plain text</div>
                                 )}
                               </td>

@@ -86,6 +86,7 @@ function ToolCallCard({ index, call }: { index: number; call: any }) {
     case "dbTableWrite":
       return <DbWriteCard index={index} call={call} />;
     case "sendTxtEmailWithSes":
+    case "sendHtmlEmailWithSes":
       return <EmailCard index={index} call={call} />;
     case "custom":
       return <CustomCard index={index} call={call} />;

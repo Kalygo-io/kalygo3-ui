@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
-import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailWithSesTool, SendTxtEmailWithGoogleOAuthTool, SendTxtEmailWithGoogleSmtpTool } from "@/services/agentsService";
+import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailWithSesTool, SendHtmlEmailWithSesTool, SendTxtEmailWithGoogleOAuthTool, SendTxtEmailWithGoogleSmtpTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { credentialService, Credential, CredentialType, ServiceName, formatServiceName } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -19,7 +19,7 @@ export function AddToolModal({
   initialTool,
 }: AddToolModalProps) {
   // Tool category selection
-  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite" | "sendTxtEmailWithSes" | "sendTxtEmailWithGoogleOAuth" | "sendTxtEmailWithGoogleSmtp">("vectorSearch");
+  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite" | "sendTxtEmailWithSes" | "sendHtmlEmailWithSes" | "sendTxtEmailWithGoogleOAuth" | "sendTxtEmailWithGoogleSmtp">("vectorSearch");
   
   // Vector search state
   const [vectorToolType, setVectorToolType] = useState<"vectorSearch" | "vectorSearchWithReranking">("vectorSearch");
@@ -88,6 +88,9 @@ export function AddToolModal({
         setInjectChatSessionId(initialTool.injectChatSessionId || false);
       } else if (initialTool.type === "sendTxtEmailWithSes") {
         setToolCategory("sendTxtEmailWithSes");
+        setSelectedSesCredentialId(initialTool.credentialId);
+      } else if (initialTool.type === "sendHtmlEmailWithSes") {
+        setToolCategory("sendHtmlEmailWithSes");
         setSelectedSesCredentialId(initialTool.credentialId);
       } else if (initialTool.type === "sendTxtEmailWithGoogleOAuth") {
         setToolCategory("sendTxtEmailWithGoogleOAuth");
@@ -289,6 +292,22 @@ export function AddToolModal({
       }
 
       tool = sesTool;
+    } else if (toolCategory === "sendHtmlEmailWithSes") {
+      if (!selectedSesCredentialId) {
+        errorToast("Please select an AWS SES credential");
+        return;
+      }
+
+      const htmlSesTool: SendHtmlEmailWithSesTool = {
+        type: "sendHtmlEmailWithSes",
+        credentialId: selectedSesCredentialId as number,
+      };
+
+      if (description.trim()) {
+        htmlSesTool.description = description.trim();
+      }
+
+      tool = htmlSesTool;
     } else if (toolCategory === "sendTxtEmailWithGoogleOAuth") {
       if (!selectedGoogleOAuthCredentialId) {
         errorToast("Please select a Google OAuth credential");
@@ -369,6 +388,7 @@ export function AddToolModal({
     toolCategory === "dbTableWrite"               ? "focus:ring-orange-500" :
     toolCategory === "dbTableRead"                ? "focus:ring-green-500" :
     toolCategory === "sendTxtEmailWithSes"               ? "focus:ring-pink-500" :
+    toolCategory === "sendHtmlEmailWithSes"              ? "focus:ring-pink-500" :
     toolCategory === "sendTxtEmailWithGoogleOAuth"? "focus:ring-blue-500" :
     toolCategory === "sendTxtEmailWithGoogleSmtp" ? "focus:ring-cyan-500" :
     "focus:ring-blue-500";
@@ -376,6 +396,7 @@ export function AddToolModal({
     toolCategory === "dbTableWrite"               ? "bg-orange-600 hover:bg-orange-700" :
     toolCategory === "dbTableRead"                ? "bg-green-600 hover:bg-green-700" :
     toolCategory === "sendTxtEmailWithSes"               ? "bg-pink-600 hover:bg-pink-700" :
+    toolCategory === "sendHtmlEmailWithSes"              ? "bg-pink-600 hover:bg-pink-700" :
     toolCategory === "sendTxtEmailWithGoogleOAuth"? "bg-blue-600 hover:bg-blue-700" :
     toolCategory === "sendTxtEmailWithGoogleSmtp" ? "bg-cyan-600 hover:bg-cyan-700" :
     "bg-blue-600 hover:bg-blue-700";
@@ -491,6 +512,27 @@ export function AddToolModal({
                     toolCategory === "sendTxtEmailWithSes" ? "text-pink-300" : "text-gray-400"
                   }`}>
                     Send Email
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    AWS SES
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setToolCategory("sendHtmlEmailWithSes")}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    toolCategory === "sendHtmlEmailWithSes"
+                      ? "border-pink-500 bg-pink-500/10"
+                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
+                  }`}
+                >
+                  <EnvelopeIcon className={`h-8 w-8 mx-auto mb-2 ${
+                    toolCategory === "sendHtmlEmailWithSes" ? "text-pink-400" : "text-gray-500"
+                  }`} />
+                  <div className={`text-sm font-medium ${
+                    toolCategory === "sendHtmlEmailWithSes" ? "text-pink-300" : "text-gray-400"
+                  }`}>
+                    Send HTML Email
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     AWS SES
@@ -979,6 +1021,94 @@ export function AddToolModal({
             </>
           )}
 
+          {/* Send HTML Email via SES */}
+          {toolCategory === "sendHtmlEmailWithSes" && (
+            <>
+              {/* SES Credential Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  AWS SES Credential *
+                </label>
+                {loadingCredentials ? (
+                  <div className="text-gray-400 text-sm">Loading credentials...</div>
+                ) : sesCredentials.length === 0 ? (
+                  <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <KeyIcon className="h-5 w-5 text-yellow-400 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-yellow-300">
+                          No AWS SES Credentials Found
+                        </h4>
+                        <p className="text-xs text-yellow-400/80 mt-1">
+                          You need to create a credential with service name &quot;AWS_SES&quot; first.
+                          Go to Credentials → Add Credential and set the service name to AWS_SES.
+                          The credential must contain <code className="text-yellow-300">aws_access_key_id</code>,{" "}
+                          <code className="text-yellow-300">aws_secret_access_key</code>,{" "}
+                          <code className="text-yellow-300">aws_region</code>, and{" "}
+                          <code className="text-yellow-300">from_email</code>.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedSesCredentialId}
+                    onChange={(e) => setSelectedSesCredentialId(e.target.value ? parseInt(e.target.value) : "")}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    required
+                    disabled={isEditing}
+                  >
+                    <option value="">Select an AWS SES credential...</option>
+                    {sesCredentials.map((cred) => (
+                      <option key={cred.id} value={cred.id}>
+                        {formatServiceName(cred.service_name)}
+                        {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
+                        {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-gray-400 text-xs mt-2">
+                  Select a stored AWS SES credential containing the sender identity and access keys.
+                </p>
+                {isEditing && (
+                  <p className="text-gray-400 text-xs mt-1">
+                    Credential cannot be changed when editing.
+                  </p>
+                )}
+              </div>
+
+              {/* Selected SES Credential Info */}
+              {selectedSesCredential && (
+                <div className="bg-pink-900/20 border border-pink-700/50 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <EnvelopeIcon className="h-5 w-5 text-pink-400 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-medium text-white">
+                        {formatServiceName(selectedSesCredential.service_name)}
+                      </h4>
+                      {selectedSesCredential.credential_metadata?.label && (
+                        <p className="text-xs text-gray-300 mt-1">
+                          {selectedSesCredential.credential_metadata.label}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Credential ID: {selectedSesCredential.id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3">
+                <p className="text-xs text-blue-300">
+                  The agent writes the email body as plain text. Each non-empty line is automatically
+                  wrapped in a &lt;p&gt; tag, producing a clean HTML email that looks like a text email.
+                </p>
+              </div>
+            </>
+          )}
+
           {/* Send Email via Google OAuth */}
           {toolCategory === "sendTxtEmailWithGoogleOAuth" && (
             <>
@@ -1132,7 +1262,7 @@ export function AddToolModal({
                   ? "Describe what records this tool creates and when to use it..."
                   : toolCategory === "dbTableRead"
                     ? "Describe what data this table contains and what queries are useful..."
-                    : toolCategory === "sendTxtEmailWithSes" || toolCategory === "sendTxtEmailWithGoogleOAuth" || toolCategory === "sendTxtEmailWithGoogleSmtp"
+                    : toolCategory === "sendTxtEmailWithSes" || toolCategory === "sendHtmlEmailWithSes" || toolCategory === "sendTxtEmailWithGoogleOAuth" || toolCategory === "sendTxtEmailWithGoogleSmtp"
                       ? "Describe when the agent should send an email and any guidelines for tone or content..."
                       : "Describe what this knowledge base contains..."
               }
@@ -1158,6 +1288,7 @@ export function AddToolModal({
               disabled={
                 (isDbTool && dbCredentials.length === 0) ||
                 (toolCategory === "sendTxtEmailWithSes" && sesCredentials.length === 0) ||
+                (toolCategory === "sendHtmlEmailWithSes" && sesCredentials.length === 0) ||
                 (toolCategory === "sendTxtEmailWithGoogleOAuth" && googleOAuthCredentials.length === 0) ||
                 (toolCategory === "sendTxtEmailWithGoogleSmtp" && googleSmtpCredentials.length === 0)
               }

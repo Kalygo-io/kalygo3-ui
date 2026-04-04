@@ -47,6 +47,12 @@ export interface SendTxtEmailWithSesTool {
   description?: string;
 }
 
+export interface SendHtmlEmailWithSesTool {
+  type: "sendHtmlEmailWithSes";
+  credentialId: number;
+  description?: string;
+}
+
 export interface SendTxtEmailWithGoogleOAuthTool {
   type: "sendTxtEmailWithGoogleOAuth";
   credentialId: number;
@@ -65,6 +71,7 @@ export type AgentTool =
   | DbTableReadTool
   | DbTableWriteTool
   | SendTxtEmailWithSesTool
+  | SendHtmlEmailWithSesTool
   | SendTxtEmailWithGoogleOAuthTool
   | SendTxtEmailWithGoogleSmtpTool;
 
@@ -144,6 +151,12 @@ export const TOOL_TYPE_METADATA: Record<AgentTool["type"], ToolTypeMeta> = {
     borderClass: "border-pink-700/30",
     iconClass: "text-pink-400",
     summary: () => "AWS SES · requires human approval",
+  },
+  sendHtmlEmailWithSes: {
+    label: "Send HTML Email (SES)",
+    borderClass: "border-pink-700/30",
+    iconClass: "text-pink-400",
+    summary: () => "AWS SES · HTML · requires human approval",
   },
   sendTxtEmailWithGoogleOAuth: {
     label: "Send Email (Google OAuth)",

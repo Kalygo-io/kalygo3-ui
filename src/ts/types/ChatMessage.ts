@@ -26,6 +26,7 @@ export interface ChatMessageV2 {
     | DbTableReadToolCall
     | DbTableWriteToolCall
     | SendTxtEmailWithSesToolCall
+    | SendHtmlEmailWithSesToolCall
     | CustomToolCall
   )[];
 }
@@ -300,6 +301,50 @@ export interface SendTxtEmailWithSesToolCall {
     subject?: string;
     /**
      * Plain-text email body
+     */
+    body?: string;
+    [k: string]: unknown;
+  };
+  output: {
+    /**
+     * Whether the email was sent successfully
+     */
+    success: boolean;
+    /**
+     * SES message ID if sent successfully
+     */
+    messageId?: string;
+    /**
+     * Error message if send failed
+     */
+    error?: string;
+    [k: string]: unknown;
+  };
+}
+
+/**
+ * Tool call for sending an HTML email via AWS SES
+ */
+export interface SendHtmlEmailWithSesToolCall {
+  /**
+   * The type of tool (sendHtmlEmailWithSes)
+   */
+  toolType: "sendHtmlEmailWithSes";
+  /**
+   * The specific tool instance name (e.g., 'send_html_email_with_ses')
+   */
+  toolName: string;
+  input: {
+    /**
+     * Recipient email address
+     */
+    to: string;
+    /**
+     * Email subject line
+     */
+    subject?: string;
+    /**
+     * Plain-text body (each non-empty line becomes a <p> paragraph)
      */
     body?: string;
     [k: string]: unknown;

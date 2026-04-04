@@ -18,6 +18,7 @@ const TOOL_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   dbTableRead: CircleStackIcon,
   dbTableWrite: PencilSquareIcon,
   sendTxtEmailWithSes: EnvelopeIcon,
+  sendHtmlEmailWithSes: EnvelopeIcon,
 };
 
 interface ToolDisplayCardProps {
