@@ -52,6 +52,22 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Analytics",
+    enabled: true,
+    children: [
+      {
+        name: "SES Email Analytics",
+        href: "/dashboard/analytics/ses-email",
+        enabled: true,
+      },
+      {
+        name: "Usage Analytics",
+        href: "/dashboard/analytics/usage",
+        enabled: true,
+      },
+    ],
+  },
+  {
     name: "Settings",
     enabled: true,
     children: [
