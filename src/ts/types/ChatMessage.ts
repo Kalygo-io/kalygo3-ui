@@ -344,9 +344,9 @@ export interface SendHtmlEmailWithSesToolCall {
      */
     subject?: string;
     /**
-     * Plain-text body (each non-empty line becomes a <p> paragraph)
+     * Complete production-grade HTML email body authored by the agent
      */
-    body?: string;
+    html_body?: string;
     [k: string]: unknown;
   };
   output: {

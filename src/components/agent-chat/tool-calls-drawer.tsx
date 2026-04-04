@@ -387,6 +387,8 @@ function DbWriteCard({ index, call }: { index: number; call: any }) {
 // ─── Send Email ───────────────────────────────────────────────────────────────
 
 function EmailCard({ index, call }: { index: number; call: any }) {
+  const htmlBody: string | undefined = call.input?.html_body;
+  const txtBody: string | undefined = call.input?.body;
   return (
     <CardShell
       index={index}
@@ -403,8 +405,20 @@ function EmailCard({ index, call }: { index: number; call: any }) {
         )}
         {call.output?.error && <Row label="Error" value={call.output.error} />}
       </div>
-      {call.input?.body && (
-        <JsonBlock label="Body" data={call.input.body} />
+      {htmlBody && (
+        <div className="mt-2">
+          <p className="text-xs text-gray-500 mb-1 font-medium">HTML Preview</p>
+          <iframe
+            srcDoc={htmlBody}
+            sandbox="allow-same-origin"
+            className="w-full rounded border border-gray-700/50 bg-white"
+            style={{ minHeight: "220px", maxHeight: "480px" }}
+            title="Email HTML Preview"
+          />
+        </div>
+      )}
+      {txtBody && !htmlBody && (
+        <JsonBlock label="Body" data={txtBody} />
       )}
     </CardShell>
   );
