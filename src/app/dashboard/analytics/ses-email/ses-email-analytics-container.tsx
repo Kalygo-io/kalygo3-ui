@@ -12,6 +12,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ShieldExclamationIcon,
+  CursorArrowRaysIcon,
 } from "@heroicons/react/24/outline";
 import {
   emailEventsService,
@@ -32,6 +33,7 @@ const EVENT_TYPE_OPTIONS = [
   { value: "open", label: "Open" },
   { value: "bounce", label: "Bounce" },
   { value: "complaint", label: "Complaint" },
+  { value: "click", label: "Click" },
   { value: "other", label: "Other" },
 ];
 
@@ -41,11 +43,12 @@ const EVENT_BADGE: Record<string, string> = {
   open:      "bg-purple-900/40 text-purple-300 border border-purple-700/40",
   bounce:    "bg-red-900/40    text-red-300    border border-red-700/40",
   complaint: "bg-orange-900/40 text-orange-300 border border-orange-700/40",
+  click:     "bg-cyan-900/40   text-cyan-300   border border-cyan-700/40",
   other:     "bg-gray-800      text-gray-400   border border-gray-600",
 };
 
 const EMPTY_STATS: EmailEventStats = {
-  send: 0, delivery: 0, open: 0, bounce: 0, complaint: 0, other: 0, total: 0,
+  send: 0, delivery: 0, open: 0, bounce: 0, complaint: 0, click: 0, other: 0, total: 0,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -271,7 +274,7 @@ export function SesEmailAnalyticsContainer() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
         <StatCard label="Sent" value={stats.send}
           icon={EnvelopeIcon} color="text-blue-400" bg="bg-blue-900/20" border="border-blue-700/40" />
         <StatCard label="Delivered" value={stats.delivery}
@@ -286,6 +289,9 @@ export function SesEmailAnalyticsContainer() {
         <StatCard label="Complaints" value={stats.complaint}
           sub={pct(stats.complaint, stats.delivery) ? `${pct(stats.complaint, stats.delivery)} of delivered` : undefined}
           icon={ShieldExclamationIcon} color="text-orange-400" bg="bg-orange-900/20" border="border-orange-700/40" />
+        <StatCard label="Clicks" value={stats.click}
+          sub={pct(stats.click, stats.delivery) ? `${pct(stats.click, stats.delivery)} of delivered` : undefined}
+          icon={CursorArrowRaysIcon} color="text-cyan-400" bg="bg-cyan-900/20" border="border-cyan-700/40" />
       </div>
 
       {/* Filters */}

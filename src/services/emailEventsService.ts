@@ -14,7 +14,7 @@ const API_BASE_URL = getApiBaseUrl();
 // Types
 // ============================================================================
 
-export type EmailEventType = "send" | "delivery" | "open" | "bounce" | "complaint" | "other";
+export type EmailEventType = "send" | "delivery" | "open" | "bounce" | "complaint" | "click" | "other";
 
 export interface EmailEvent {
   id: number;
@@ -37,6 +37,7 @@ export interface EmailEventStats {
   open: number;
   bounce: number;
   complaint: number;
+  click: number;
   other: number;
   total: number;
 }
