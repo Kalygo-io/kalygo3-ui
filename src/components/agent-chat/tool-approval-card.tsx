@@ -30,6 +30,9 @@ export function ToolApprovalCard({ toolApproval }: Props) {
   const [subject, setSubject] = useState(preview?.subject ?? "");
   const [body, setBody] = useState(preview?.body ?? "");
 
+  const isHtmlBody = /^\s*(<\s*!doctype|<\s*html)/i.test(body) || /<\/?(html|body|head|table|tr|td|div|p|span)\b/i.test(body);
+  const [showBodyPreview, setShowBodyPreview] = useState(isHtmlBody);
+
   const isResolved = !!resolvedStatus;
 
   const handleApprove = async () => {
@@ -169,16 +172,44 @@ export function ToolApprovalCard({ toolApproval }: Props) {
 
         {/* Body */}
         <div>
-          <label className="block text-xs text-gray-400 uppercase tracking-wider font-bold mb-1.5">
-            Body
-          </label>
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            disabled={isResolved}
-            rows={8}
-            className={fieldBase}
-          />
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs text-gray-400 uppercase tracking-wider font-bold">
+              Body
+            </label>
+            {isHtmlBody && (
+              <button
+                type="button"
+                onClick={() => setShowBodyPreview((v) => !v)}
+                className="text-xs text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors"
+              >
+                {showBodyPreview ? "Edit" : "Preview"}
+              </button>
+            )}
+          </div>
+          {isHtmlBody && showBodyPreview ? (
+            <iframe
+              srcDoc={body}
+              title="Email body preview"
+              sandbox="allow-same-origin"
+              className="w-full rounded-lg border border-gray-700 bg-white"
+              style={{ height: "320px" }}
+            />
+          ) : (
+            <>
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                disabled={isResolved}
+                rows={8}
+                className={fieldBase}
+              />
+              {!body.trim() && !isResolved && (
+                <p className="mt-1.5 text-xs text-gray-500 italic">
+                  Body not included in preview — the agent&apos;s generated content will be sent as-is.
+                </p>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -201,7 +232,7 @@ export function ToolApprovalCard({ toolApproval }: Props) {
             </button>
             <button
               onClick={handleApprove}
-              disabled={isLoading !== null || !toEmail.trim() || !subject.trim() || !body.trim()}
+              disabled={isLoading !== null || !toEmail.trim() || !subject.trim()}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-green-700 hover:bg-green-600 border border-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading === "approve" ? (
