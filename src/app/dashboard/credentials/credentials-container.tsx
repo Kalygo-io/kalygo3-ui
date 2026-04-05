@@ -6,6 +6,7 @@ import {
   Credential,
   CredentialDetail,
   ServiceName,
+  AuthType,
   CredentialType,
   CredentialMetadata,
   CredentialData,
@@ -30,27 +31,25 @@ import {
 } from "@heroicons/react/24/outline";
 import posthog from "posthog-js";
 
-// Icon mapping for credential types
-function getCredentialTypeIcon(credentialType: CredentialType | string) {
+function getCredentialTypeIcon(authType: AuthType | string) {
   const icons: Record<string, React.ReactNode> = {
-    [CredentialType.API_KEY]: <KeyIcon className="h-5 w-5" />,
-    [CredentialType.AWS_ACCESS_KEY_PAIR]: <KeyIcon className="h-5 w-5" />,
-    [CredentialType.DB_CONNECTION]: <CircleStackIcon className="h-5 w-5" />,
-    [CredentialType.CONNECTION_STRING]: <LinkIcon className="h-5 w-5" />,
-    [CredentialType.OAUTH_TOKEN]: <ShieldCheckIcon className="h-5 w-5" />,
-    [CredentialType.SECRET_KEY]: <KeyIcon className="h-5 w-5" />,
-    [CredentialType.CERTIFICATE]: <DocumentTextIcon className="h-5 w-5" />,
-    [CredentialType.OTHER]: <KeyIcon className="h-5 w-5" />,
+    [AuthType.API_KEY]: <KeyIcon className="h-5 w-5" />,
+    [AuthType.AWS_ACCESS_KEY_PAIR]: <KeyIcon className="h-5 w-5" />,
+    [AuthType.DB_CONNECTION]: <CircleStackIcon className="h-5 w-5" />,
+    [AuthType.CONNECTION_STRING]: <LinkIcon className="h-5 w-5" />,
+    [AuthType.OAUTH_TOKEN]: <ShieldCheckIcon className="h-5 w-5" />,
+    [AuthType.SECRET_KEY]: <KeyIcon className="h-5 w-5" />,
+    [AuthType.CERTIFICATE]: <DocumentTextIcon className="h-5 w-5" />,
+    [AuthType.OTHER]: <KeyIcon className="h-5 w-5" />,
   };
-  return icons[credentialType] || <KeyIcon className="h-5 w-5" />;
+  return icons[authType] || <KeyIcon className="h-5 w-5" />;
 }
 
 export function CredentialsContainer() {
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingCredential, setEditingCredential] =
-    useState<CredentialDetail | null>(null);
+  const [editingCredential, setEditingCredential] = useState<CredentialDetail | null>(null);
   const [showSecretValue, setShowSecretValue] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
@@ -70,19 +69,21 @@ export function CredentialsContainer() {
   };
 
   const handleCreate = async (
-    serviceName: ServiceName | string,
-    credentialType: CredentialType | string,
+    credentialTypeVal: ServiceName | string,
+    authType: AuthType | string,
+    credentialName: string,
     credentialData: CredentialData,
     metadata?: CredentialMetadata
   ) => {
     try {
       await credentialService.createCredential({
-        service_name: serviceName,
-        credential_type: credentialType,
+        credential_type: credentialTypeVal,
+        auth_type: authType,
+        credential_name: credentialName || undefined,
         credential_data: credentialData,
         metadata: metadata,
       });
-      posthog.capture("credential_created", { service_name: serviceName, credential_type: credentialType });
+      posthog.capture("credential_created", { credential_type: credentialTypeVal, auth_type: authType });
       successToast("Credential created successfully");
       setShowCreateForm(false);
       loadCredentials();
@@ -94,12 +95,13 @@ export function CredentialsContainer() {
 
   const handleUpdate = async (
     credentialId: number,
-    credentialType: CredentialType | string,
+    credentialName: string,
     credentialData: CredentialData,
     metadata?: CredentialMetadata
   ) => {
     try {
       await credentialService.updateCredential(credentialId, {
+        credential_name: credentialName || undefined,
         credential_data: credentialData,
         metadata: metadata,
       });
@@ -113,10 +115,7 @@ export function CredentialsContainer() {
   };
 
   const handleDelete = async (credentialId: number) => {
-    if (!confirm("Are you sure you want to delete this credential?")) {
-      return;
-    }
-
+    if (!confirm("Are you sure you want to delete this credential?")) return;
     try {
       await credentialService.deleteCredential(credentialId);
       posthog.capture("credential_deleted", { credential_id: credentialId });
@@ -138,10 +137,7 @@ export function CredentialsContainer() {
   };
 
   const toggleSecretVisibility = (credentialId: number) => {
-    setShowSecretValue((prev) => ({
-      ...prev,
-      [credentialId]: !prev[credentialId],
-    }));
+    setShowSecretValue((prev) => ({ ...prev, [credentialId]: !prev[credentialId] }));
   };
 
   if (loading) {
@@ -165,7 +161,6 @@ export function CredentialsContainer() {
         </button>
       </div>
 
-      {/* Create Form Modal */}
       {showCreateForm && (
         <CreateCredentialForm
           onClose={() => setShowCreateForm(false)}
@@ -173,26 +168,19 @@ export function CredentialsContainer() {
         />
       )}
 
-      {/* Edit/View Modal */}
       {editingCredential && (
         <EditCredentialModal
           credential={editingCredential}
           showSecret={showSecretValue[editingCredential.id] || false}
           onClose={() => {
             setEditingCredential(null);
-            setShowSecretValue((prev) => ({
-              ...prev,
-              [editingCredential.id]: false,
-            }));
+            setShowSecretValue((prev) => ({ ...prev, [editingCredential!.id]: false }));
           }}
-          onToggleVisibility={() =>
-            toggleSecretVisibility(editingCredential.id)
-          }
+          onToggleVisibility={() => toggleSecretVisibility(editingCredential.id)}
           onUpdate={handleUpdate}
         />
       )}
 
-      {/* Credentials List */}
       {credentials.length === 0 ? (
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
           <KeyIcon className="h-12 w-12 text-gray-500 mx-auto mb-4" />
@@ -223,6 +211,10 @@ export function CredentialsContainer() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Card
+// ---------------------------------------------------------------------------
+
 function CredentialCard({
   credential,
   onView,
@@ -232,32 +224,32 @@ function CredentialCard({
   onView: () => void;
   onDelete: () => void;
 }) {
-  const typeColor = getCredentialTypeColor(credential.credential_type);
-  const typeIcon = getCredentialTypeIcon(credential.credential_type);
-  const label = credential.credential_metadata?.label;
+  const typeColor = getCredentialTypeColor(credential.auth_type);
+  const typeIcon = getCredentialTypeIcon(credential.auth_type);
   const environment = credential.credential_metadata?.environment;
-  const isKeyPair = credential.credential_type === CredentialType.AWS_ACCESS_KEY_PAIR;
+  const isKeyPair = credential.auth_type === AuthType.AWS_ACCESS_KEY_PAIR;
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-gray-600/50 transition-all duration-200">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-xl font-semibold text-white">
-              {formatServiceName(credential.service_name)}
-            </h3>
-          </div>
-          {label && (
-            <p className="text-sm text-gray-300 mb-2">{label}</p>
-          )}
+          {/* Primary: credential_name (or service display name if none set) */}
+          <h3 className="text-xl font-semibold text-white mb-0.5">
+            {credential.credential_name || formatServiceName(credential.credential_type)}
+          </h3>
+          {/* Secondary: service label always visible */}
+          <p className="text-xs text-gray-500 mb-3">
+            {formatServiceName(credential.credential_type)}
+          </p>
+
           <div className="flex flex-wrap gap-2 mb-3">
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${typeColor}`}>
               {typeIcon}
-              {formatCredentialType(credential.credential_type)}
+              {formatCredentialType(credential.auth_type)}
             </span>
             {environment && (
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                environment === "production" 
+                environment === "production"
                   ? "bg-red-600/20 text-red-300 border-red-500/40"
                   : environment === "staging"
                   ? "bg-yellow-600/20 text-yellow-300 border-yellow-500/40"
@@ -267,6 +259,7 @@ function CredentialCard({
               </span>
             )}
           </div>
+
           {isKeyPair && (
             <div className="font-mono text-xs text-gray-400 space-y-1 mb-3 bg-gray-900/50 rounded-lg px-3 py-2">
               <div className="flex items-center gap-2">
@@ -279,13 +272,10 @@ function CredentialCard({
               </div>
             </div>
           )}
+
           <div className="text-xs text-gray-400 space-y-1">
-            <div>
-              Created: {new Date(credential.created_at).toLocaleDateString()}
-            </div>
-            <div>
-              Updated: {new Date(credential.updated_at).toLocaleDateString()}
-            </div>
+            <div>Created: {new Date(credential.created_at).toLocaleDateString()}</div>
+            <div>Updated: {new Date(credential.updated_at).toLocaleDateString()}</div>
           </div>
         </div>
       </div>
@@ -310,50 +300,50 @@ function CredentialCard({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Create form
+// ---------------------------------------------------------------------------
+
 function CreateCredentialForm({
   onClose,
   onSubmit,
 }: {
   onClose: () => void;
   onSubmit: (
-    serviceName: ServiceName | string,
-    credentialType: CredentialType | string,
+    credentialType: ServiceName | string,
+    authType: AuthType | string,
+    credentialName: string,
     credentialData: CredentialData,
     metadata?: CredentialMetadata
   ) => Promise<void>;
 }) {
   const [serviceName, setServiceName] = useState<ServiceName | "">("");
-  const [credentialType, setCredentialType] = useState<CredentialType>(CredentialType.API_KEY);
+  const [authType, setAuthType] = useState<AuthType>(AuthType.API_KEY);
+  const [credentialName, setCredentialName] = useState("");
   const [secretValue, setSecretValue] = useState("");
   const [showSecret, setShowSecret] = useState(false);
-  const [label, setLabel] = useState("");
   const [environment, setEnvironment] = useState<"production" | "staging" | "development" | "">("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Secret Key pair fields (key_id + secret_key) — used for SECRET_KEY type
   const [keyId, setKeyId] = useState("");
   const [showSecretPair, setShowSecretPair] = useState(false);
-
-  // AWS SES extra fields — shown on top of the key pair when AWS_SES service is selected
   const [sesRegion, setSesRegion] = useState("");
   const [sesFromEmail, setSesFromEmail] = useState("");
-
-  // Google Gmail SMTP fields
   const [googleFromEmail, setGoogleFromEmail] = useState("");
   const [googleAppPassword, setGoogleAppPassword] = useState("");
   const [showGoogleAppPassword, setShowGoogleAppPassword] = useState(false);
 
   const isAwsSes = serviceName === ServiceName.AWS_SES;
   const isGoogleGmailSmtp = serviceName === ServiceName.GOOGLE_GMAIL_SMTP;
-  const isAccessKeyPair = credentialType === CredentialType.AWS_ACCESS_KEY_PAIR;
+  const isAccessKeyPair = authType === AuthType.AWS_ACCESS_KEY_PAIR;
 
   const handleServiceNameChange = (value: ServiceName | "") => {
     setServiceName(value);
     if (value === ServiceName.AWS_SES) {
-      setCredentialType(CredentialType.AWS_ACCESS_KEY_PAIR);
+      setAuthType(AuthType.AWS_ACCESS_KEY_PAIR);
     } else if (value === ServiceName.GOOGLE_GMAIL_SMTP) {
-      setCredentialType(CredentialType.API_KEY);
+      setAuthType(AuthType.API_KEY);
     }
   };
 
@@ -361,6 +351,10 @@ function CreateCredentialForm({
     e.preventDefault();
     if (!serviceName) {
       errorToast("Please select a service");
+      return;
+    }
+    if (!credentialName.trim()) {
+      errorToast("Please enter a name to identify this credential");
       return;
     }
 
@@ -391,22 +385,17 @@ function CreateCredentialForm({
         errorToast("Please fill in both the Key ID and Secret Key");
         return;
       }
-      credentialData = {
-        key_id: keyId.trim(),
-        secret_key: secretValue.trim(),
-      };
+      credentialData = { key_id: keyId.trim(), secret_key: secretValue.trim() };
     } else {
       if (!secretValue.trim()) {
-        errorToast("Please fill in all required fields");
+        errorToast("Please fill in the credential value");
         return;
       }
-      const dataKey = getCredentialDataKey(credentialType);
+      const dataKey = getCredentialDataKey(authType);
       credentialData = { [dataKey]: secretValue.trim() };
     }
 
-    // Build metadata
     const metadata: CredentialMetadata = {};
-    if (label.trim()) metadata.label = label.trim();
     if (environment) metadata.environment = environment;
     if (notes.trim()) metadata.notes = notes.trim();
 
@@ -414,61 +403,57 @@ function CreateCredentialForm({
       setSubmitting(true);
       await onSubmit(
         serviceName,
-        credentialType,
+        authType,
+        credentialName,
         credentialData,
         Object.keys(metadata).length > 0 ? metadata : undefined
       );
-      // Reset form
       setServiceName("");
-      setCredentialType(CredentialType.API_KEY);
+      setAuthType(AuthType.API_KEY);
+      setCredentialName("");
       setKeyId("");
       setSecretValue("");
       setSesRegion("");
       setSesFromEmail("");
       setGoogleFromEmail("");
       setGoogleAppPassword("");
-      setLabel("");
       setEnvironment("");
       setNotes("");
-    } catch (error) {
-      // Error already handled in parent
+    } catch {
+      // Error handled in parent
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Get placeholder text based on credential type
   const getPlaceholder = () => {
-    switch (credentialType) {
-      case CredentialType.API_KEY:
-        return "Enter your API key";
-      case CredentialType.DB_CONNECTION:
-        return "Enter your database connection string (e.g., postgresql://user:pass@host:5432/db)";
-      case CredentialType.CONNECTION_STRING:
-        return "Enter your connection string";
-      case CredentialType.OAUTH_TOKEN:
-        return "Enter your OAuth token";
-      case CredentialType.SECRET_KEY:
-        return "Enter your secret key";
-      case CredentialType.CERTIFICATE:
-        return "Paste your certificate content";
-      default:
-        return "Enter your credential value";
+    switch (authType) {
+      case AuthType.API_KEY: return "Enter your API key";
+      case AuthType.DB_CONNECTION: return "postgresql://user:pass@host:5432/db";
+      case AuthType.CONNECTION_STRING: return "Enter your connection string";
+      case AuthType.OAUTH_TOKEN: return "Enter your OAuth token";
+      case AuthType.SECRET_KEY: return "Enter your secret key";
+      case AuthType.CERTIFICATE: return "Paste your certificate content";
+      default: return "Enter your credential value";
     }
   };
+
+  const isMultiline =
+    authType === AuthType.CERTIFICATE ||
+    authType === AuthType.CONNECTION_STRING ||
+    authType === AuthType.DB_CONNECTION;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-semibold text-white mb-4">
-          Add Credential
-        </h2>
+        <h2 className="text-2xl font-semibold text-white mb-4">Add Credential</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Service Name */}
+
+          {/* 1. Service */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Service Name *
+              Service *
             </label>
             <select
               value={serviceName}
@@ -477,39 +462,52 @@ function CreateCredentialForm({
               required
             >
               <option value="">Select a service...</option>
-              {Object.values(ServiceName).map((service) => (
-                <option key={service} value={service}>
-                  {formatServiceName(service)}
-                </option>
+              {Object.values(ServiceName).map((s) => (
+                <option key={s} value={s}>{formatServiceName(s)}</option>
               ))}
             </select>
           </div>
 
-          {/* Credential Type — hidden for AWS SES and Google Gmail SMTP (auto-set) */}
+          {/* 2. Credential Name — required; primary identifier */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Credential Name *
+            </label>
+            <input
+              type="text"
+              value={credentialName}
+              onChange={(e) => setCredentialName(e.target.value)}
+              placeholder="e.g., Production, Staging, Client ABC"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+            <p className="text-gray-500 text-xs mt-1">
+              Used to distinguish multiple credentials of the same service.
+            </p>
+          </div>
+
+          {/* 3. Auth Type — hidden for services that auto-set it */}
           {!isAwsSes && !isGoogleGmailSmtp && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Credential Type *
               </label>
               <select
-                value={credentialType}
-                onChange={(e) => setCredentialType(e.target.value as CredentialType)}
+                value={authType}
+                onChange={(e) => setAuthType(e.target.value as AuthType)}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                {Object.values(CredentialType).map((type) => (
-                  <option key={type} value={type}>
-                    {formatCredentialType(type)}
-                  </option>
+                {Object.values(AuthType).map((t) => (
+                  <option key={t} value={t}>{formatCredentialType(t)}</option>
                 ))}
               </select>
             </div>
           )}
 
-          {/* Access Key Pair — two fields (key ID + secret) */}
+          {/* 4a. Access Key Pair fields */}
           {isAccessKeyPair && (
             <div className="space-y-3">
-              {/* Field 1: Key ID */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   {isAwsSes ? "AWS Access Key ID" : "Key ID"} *
@@ -523,8 +521,6 @@ function CreateCredentialForm({
                   required
                 />
               </div>
-
-              {/* Field 2: Secret Key */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   {isAwsSes ? "AWS Secret Access Key" : "Secret Key"} *
@@ -538,27 +534,15 @@ function CreateCredentialForm({
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowSecretPair(!showSecretPair)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showSecretPair ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
+                  <button type="button" onClick={() => setShowSecretPair(!showSecretPair)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
+                    {showSecretPair ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
-
-              {/* AWS SES extra fields */}
               {isAwsSes && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      AWS Region *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">AWS Region *</label>
                     <input
                       type="text"
                       value={sesRegion}
@@ -568,11 +552,8 @@ function CreateCredentialForm({
                       required
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      From Email *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">From Email *</label>
                     <input
                       type="email"
                       value={sesFromEmail}
@@ -581,22 +562,18 @@ function CreateCredentialForm({
                       className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     />
-                    <p className="text-gray-500 text-xs mt-1">
-                      Must be a verified sender identity in your AWS SES account.
-                    </p>
+                    <p className="text-gray-500 text-xs mt-1">Must be a verified sender identity in your AWS SES account.</p>
                   </div>
                 </>
               )}
             </div>
           )}
 
-          {/* Google Gmail SMTP — two dedicated fields */}
+          {/* 4b. Google Gmail SMTP fields */}
           {isGoogleGmailSmtp && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  From Email *
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">From Email *</label>
                 <input
                   type="email"
                   value={googleFromEmail}
@@ -605,15 +582,9 @@ function CreateCredentialForm({
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
-                <p className="text-gray-500 text-xs mt-1">
-                  The Gmail address to send from.
-                </p>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  App Password *
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">App Password *</label>
                 <div className="relative">
                   <input
                     type={showGoogleAppPassword ? "text" : "password"}
@@ -623,31 +594,28 @@ function CreateCredentialForm({
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowGoogleAppPassword(!showGoogleAppPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
+                  <button type="button" onClick={() => setShowGoogleAppPassword(!showGoogleAppPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
                     {showGoogleAppPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                   </button>
                 </div>
                 <p className="text-gray-500 text-xs mt-1">
-                  Generate at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">myaccount.google.com/apppasswords</a>. Requires 2-Step Verification to be enabled.
+                  Generate at{" "}
+                  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                    myaccount.google.com/apppasswords
+                  </a>. Requires 2-Step Verification.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Generic single-value input — all types except Access Key Pair and Google Gmail SMTP */}
+          {/* 4c. Generic single-value input */}
           {!isAccessKeyPair && !isGoogleGmailSmtp && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                {formatCredentialType(credentialType)} Value *
+                {formatCredentialType(authType)} Value *
               </label>
               <div className="relative">
-                {credentialType === CredentialType.CERTIFICATE || 
-                 credentialType === CredentialType.CONNECTION_STRING ||
-                 credentialType === CredentialType.DB_CONNECTION ? (
+                {isMultiline ? (
                   <textarea
                     value={secretValue}
                     onChange={(e) => setSecretValue(e.target.value)}
@@ -666,48 +634,20 @@ function CreateCredentialForm({
                     required
                   />
                 )}
-                {credentialType !== CredentialType.CERTIFICATE && 
-                 credentialType !== CredentialType.CONNECTION_STRING &&
-                 credentialType !== CredentialType.DB_CONNECTION && (
-                  <button
-                    type="button"
-                    onClick={() => setShowSecret(!showSecret)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showSecret ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
+                {!isMultiline && (
+                  <button type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
+                    {showSecret ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                   </button>
                 )}
               </div>
             </div>
           )}
 
-          {/* Optional Metadata */}
+          {/* 5. Optional metadata */}
           <div className="border-t border-gray-700 pt-4 mt-4">
-            <h3 className="text-sm font-medium text-gray-400 mb-3">Optional Metadata</h3>
-            
-            {/* Label */}
+            <h3 className="text-sm font-medium text-gray-400 mb-3">Optional</h3>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Label
-              </label>
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="e.g., Production API Key"
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Environment */}
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Environment
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Environment</label>
               <select
                 value={environment}
                 onChange={(e) => setEnvironment(e.target.value as typeof environment)}
@@ -719,16 +659,12 @@ function CreateCredentialForm({
                 <option value="development">Development</option>
               </select>
             </div>
-
-            {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Notes
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes about this credential..."
+                placeholder="Additional notes..."
                 rows={2}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
@@ -758,6 +694,10 @@ function CreateCredentialForm({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Edit modal
+// ---------------------------------------------------------------------------
+
 function EditCredentialModal({
   credential,
   showSecret,
@@ -771,16 +711,15 @@ function EditCredentialModal({
   onToggleVisibility: () => void;
   onUpdate: (
     credentialId: number,
-    credentialType: CredentialType | string,
+    credentialName: string,
     credentialData: CredentialData,
     metadata?: CredentialMetadata
   ) => Promise<void>;
 }) {
-  const isAccessKeyPair = credential.credential_type === CredentialType.AWS_ACCESS_KEY_PAIR;
-  const isAwsSes = credential.service_name === ServiceName.AWS_SES;
-  const isGoogleGmailSmtp = credential.service_name === ServiceName.GOOGLE_GMAIL_SMTP;
+  const isAccessKeyPair = credential.auth_type === AuthType.AWS_ACCESS_KEY_PAIR;
+  const isAwsSes = credential.credential_type === ServiceName.AWS_SES;
+  const isGoogleGmailSmtp = credential.credential_type === ServiceName.GOOGLE_GMAIL_SMTP;
 
-  // For key pairs, seed both halves from credential_data
   const existingKeyId = isAwsSes
     ? (credential.credential_data?.aws_access_key_id as string) || ""
     : (credential.credential_data?.key_id as string) || "";
@@ -788,23 +727,15 @@ function EditCredentialModal({
     ? (credential.credential_data?.aws_secret_access_key as string) || ""
     : getCredentialValue(credential);
 
+  const [credentialName, setCredentialName] = useState(credential.credential_name || "");
   const [keyId, setKeyId] = useState(existingKeyId);
   const [secretValue, setSecretValue] = useState(existingSecret);
   const [showSecretPair, setShowSecretPair] = useState(false);
-  const [sesRegion, setSesRegion] = useState(
-    (credential.credential_data?.aws_region as string) || ""
-  );
-  const [sesFromEmail, setSesFromEmail] = useState(
-    (credential.credential_data?.from_email as string) || ""
-  );
-  const [googleFromEmail, setGoogleFromEmail] = useState(
-    (credential.credential_data?.from_email as string) || ""
-  );
-  const [googleAppPassword, setGoogleAppPassword] = useState(
-    (credential.credential_data?.app_password as string) || ""
-  );
+  const [sesRegion, setSesRegion] = useState((credential.credential_data?.aws_region as string) || "");
+  const [sesFromEmail, setSesFromEmail] = useState((credential.credential_data?.from_email as string) || "");
+  const [googleFromEmail, setGoogleFromEmail] = useState((credential.credential_data?.from_email as string) || "");
+  const [googleAppPassword, setGoogleAppPassword] = useState((credential.credential_data?.app_password as string) || "");
   const [showGoogleAppPassword, setShowGoogleAppPassword] = useState(false);
-  const [label, setLabel] = useState(credential.credential_metadata?.label || "");
   const [environment, setEnvironment] = useState<"production" | "staging" | "development" | "">(
     credential.credential_metadata?.environment || ""
   );
@@ -841,22 +772,17 @@ function EditCredentialModal({
         errorToast("Please fill in both the Key ID and Secret Key");
         return;
       }
-      credentialData = {
-        key_id: keyId.trim(),
-        secret_key: secretValue.trim(),
-      };
+      credentialData = { key_id: keyId.trim(), secret_key: secretValue.trim() };
     } else {
       if (!secretValue.trim()) {
         errorToast("Credential value cannot be empty");
         return;
       }
-      const dataKey = getCredentialDataKey(credential.credential_type);
+      const dataKey = getCredentialDataKey(credential.auth_type);
       credentialData = { [dataKey]: secretValue.trim() };
     }
 
-    // Build metadata
     const metadata: CredentialMetadata = {};
-    if (label.trim()) metadata.label = label.trim();
     if (environment) metadata.environment = environment;
     if (notes.trim()) metadata.notes = notes.trim();
 
@@ -864,51 +790,70 @@ function EditCredentialModal({
       setSubmitting(true);
       await onUpdate(
         credential.id,
-        credential.credential_type,
+        credentialName,
         credentialData,
         Object.keys(metadata).length > 0 ? metadata : undefined
       );
-    } catch (error) {
-      // Error already handled in parent
+    } catch {
+      // Error handled in parent
     } finally {
       setSubmitting(false);
     }
   };
 
-  const typeColor = getCredentialTypeColor(credential.credential_type);
-  const typeIcon = getCredentialTypeIcon(credential.credential_type);
-  const isMultiline = credential.credential_type === CredentialType.CERTIFICATE || 
-                      credential.credential_type === CredentialType.CONNECTION_STRING ||
-                      credential.credential_type === CredentialType.DB_CONNECTION;
+  const typeColor = getCredentialTypeColor(credential.auth_type);
+  const typeIcon = getCredentialTypeIcon(credential.auth_type);
+  const isMultiline =
+    credential.auth_type === AuthType.CERTIFICATE ||
+    credential.auth_type === AuthType.CONNECTION_STRING ||
+    credential.auth_type === AuthType.DB_CONNECTION;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-white">
-            {formatServiceName(credential.service_name)}
-          </h2>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">
+              {credential.credential_name || formatServiceName(credential.credential_type)}
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">{formatServiceName(credential.credential_type)}</p>
+          </div>
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${typeColor}`}>
             {typeIcon}
-            {formatCredentialType(credential.credential_type)}
+            {formatCredentialType(credential.auth_type)}
           </span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Service Name (Read-only) */}
+
+          {/* Credential Name */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Service Name
+              Credential Name *
             </label>
             <input
               type="text"
-              value={formatServiceName(credential.service_name)}
+              value={credentialName}
+              onChange={(e) => setCredentialName(e.target.value)}
+              placeholder="e.g., Production, Staging, Client ABC"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-gray-500 text-xs mt-1">Used to distinguish multiple credentials of the same service.</p>
+          </div>
+
+          {/* Service (read-only) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Service</label>
+            <input
+              type="text"
+              value={formatServiceName(credential.credential_type)}
               disabled
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-gray-400 cursor-not-allowed"
             />
           </div>
 
-          {/* AWS Access Key Pair — two-field edit */}
+          {/* AWS Access Key Pair */}
           {isAccessKeyPair && (
             <div className="space-y-3">
               <div>
@@ -923,7 +868,6 @@ function EditCredentialModal({
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   {isAwsSes ? "AWS Secret Access Key" : "Secret Key"}
@@ -936,26 +880,15 @@ function EditCredentialModal({
                     placeholder={isAwsSes ? "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" : "Enter your secret key"}
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowSecretPair(!showSecretPair)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showSecretPair ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
+                  <button type="button" onClick={() => setShowSecretPair(!showSecretPair)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
+                    {showSecretPair ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
-
               {isAwsSes && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      AWS Region
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">AWS Region</label>
                     <input
                       type="text"
                       value={sesRegion}
@@ -964,11 +897,8 @@ function EditCredentialModal({
                       className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      From Email
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">From Email</label>
                     <input
                       type="email"
                       value={sesFromEmail}
@@ -982,13 +912,11 @@ function EditCredentialModal({
             </div>
           )}
 
-          {/* Google Gmail SMTP — two dedicated fields */}
+          {/* Google Gmail SMTP */}
           {isGoogleGmailSmtp && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  From Email
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">From Email</label>
                 <input
                   type="email"
                   value={googleFromEmail}
@@ -997,11 +925,8 @@ function EditCredentialModal({
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  App Password
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">App Password</label>
                 <div className="relative">
                   <input
                     type={showGoogleAppPassword ? "text" : "password"}
@@ -1010,26 +935,25 @@ function EditCredentialModal({
                     placeholder="xxxx xxxx xxxx xxxx"
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowGoogleAppPassword(!showGoogleAppPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
+                  <button type="button" onClick={() => setShowGoogleAppPassword(!showGoogleAppPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
                     {showGoogleAppPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                   </button>
                 </div>
                 <p className="text-gray-500 text-xs mt-1">
-                  Generate at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">myaccount.google.com/apppasswords</a>.
+                  Generate at{" "}
+                  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                    myaccount.google.com/apppasswords
+                  </a>.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Single-value field — all other credential types */}
+          {/* Single-value field */}
           {!isAccessKeyPair && !isGoogleGmailSmtp && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                {formatCredentialType(credential.credential_type)} Value
+                {formatCredentialType(credential.auth_type)} Value
               </label>
               <div className="relative">
                 {isMultiline ? (
@@ -1048,45 +972,19 @@ function EditCredentialModal({
                   />
                 )}
                 {!isMultiline && (
-                  <button
-                    type="button"
-                    onClick={onToggleVisibility}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showSecret ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
+                  <button type="button" onClick={onToggleVisibility} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
+                    {showSecret ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                   </button>
                 )}
               </div>
             </div>
           )}
 
-          {/* Metadata */}
+          {/* Optional metadata */}
           <div className="border-t border-gray-700 pt-4">
-            <h3 className="text-sm font-medium text-gray-400 mb-3">Metadata</h3>
-            
-            {/* Label */}
+            <h3 className="text-sm font-medium text-gray-400 mb-3">Optional</h3>
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Label
-              </label>
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="e.g., Production API Key"
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Environment */}
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Environment
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Environment</label>
               <select
                 value={environment}
                 onChange={(e) => setEnvironment(e.target.value as typeof environment)}
@@ -1098,16 +996,12 @@ function EditCredentialModal({
                 <option value="development">Development</option>
               </select>
             </div>
-
-            {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Notes
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes about this credential..."
+                placeholder="Additional notes..."
                 rows={2}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
@@ -1116,12 +1010,8 @@ function EditCredentialModal({
 
           {/* Timestamps */}
           <div className="text-xs text-gray-400 space-y-1 border-t border-gray-700 pt-4">
-            <div>
-              Created: {new Date(credential.created_at).toLocaleString()}
-            </div>
-            <div>
-              Updated: {new Date(credential.updated_at).toLocaleString()}
-            </div>
+            <div>Created: {new Date(credential.created_at).toLocaleString()}</div>
+            <div>Updated: {new Date(credential.updated_at).toLocaleString()}</div>
           </div>
 
           {/* Actions */}

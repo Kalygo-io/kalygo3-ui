@@ -168,19 +168,19 @@ export function AddToolModal({
       setLoadingCredentials(true);
       const allCredentials = await credentialService.listCredentials();
       const dbCreds = allCredentials.filter(
-        (c) => c.credential_type === CredentialType.DB_CONNECTION || c.credential_type === "db_connection"
+        (c) => c.auth_type === CredentialType.DB_CONNECTION || c.auth_type === "db_connection"
       );
       setDbCredentials(dbCreds);
       const sesCreds = allCredentials.filter(
-        (c) => c.service_name === ServiceName.AWS_SES || c.service_name === "AWS_SES"
+        (c) => c.credential_type === ServiceName.AWS_SES || c.credential_type === "AWS_SES"
       );
       setSesCredentials(sesCreds);
       const googleOAuthCreds = allCredentials.filter(
-        (c) => c.service_name === ServiceName.GOOGLE_OAUTH || c.service_name === "GOOGLE_OAUTH"
+        (c) => c.credential_type === ServiceName.GOOGLE_OAUTH || c.credential_type === "GOOGLE_OAUTH"
       );
       setGoogleOAuthCredentials(googleOAuthCreds);
       const googleSmtpCreds = allCredentials.filter(
-        (c) => c.service_name === ServiceName.GOOGLE_GMAIL_SMTP || c.service_name === "GOOGLE_GMAIL_SMTP"
+        (c) => c.credential_type === ServiceName.GOOGLE_GMAIL_SMTP || c.credential_type === "GOOGLE_GMAIL_SMTP"
       );
       setGoogleSmtpCredentials(googleSmtpCreds);
     } catch (error: any) {
@@ -830,7 +830,7 @@ export function AddToolModal({
                     <option value="">Select a credential...</option>
                     {dbCredentials.map((cred) => (
                       <option key={cred.id} value={cred.id}>
-                        {formatServiceName(cred.service_name)}
+                        {formatServiceName(cred.credential_type)}
                         {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
                         {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
                       </option>
@@ -860,7 +860,7 @@ export function AddToolModal({
                     }`} />
                     <div>
                       <h4 className="text-sm font-medium text-white">
-                        {formatServiceName(selectedCredential.service_name)}
+                        {formatServiceName(selectedCredential.credential_type)}
                       </h4>
                       {selectedCredential.credential_metadata?.label && (
                         <p className="text-xs text-gray-300 mt-1">
@@ -1046,7 +1046,7 @@ export function AddToolModal({
                     <option value="">Select an AWS SES credential...</option>
                     {sesCredentials.map((cred) => (
                       <option key={cred.id} value={cred.id}>
-                        {formatServiceName(cred.service_name)}
+                        {formatServiceName(cred.credential_type)}
                         {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
                         {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
                       </option>
@@ -1070,7 +1070,7 @@ export function AddToolModal({
                     <EnvelopeIcon className="h-5 w-5 text-pink-400 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-medium text-white">
-                        {formatServiceName(selectedSesCredential.service_name)}
+                        {formatServiceName(selectedSesCredential.credential_type)}
                       </h4>
                       {selectedSesCredential.credential_metadata?.label && (
                         <p className="text-xs text-gray-300 mt-1">
@@ -1128,7 +1128,7 @@ export function AddToolModal({
                     <option value="">Select an AWS SES credential...</option>
                     {sesCredentials.map((cred) => (
                       <option key={cred.id} value={cred.id}>
-                        {formatServiceName(cred.service_name)}
+                        {formatServiceName(cred.credential_type)}
                         {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
                         {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
                       </option>
@@ -1152,7 +1152,7 @@ export function AddToolModal({
                     <EnvelopeIcon className="h-5 w-5 text-pink-400 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-medium text-white">
-                        {formatServiceName(selectedSesCredential.service_name)}
+                        {formatServiceName(selectedSesCredential.credential_type)}
                       </h4>
                       {selectedSesCredential.credential_metadata?.label && (
                         <p className="text-xs text-gray-300 mt-1">
@@ -1209,7 +1209,7 @@ export function AddToolModal({
                     <option value="">Select an AWS SES credential...</option>
                     {sesCredentials.map((cred) => (
                       <option key={cred.id} value={cred.id}>
-                        {formatServiceName(cred.service_name)}
+                        {formatServiceName(cred.credential_type)}
                         {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
                       </option>
                     ))}
@@ -1231,7 +1231,7 @@ export function AddToolModal({
                     <EnvelopeIcon className="h-5 w-5 text-indigo-400 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-medium text-white">
-                        {formatServiceName(selectedSesCredential.service_name)}
+                        {formatServiceName(selectedSesCredential.credential_type)}
                       </h4>
                       {selectedSesCredential.credential_metadata?.label && (
                         <p className="text-xs text-gray-300 mt-1">
@@ -1357,7 +1357,7 @@ export function AddToolModal({
                     <option value="">Select a Google OAuth credential...</option>
                     {googleOAuthCredentials.map((cred) => (
                       <option key={cred.id} value={cred.id}>
-                        {formatServiceName(cred.service_name)}
+                        {formatServiceName(cred.credential_type)}
                         {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
                         {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
                       </option>
@@ -1378,7 +1378,7 @@ export function AddToolModal({
                     <EnvelopeIcon className="h-5 w-5 text-blue-400 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-medium text-white">
-                        {formatServiceName(selectedGoogleOAuthCredential.service_name)}
+                        {formatServiceName(selectedGoogleOAuthCredential.credential_type)}
                       </h4>
                       {selectedGoogleOAuthCredential.credential_metadata?.label && (
                         <p className="text-xs text-gray-300 mt-1">{selectedGoogleOAuthCredential.credential_metadata.label}</p>
@@ -1426,7 +1426,7 @@ export function AddToolModal({
                     <option value="">Select a Gmail SMTP credential...</option>
                     {googleSmtpCredentials.map((cred) => (
                       <option key={cred.id} value={cred.id}>
-                        {formatServiceName(cred.service_name)}
+                        {formatServiceName(cred.credential_type)}
                         {cred.credential_metadata?.label ? ` - ${cred.credential_metadata.label}` : ""}
                         {cred.credential_metadata?.environment ? ` (${cred.credential_metadata.environment})` : ""}
                       </option>
@@ -1447,7 +1447,7 @@ export function AddToolModal({
                     <EnvelopeIcon className="h-5 w-5 text-cyan-400 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-medium text-white">
-                        {formatServiceName(selectedGoogleSmtpCredential.service_name)}
+                        {formatServiceName(selectedGoogleSmtpCredential.credential_type)}
                       </h4>
                       {selectedGoogleSmtpCredential.credential_metadata?.label && (
                         <p className="text-xs text-gray-300 mt-1">{selectedGoogleSmtpCredential.credential_metadata.label}</p>

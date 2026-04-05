@@ -1,4 +1,4 @@
-// Service names that can have credentials
+// Enum identifying which service/provider a credential belongs to
 export enum ServiceName {
   OPENAI_API_KEY = "OPENAI_API_KEY",
   ANTHROPIC_API_KEY = "ANTHROPIC_API_KEY",
@@ -11,8 +11,8 @@ export enum ServiceName {
   GOOGLE_GMAIL_SMTP = "GOOGLE_GMAIL_SMTP",
 }
 
-// Credential types supported by the system
-export enum CredentialType {
+// Auth mechanism / format of the stored secret
+export enum AuthType {
   API_KEY = "api_key",
   AWS_ACCESS_KEY_PAIR = "aws_access_key_pair",
   DB_CONNECTION = "db_connection",
@@ -23,31 +23,38 @@ export enum CredentialType {
   OTHER = "other",
 }
 
-// Metadata that can be stored with a credential
+// Keep CredentialType as an alias so existing imports don't break
+export const CredentialType = AuthType;
+export type CredentialType = AuthType;
+
+// Metadata stored alongside a credential
 export interface CredentialMetadata {
-  label?: string; // User-friendly label
   environment?: "production" | "staging" | "development";
-  expires_at?: string; // ISO date string for expiration
+  expires_at?: string;
   notes?: string;
-  [key: string]: unknown; // Allow additional custom fields
+  [key: string]: unknown;
 }
 
-// Credential data - flexible object containing the actual secret(s)
+// Flexible credential data payload
 export interface CredentialData {
   api_key?: string;
-  key_id?: string;      // Primary identifier for AWS_ACCESS_KEY_PAIR (or aws_access_key_id for AWS SES)
+  key_id?: string;
   secret_key?: string;
   connection_string?: string;
   token?: string;
   certificate?: string;
-  [key: string]: unknown; // Allow additional custom fields
+  [key: string]: unknown;
 }
 
 // Basic credential info (returned in list view)
 export interface Credential {
   id: number;
-  service_name: ServiceName | string;
-  credential_type: CredentialType | string;
+  /** Which service/provider this credential is for (e.g. AWS_SES, OPENAI_API_KEY) */
+  credential_type: ServiceName | string;
+  /** Auth mechanism (e.g. api_key, aws_access_key_pair) */
+  auth_type: AuthType | string;
+  /** Human-readable name to distinguish multiple credentials of the same type */
+  credential_name?: string | null;
   created_at: string;
   updated_at: string;
   credential_metadata?: CredentialMetadata | null;
@@ -55,22 +62,24 @@ export interface Credential {
 
 // Full credential detail (includes decrypted data)
 export interface CredentialDetail extends Credential {
-  credential_data?: CredentialData; // Decrypted credential data
+  credential_data?: CredentialData;
   // Legacy fields for backward compatibility
   api_key?: string;
   decrypted_data?: string;
 }
 
-// Request to create a new credential (flexible endpoint)
+// Request to create a new credential
 export interface CreateCredentialRequest {
-  service_name: ServiceName | string;
-  credential_type: CredentialType | string;
+  credential_type: ServiceName | string;
+  auth_type: AuthType | string;
+  credential_name?: string;
   credential_data: CredentialData;
   metadata?: CredentialMetadata;
 }
 
 // Request to update an existing credential
 export interface UpdateCredentialRequest {
+  credential_name?: string;
   credential_data?: CredentialData;
   metadata?: CredentialMetadata;
 }
@@ -101,12 +110,9 @@ class CredentialService {
   async listCredentials(): Promise<Credential[]> {
     const response = await fetch(`${API_BASE_URL}/api/credentials/`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-
     return this.handleResponse<Credential[]>(response);
   }
 
@@ -115,13 +121,10 @@ class CredentialService {
       `${API_BASE_URL}/api/credentials/${credentialId}/full`,
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
       },
     );
-
     return this.handleResponse<CredentialDetail>(response);
   }
 
@@ -132,26 +135,20 @@ class CredentialService {
       `${API_BASE_URL}/api/credentials/service/${serviceName}`,
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
       },
     );
-
     return this.handleResponse<CredentialDetail>(response);
   }
 
   async createCredential(data: CreateCredentialRequest): Promise<Credential> {
     const response = await fetch(`${API_BASE_URL}/api/credentials/flexible`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify(data),
     });
-
     return this.handleResponse<Credential>(response);
   }
 
@@ -163,14 +160,11 @@ class CredentialService {
       `${API_BASE_URL}/api/credentials/${credentialId}/full`,
       {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(data),
       },
     );
-
     return this.handleResponse<Credential>(response);
   }
 
@@ -179,13 +173,10 @@ class CredentialService {
       `${API_BASE_URL}/api/credentials/${credentialId}`,
       {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
       },
     );
-
     return this.handleResponse<void>(response);
   }
 }
@@ -193,6 +184,7 @@ class CredentialService {
 export const credentialService = new CredentialService();
 
 // Helper functions for display
+
 export function formatServiceName(serviceName: ServiceName | string): string {
   const displayNames: Record<string, string> = {
     [ServiceName.OPENAI_API_KEY]: "OpenAI",
@@ -205,75 +197,61 @@ export function formatServiceName(serviceName: ServiceName | string): string {
     [ServiceName.GOOGLE_OAUTH]: "Google OAuth",
     [ServiceName.GOOGLE_GMAIL_SMTP]: "Google Gmail (SMTP)",
   };
-  return displayNames[serviceName] || serviceName;
+  return displayNames[serviceName] || String(serviceName);
 }
 
-export function formatCredentialType(
-  credentialType: CredentialType | string,
-): string {
+export function formatCredentialType(authType: AuthType | string): string {
   const displayNames: Record<string, string> = {
-    [CredentialType.API_KEY]: "API Key",
-    [CredentialType.AWS_ACCESS_KEY_PAIR]: "AWS Access Key Pair",
-    [CredentialType.DB_CONNECTION]: "Database Connection",
-    [CredentialType.CONNECTION_STRING]: "Connection String",
-    [CredentialType.OAUTH_TOKEN]: "OAuth Token",
-    [CredentialType.SECRET_KEY]: "Secret Key",
-    [CredentialType.CERTIFICATE]: "Certificate",
-    [CredentialType.OTHER]: "Other",
+    [AuthType.API_KEY]: "API Key",
+    [AuthType.AWS_ACCESS_KEY_PAIR]: "AWS Access Key Pair",
+    [AuthType.DB_CONNECTION]: "Database Connection",
+    [AuthType.CONNECTION_STRING]: "Connection String",
+    [AuthType.OAUTH_TOKEN]: "OAuth Token",
+    [AuthType.SECRET_KEY]: "Secret Key",
+    [AuthType.CERTIFICATE]: "Certificate",
+    [AuthType.OTHER]: "Other",
   };
-  return displayNames[credentialType] || credentialType;
+  return displayNames[authType] || String(authType);
 }
 
-export function getCredentialTypeColor(
-  credentialType: CredentialType | string,
-): string {
+export function getCredentialTypeColor(authType: AuthType | string): string {
   const colors: Record<string, string> = {
-    [CredentialType.API_KEY]: "bg-blue-600/20 text-blue-300 border-blue-500/40",
-    [CredentialType.AWS_ACCESS_KEY_PAIR]: "bg-orange-600/20 text-orange-300 border-orange-500/40",
-    [CredentialType.DB_CONNECTION]:
-      "bg-teal-600/20 text-teal-300 border-teal-500/40",
-    [CredentialType.CONNECTION_STRING]:
-      "bg-green-600/20 text-green-300 border-green-500/40",
-    [CredentialType.OAUTH_TOKEN]:
-      "bg-purple-600/20 text-purple-300 border-purple-500/40",
-    [CredentialType.SECRET_KEY]:
-      "bg-yellow-600/20 text-yellow-300 border-yellow-500/40",
-    [CredentialType.CERTIFICATE]:
-      "bg-pink-600/20 text-pink-300 border-pink-500/40",
-    [CredentialType.OTHER]: "bg-gray-600/20 text-gray-300 border-gray-500/40",
+    [AuthType.API_KEY]: "bg-blue-600/20 text-blue-300 border-blue-500/40",
+    [AuthType.AWS_ACCESS_KEY_PAIR]: "bg-orange-600/20 text-orange-300 border-orange-500/40",
+    [AuthType.DB_CONNECTION]: "bg-teal-600/20 text-teal-300 border-teal-500/40",
+    [AuthType.CONNECTION_STRING]: "bg-green-600/20 text-green-300 border-green-500/40",
+    [AuthType.OAUTH_TOKEN]: "bg-purple-600/20 text-purple-300 border-purple-500/40",
+    [AuthType.SECRET_KEY]: "bg-yellow-600/20 text-yellow-300 border-yellow-500/40",
+    [AuthType.CERTIFICATE]: "bg-pink-600/20 text-pink-300 border-pink-500/40",
+    [AuthType.OTHER]: "bg-gray-600/20 text-gray-300 border-gray-500/40",
   };
-  return colors[credentialType] || colors[CredentialType.OTHER];
+  return colors[authType] || colors[AuthType.OTHER];
 }
 
-// Helper to get the primary key from credential data based on type
-export function getCredentialDataKey(
-  credentialType: CredentialType | string,
-): string {
-  switch (credentialType) {
-    case CredentialType.API_KEY:
+export function getCredentialDataKey(authType: AuthType | string): string {
+  switch (authType) {
+    case AuthType.API_KEY:
       return "api_key";
-    case CredentialType.AWS_ACCESS_KEY_PAIR:
-      return "key_id"; // primary display key; secret_key holds the secret half
-    case CredentialType.DB_CONNECTION:
-    case CredentialType.CONNECTION_STRING:
+    case AuthType.AWS_ACCESS_KEY_PAIR:
+      return "key_id";
+    case AuthType.DB_CONNECTION:
+    case AuthType.CONNECTION_STRING:
       return "connection_string";
-    case CredentialType.OAUTH_TOKEN:
+    case AuthType.OAUTH_TOKEN:
       return "token";
-    case CredentialType.SECRET_KEY:
+    case AuthType.SECRET_KEY:
       return "secret_key";
-    case CredentialType.CERTIFICATE:
+    case AuthType.CERTIFICATE:
       return "certificate";
     default:
       return "value";
   }
 }
 
-// Helper to extract the primary value from credential data
 export function getCredentialValue(credential: CredentialDetail): string {
   if (credential.credential_data) {
-    const key = getCredentialDataKey(credential.credential_type);
+    const key = getCredentialDataKey(credential.auth_type);
     return (credential.credential_data[key] as string) || "";
   }
-  // Fallback to legacy fields
   return credential.api_key || credential.decrypted_data || "";
 }
