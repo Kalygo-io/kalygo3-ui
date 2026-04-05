@@ -47,6 +47,26 @@ class ToolApprovalsService {
     return resp.json();
   }
 
+  async previewToolApproval(
+    approvalId: number,
+    overrides?: { subject?: string; html_body?: string },
+  ): Promise<{ id: number; status: string; message: string }> {
+    const resp = await fetch(
+      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/tool-approvals/${approvalId}/preview`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: overrides ? { "Content-Type": "application/json" } : undefined,
+        body: overrides ? JSON.stringify(overrides) : undefined,
+      },
+    );
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.detail || `Failed to send preview: ${resp.status}`);
+    }
+    return resp.json();
+  }
+
   async rejectToolApproval(
     approvalId: number,
   ): Promise<{ id: number; status: string; message: string }> {

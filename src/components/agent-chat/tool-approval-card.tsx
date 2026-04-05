@@ -9,6 +9,7 @@ import {
   ClockIcon,
   UserIcon,
   PencilIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import { ChatDispatchContext } from "@/app/dashboard/agent-chat/chat-session-context";
 import { toolApprovalsService } from "@/services/toolApprovalsService";
@@ -20,8 +21,9 @@ interface Props {
 
 export function ToolApprovalCard({ toolApproval }: Props) {
   const dispatch = useContext(ChatDispatchContext);
-  const [isLoading, setIsLoading] = useState<"approve" | "reject" | null>(null);
+  const [isLoading, setIsLoading] = useState<"approve" | "reject" | "preview" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewSuccess, setPreviewSuccess] = useState<string | null>(null);
 
   const { approvalId, toolType, preview, resolvedStatus } = toolApproval;
 
@@ -79,6 +81,28 @@ export function ToolApprovalCard({ toolApproval }: Props) {
       });
     } catch (err: any) {
       setError(err.message || "Failed to reject");
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const handlePreview = async () => {
+    setIsLoading("preview");
+    setError(null);
+    setPreviewSuccess(null);
+    try {
+      const overrides: Record<string, string | undefined> = {
+        subject: subject !== preview?.subject ? subject : undefined,
+        html_body: htmlBody !== (preview?.html_body ?? "") ? htmlBody : undefined,
+      };
+      const hasOverrides = Object.values(overrides).some((v) => v !== undefined);
+      const result = await toolApprovalsService.previewToolApproval(
+        approvalId,
+        hasOverrides ? overrides : undefined,
+      );
+      setPreviewSuccess(result.message);
+    } catch (err: any) {
+      setError(err.message || "Failed to send preview");
     } finally {
       setIsLoading(null);
     }
@@ -271,8 +295,16 @@ export function ToolApprovalCard({ toolApproval }: Props) {
       {/* Actions */}
       {!isResolved && (
         <div className="flex items-center gap-3 px-5 py-3 bg-gray-700/60 border-t border-gray-600">
-          {error && <p className="flex-1 text-xs text-red-400">{error}</p>}
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex-1 min-w-0">
+            {error && <p className="text-xs text-red-400">{error}</p>}
+            {previewSuccess && !error && (
+              <p className="text-xs text-blue-300 flex items-center gap-1">
+                <EyeIcon className="h-3.5 w-3.5 shrink-0" />
+                {previewSuccess}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={handleReject}
               disabled={isLoading !== null}
@@ -285,6 +317,20 @@ export function ToolApprovalCard({ toolApproval }: Props) {
               )}
               Reject
             </button>
+            {isHtmlTool && (
+              <button
+                onClick={handlePreview}
+                disabled={isLoading !== null || !subject.trim()}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-700 hover:bg-blue-600 border border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading === "preview" ? (
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-blue-200/40 border-t-blue-200 animate-spin" />
+                ) : (
+                  <EyeIcon className="h-3.5 w-3.5" />
+                )}
+                Preview Email
+              </button>
+            )}
             <button
               onClick={handleApprove}
               disabled={isLoading !== null || !toEmail.trim() || !subject.trim()}
