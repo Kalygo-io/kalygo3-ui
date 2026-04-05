@@ -25,7 +25,7 @@ export function ToolApprovalCard({ toolApproval }: Props) {
 
   const { approvalId, toolType, preview, resolvedStatus } = toolApproval;
 
-  const isHtmlTool = toolType === "sendHtmlEmailWithSes" || toolType === "sendTemplateEmailWithSes";
+  const isHtmlTool = toolType === "sendHtmlEmailWithSes";
 
   // Editable copies — initialised from the agent-composed preview
   const [toEmail, setToEmail] = useState(preview?.to_email ?? "");
