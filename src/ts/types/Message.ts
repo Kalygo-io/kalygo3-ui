@@ -30,7 +30,7 @@ export interface ToolApprovalMessage {
     subject: string;
     /** Plain-text body (sendTxtEmail* tools) */
     body?: string;
-    /** Agent-authored / template-rendered HTML body (sendHtmlEmailWithSes, sendTemplateEmailWithSes) */
+    /** Agent-authored / template-rendered HTML body (sendHtmlEmailWithSes) */
     html_body?: string;
     /** Template metadata (sendTemplateEmailWithSes) */
     template_name?: string;

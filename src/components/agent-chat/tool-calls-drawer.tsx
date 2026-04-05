@@ -86,8 +86,9 @@ function ToolCallCard({ index, call }: { index: number; call: any }) {
     case "dbTableWrite":
       return <DbWriteCard index={index} call={call} />;
     case "sendTxtEmailWithSes":
+      return <EmailCard index={index} call={call} typeLabel="Send Email" />;
     case "sendHtmlEmailWithSes":
-      return <EmailCard index={index} call={call} />;
+      return <EmailCard index={index} call={call} typeLabel="Send Templated HTML Email" />;
     case "custom":
       return <CustomCard index={index} call={call} />;
     default:
@@ -386,7 +387,7 @@ function DbWriteCard({ index, call }: { index: number; call: any }) {
 
 // ─── Send Email ───────────────────────────────────────────────────────────────
 
-function EmailCard({ index, call }: { index: number; call: any }) {
+function EmailCard({ index, call, typeLabel = "Send Email" }: { index: number; call: any; typeLabel?: string }) {
   const htmlBody: string | undefined = call.input?.html_body;
   const txtBody: string | undefined = call.input?.body;
   const templateId: number | undefined = call.input?.template_id;
@@ -394,7 +395,7 @@ function EmailCard({ index, call }: { index: number; call: any }) {
   return (
     <CardShell
       index={index}
-      typeLabel="Send Email"
+      typeLabel={typeLabel}
       typeColor="bg-pink-500/20 text-pink-400"
       toolName={call.toolName}
       badge={<SuccessBadge success={call.output?.success} />}

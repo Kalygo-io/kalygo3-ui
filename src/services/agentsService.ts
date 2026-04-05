@@ -153,10 +153,10 @@ export const TOOL_TYPE_METADATA: Record<AgentTool["type"], ToolTypeMeta> = {
     summary: () => "AWS SES · requires human approval",
   },
   sendHtmlEmailWithSes: {
-    label: "Send HTML Email (SES)",
+    label: "Send Templated HTML Email (SES)",
     borderClass: "border-pink-700/30",
     iconClass: "text-pink-400",
-    summary: () => "AWS SES · HTML · requires human approval",
+    summary: () => "AWS SES · templated HTML · requires human approval",
   },
   sendTxtEmailWithGoogleOAuth: {
     label: "Send Email (Google OAuth)",

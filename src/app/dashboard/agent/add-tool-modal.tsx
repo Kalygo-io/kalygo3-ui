@@ -550,7 +550,7 @@ export function AddToolModal({
                   <div className={`text-sm font-medium ${
                     toolCategory === "sendHtmlEmailWithSes" ? "text-pink-300" : "text-gray-400"
                   }`}>
-                    Send HTML Email
+                    Send Templated HTML Email
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     AWS SES
@@ -1039,7 +1039,7 @@ export function AddToolModal({
             </>
           )}
 
-          {/* Send HTML Email via SES */}
+          {/* Send Templated HTML Email via SES */}
           {toolCategory === "sendHtmlEmailWithSes" && (
             <>
               {/* SES Credential Selection */}
