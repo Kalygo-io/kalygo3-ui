@@ -151,7 +151,8 @@ export function LandingPage() {
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
               From first contact to closed deal — Kalygo gives your team AI
-              agents that know your customers and act on their behalf.
+              agents that help you and your team deliver immaculate customer
+              service.
             </p>
           </div>
 

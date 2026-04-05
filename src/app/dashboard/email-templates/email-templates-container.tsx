@@ -80,9 +80,17 @@ function renderTemplate(html: string, vars: TemplateVariable[]): string {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
-function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
+function Badge({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${className}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${className}`}
+    >
       {children}
     </span>
   );
@@ -100,24 +108,27 @@ function VariableRow({
   return (
     <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
       <input
-        className="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        className="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
         placeholder="token_name"
         value={variable.name}
         onChange={(e) => onChange({ ...variable, name: e.target.value })}
       />
       <input
-        className="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        className="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
         placeholder="Label"
         value={variable.label}
         onChange={(e) => onChange({ ...variable, label: e.target.value })}
       />
       <input
-        className="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        className="bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
         placeholder="Default value"
         value={variable.default ?? ""}
         onChange={(e) => onChange({ ...variable, default: e.target.value })}
       />
-      <button onClick={onRemove} className="text-gray-500 hover:text-red-400 transition-colors p-1">
+      <button
+        onClick={onRemove}
+        className="text-gray-500 hover:text-red-400 transition-colors p-1"
+      >
         <XMarkIcon className="h-4 w-4" />
       </button>
     </div>
@@ -140,13 +151,16 @@ export function EmailTemplatesContainer() {
   const [description, setDescription] = useState("");
   const [subjectTemplate, setSubjectTemplate] = useState("");
   const [htmlTemplate, setHtmlTemplate] = useState(STARTER_HTML);
-  const [variables, setVariables] = useState<TemplateVariable[]>(STARTER_VARIABLES);
+  const [variables, setVariables] =
+    useState<TemplateVariable[]>(STARTER_VARIABLES);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Preview
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewTarget, setPreviewTarget] = useState<EmailTemplate | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<EmailTemplate | null>(
+    null,
+  );
 
   // HTML editor tab
   const [activeTab, setActiveTab] = useState<"html" | "preview">("html");
@@ -164,7 +178,9 @@ export function EmailTemplatesContainer() {
     }
   }, [search]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const openNew = () => {
     setEditing(null);
@@ -190,7 +206,10 @@ export function EmailTemplatesContainer() {
     setActiveTab("html");
   };
 
-  const closeForm = () => { setEditing(null); setIsNew(false); };
+  const closeForm = () => {
+    setEditing(null);
+    setIsNew(false);
+  };
 
   const handleSave = async () => {
     if (!name.trim() || !subjectTemplate.trim() || !htmlTemplate.trim()) {
@@ -255,7 +274,7 @@ export function EmailTemplatesContainer() {
         </div>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors"
         >
           <PlusIcon className="h-4 w-4" />
           New Template
@@ -265,7 +284,7 @@ export function EmailTemplatesContainer() {
       {/* Search */}
       <div className="flex gap-3">
         <input
-          className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Search templates…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -275,7 +294,9 @@ export function EmailTemplatesContainer() {
           disabled={loading}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors text-sm"
         >
-          <ArrowPathIcon className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <ArrowPathIcon
+            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+          />
         </button>
       </div>
 
@@ -291,7 +312,10 @@ export function EmailTemplatesContainer() {
         <div className="space-y-3">
           {loading && !templates.length ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-20 rounded-xl bg-gray-800/60 animate-pulse" />
+              <div
+                key={i}
+                className="h-20 rounded-xl bg-gray-800/60 animate-pulse"
+              />
             ))
           ) : templates.length === 0 ? (
             <div className="rounded-xl border border-gray-700/50 bg-gray-900/50 py-16 text-center">
@@ -299,7 +323,7 @@ export function EmailTemplatesContainer() {
               <p className="text-gray-500 text-sm">No templates yet.</p>
               <button
                 onClick={openNew}
-                className="mt-3 text-indigo-400 hover:text-indigo-300 text-sm underline underline-offset-2"
+                className="mt-3 text-blue-400 hover:text-blue-300 text-sm underline underline-offset-2"
               >
                 Create your first template
               </button>
@@ -311,14 +335,23 @@ export function EmailTemplatesContainer() {
                 className="rounded-xl border border-gray-700/50 bg-gray-900/50 px-5 py-4 flex items-center gap-4 hover:border-gray-600/50 transition-colors"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{t.name}</p>
+                  <p className="text-sm font-semibold text-white truncate">
+                    {t.name}
+                  </p>
                   {t.description && (
-                    <p className="text-xs text-gray-500 truncate mt-0.5">{t.description}</p>
+                    <p className="text-xs text-gray-500 truncate mt-0.5">
+                      {t.description}
+                    </p>
                   )}
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <span className="text-xs text-gray-600 font-mono">ID {t.id}</span>
+                    <span className="text-xs text-gray-600 font-mono">
+                      ID {t.id}
+                    </span>
                     {(t.variables ?? []).map((v) => (
-                      <Badge key={v.name} className="bg-indigo-900/40 text-indigo-300 border-indigo-700/40">
+                      <Badge
+                        key={v.name}
+                        className="bg-blue-900/40 text-blue-300 border-blue-700/40"
+                      >
                         {`{{${v.name}}}`}
                       </Badge>
                     ))}
@@ -326,7 +359,10 @@ export function EmailTemplatesContainer() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => { setPreviewTarget(t); setPreviewOpen(true); }}
+                    onClick={() => {
+                      setPreviewTarget(t);
+                      setPreviewOpen(true);
+                    }}
                     className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
                     title="Preview"
                   >
@@ -355,12 +391,15 @@ export function EmailTemplatesContainer() {
 
       {/* Editor form */}
       {isFormOpen && (
-        <div className="rounded-xl border border-indigo-700/40 bg-gray-900/60 overflow-hidden">
+        <div className="rounded-xl border border-blue-700/40 bg-gray-900/60 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700/50 bg-gray-800/40">
             <h2 className="text-base font-semibold text-white">
               {isNew ? "New Template" : `Editing: ${editing?.name}`}
             </h2>
-            <button onClick={closeForm} className="text-gray-400 hover:text-white transition-colors">
+            <button
+              onClick={closeForm}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
@@ -379,7 +418,7 @@ export function EmailTemplatesContainer() {
                   Name *
                 </label>
                 <input
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Welcome Email"
@@ -390,7 +429,7 @@ export function EmailTemplatesContainer() {
                   Subject template *
                 </label>
                 <input
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={subjectTemplate}
                   onChange={(e) => setSubjectTemplate(e.target.value)}
                   placeholder="Welcome to {{company_name}}, {{first_name}}!"
@@ -404,7 +443,7 @@ export function EmailTemplatesContainer() {
                 Description
               </label>
               <input
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Briefly describe when to use this template"
@@ -419,7 +458,7 @@ export function EmailTemplatesContainer() {
                 </label>
                 <button
                   onClick={addVariable}
-                  className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   <PlusIcon className="h-3.5 w-3.5" />
                   Add variable
@@ -428,7 +467,9 @@ export function EmailTemplatesContainer() {
               <div className="space-y-2">
                 <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-0.5">
                   {["Token name", "Label", "Default"].map((h) => (
-                    <p key={h} className="text-xs text-gray-600 font-medium">{h}</p>
+                    <p key={h} className="text-xs text-gray-600 font-medium">
+                      {h}
+                    </p>
                   ))}
                   <span />
                 </div>
@@ -441,7 +482,9 @@ export function EmailTemplatesContainer() {
                   />
                 ))}
                 {variables.length === 0 && (
-                  <p className="text-xs text-gray-600 italic">No variables — template will be sent as-is.</p>
+                  <p className="text-xs text-gray-600 italic">
+                    No variables — template will be sent as-is.
+                  </p>
                 )}
               </div>
             </div>
@@ -455,7 +498,7 @@ export function EmailTemplatesContainer() {
                     onClick={() => setActiveTab(tab)}
                     className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                       activeTab === tab
-                        ? "bg-indigo-600 text-white"
+                        ? "bg-blue-600 text-white"
                         : "text-gray-400 hover:text-white hover:bg-gray-700/50"
                     }`}
                   >
@@ -463,7 +506,8 @@ export function EmailTemplatesContainer() {
                   </button>
                 ))}
                 <span className="ml-auto text-xs text-gray-600">
-                  Use <code className="text-indigo-400">{"{{"}</code>token<code className="text-indigo-400">{"}}"}</code> for variables
+                  Use <code className="text-blue-400">{"{{"}</code>token
+                  <code className="text-blue-400">{"}}"}</code> for variables
                 </span>
               </div>
               {activeTab === "html" ? (
@@ -471,7 +515,7 @@ export function EmailTemplatesContainer() {
                   value={htmlTemplate}
                   onChange={(e) => setHtmlTemplate(e.target.value)}
                   rows={18}
-                  className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-3 text-xs text-gray-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+                  className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-3 text-xs text-gray-200 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                   spellCheck={false}
                 />
               ) : (
@@ -496,9 +540,11 @@ export function EmailTemplatesContainer() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors disabled:opacity-50"
             >
-              {saving && <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
+              {saving && (
+                <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              )}
               {isNew ? "Create Template" : "Save Changes"}
             </button>
           </div>
@@ -511,7 +557,9 @@ export function EmailTemplatesContainer() {
           <div className="w-full max-w-2xl rounded-xl border border-gray-700 bg-gray-900 overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-700 bg-gray-800/60">
               <div>
-                <p className="text-sm font-semibold text-white">{previewTarget.name}</p>
+                <p className="text-sm font-semibold text-white">
+                  {previewTarget.name}
+                </p>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Subject: {previewTarget.subject_template}
                 </p>
