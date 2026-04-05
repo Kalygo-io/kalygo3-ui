@@ -88,6 +88,8 @@ function ToolCallCard({ index, call }: { index: number; call: any }) {
     case "sendTxtEmailWithSes":
     case "sendHtmlEmailWithSes":
       return <EmailCard index={index} call={call} />;
+    case "sendTemplateEmailWithSes":
+      return <TemplateEmailCard index={index} call={call} />;
     case "custom":
       return <CustomCard index={index} call={call} />;
     default:
@@ -419,6 +421,31 @@ function EmailCard({ index, call }: { index: number; call: any }) {
       )}
       {txtBody && !htmlBody && (
         <JsonBlock label="Body" data={txtBody} />
+      )}
+    </CardShell>
+  );
+}
+
+// ─── Template email ───────────────────────────────────────────────────────────
+
+function TemplateEmailCard({ index, call }: { index: number; call: any }) {
+  const vars: Record<string, string> = call.input?.variables ?? {};
+  return (
+    <CardShell
+      index={index}
+      typeLabel="Template Email"
+      typeColor="bg-indigo-500/20 text-indigo-400"
+      toolName={call.toolName}
+      badge={<SuccessBadge success={call.output?.success} />}
+    >
+      <div className="space-y-1.5">
+        <Row label="To" value={call.input?.to} />
+        <Row label="Template ID" value={String(call.input?.template_id ?? "—")} />
+        {call.output?.messageId && <Row label="Message ID" value={call.output.messageId} />}
+        {call.output?.error && <Row label="Error" value={call.output.error} />}
+      </div>
+      {Object.keys(vars).length > 0 && (
+        <JsonBlock label="Variables" data={vars} />
       )}
     </CardShell>
   );

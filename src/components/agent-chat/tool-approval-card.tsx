@@ -23,15 +23,18 @@ export function ToolApprovalCard({ toolApproval }: Props) {
   const [isLoading, setIsLoading] = useState<"approve" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { approvalId, preview, resolvedStatus } = toolApproval;
+  const { approvalId, toolType, preview, resolvedStatus } = toolApproval;
+
+  const isHtmlTool = toolType === "sendHtmlEmailWithSes" || toolType === "sendTemplateEmailWithSes";
 
   // Editable copies — initialised from the agent-composed preview
   const [toEmail, setToEmail] = useState(preview?.to_email ?? "");
   const [subject, setSubject] = useState(preview?.subject ?? "");
+  // HTML tools store the body as html_body; plain-text tools use body
+  const [htmlBody, setHtmlBody] = useState(preview?.html_body ?? "");
   const [body, setBody] = useState(preview?.body ?? "");
 
-  const isHtmlBody = /^\s*(<\s*!doctype|<\s*html)/i.test(body) || /<\/?(html|body|head|table|tr|td|div|p|span)\b/i.test(body);
-  const [showBodyPreview, setShowBodyPreview] = useState(isHtmlBody);
+  const [showHtmlPreview, setShowHtmlPreview] = useState(isHtmlTool);
 
   const isResolved = !!resolvedStatus;
 
@@ -40,11 +43,15 @@ export function ToolApprovalCard({ toolApproval }: Props) {
     setError(null);
     try {
       // Send overrides only when the user actually changed something
-      const overrides = {
+      const overrides: Record<string, string | undefined> = {
         to_email: toEmail !== preview?.to_email ? toEmail : undefined,
         subject: subject !== preview?.subject ? subject : undefined,
-        body: body !== preview?.body ? body : undefined,
       };
+      if (isHtmlTool) {
+        overrides.html_body = htmlBody !== (preview?.html_body ?? "") ? htmlBody : undefined;
+      } else {
+        overrides.body = body !== (preview?.body ?? "") ? body : undefined;
+      }
       const hasOverrides = Object.values(overrides).some((v) => v !== undefined);
       await toolApprovalsService.approveToolApproval(
         approvalId,
@@ -170,30 +177,42 @@ export function ToolApprovalCard({ toolApproval }: Props) {
           />
         </div>
 
-        {/* Body */}
+        {/* Body / HTML preview */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-xs text-gray-400 uppercase tracking-wider font-bold">
-              Body
+              {isHtmlTool ? "HTML Body" : "Body"}
             </label>
-            {isHtmlBody && (
+            {isHtmlTool && htmlBody && (
               <button
                 type="button"
-                onClick={() => setShowBodyPreview((v) => !v)}
+                onClick={() => setShowHtmlPreview((v) => !v)}
                 className="text-xs text-amber-400 hover:text-amber-300 underline underline-offset-2 transition-colors"
               >
-                {showBodyPreview ? "Edit" : "Preview"}
+                {showHtmlPreview ? "Edit source" : "Preview"}
               </button>
             )}
           </div>
-          {isHtmlBody && showBodyPreview ? (
-            <iframe
-              srcDoc={body}
-              title="Email body preview"
-              sandbox="allow-same-origin"
-              className="w-full rounded-lg border border-gray-700 bg-white"
-              style={{ height: "320px" }}
-            />
+
+          {isHtmlTool ? (
+            showHtmlPreview && htmlBody ? (
+              <iframe
+                srcDoc={htmlBody}
+                title="HTML email preview"
+                sandbox="allow-same-origin"
+                className="w-full rounded-lg border border-gray-700 bg-white"
+                style={{ minHeight: "400px", maxHeight: "600px" }}
+              />
+            ) : (
+              <textarea
+                value={htmlBody}
+                onChange={(e) => setHtmlBody(e.target.value)}
+                disabled={isResolved}
+                rows={10}
+                className={fieldBase + " font-mono text-xs"}
+                placeholder="HTML email body…"
+              />
+            )
           ) : (
             <>
               <textarea
@@ -209,6 +228,13 @@ export function ToolApprovalCard({ toolApproval }: Props) {
                 </p>
               )}
             </>
+          )}
+
+          {/* Template metadata badge */}
+          {preview?.template_name && (
+            <p className="mt-1.5 text-xs text-amber-400/80">
+              Template: <span className="font-semibold">{preview.template_name}</span>
+            </p>
           )}
         </div>
       </div>

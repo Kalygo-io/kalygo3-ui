@@ -52,6 +52,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Email Templates",
+    href: "/dashboard/email-templates",
+    enabled: true,
+  },
+  {
     name: "Analytics",
     enabled: true,
     children: [

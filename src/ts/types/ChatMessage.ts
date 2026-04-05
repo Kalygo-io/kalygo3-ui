@@ -27,6 +27,7 @@ export interface ChatMessageV2 {
     | DbTableWriteToolCall
     | SendTxtEmailWithSesToolCall
     | SendHtmlEmailWithSesToolCall
+    | SendTemplateEmailWithSesToolCall
     | CustomToolCall
   )[];
 }
@@ -361,6 +362,29 @@ export interface SendHtmlEmailWithSesToolCall {
     /**
      * Error message if send failed
      */
+    error?: string;
+    [k: string]: unknown;
+  };
+}
+
+/**
+ * Tool call for sending a templated HTML email via AWS SES
+ */
+export interface SendTemplateEmailWithSesToolCall {
+  toolType: "sendTemplateEmailWithSes";
+  toolName: string;
+  input: {
+    /** Recipient email address */
+    to: string;
+    /** Numeric ID of the email template used */
+    template_id?: number;
+    /** Variable values supplied by the agent */
+    variables?: Record<string, string>;
+    [k: string]: unknown;
+  };
+  output: {
+    success: boolean;
+    messageId?: string;
     error?: string;
     [k: string]: unknown;
   };
