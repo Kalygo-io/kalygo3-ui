@@ -29,6 +29,7 @@ export type CredentialType = AuthType;
 
 // Metadata stored alongside a credential
 export interface CredentialMetadata {
+  label?: string;
   environment?: "production" | "staging" | "development";
   expires_at?: string;
   notes?: string;
