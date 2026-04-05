@@ -74,7 +74,11 @@ const STARTER_VARIABLES: TemplateVariable[] = [
 function renderTemplate(html: string, vars: TemplateVariable[]): string {
   let out = html;
   for (const v of vars) {
-    out = out.replaceAll(`{{${v.name}}}`, v.default ?? "");
+    // Match {{ token }} with optional spaces — same tolerance as the Python renderer
+    out = out.replace(
+      new RegExp(`\\{\\{\\s*${v.name}\\s*\\}\\}`, "g"),
+      v.default ?? "",
+    );
   }
   return out;
 }

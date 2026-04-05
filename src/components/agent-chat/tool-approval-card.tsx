@@ -177,6 +177,35 @@ export function ToolApprovalCard({ toolApproval }: Props) {
           />
         </div>
 
+        {/* Template + variables — shown for HTML template tools */}
+        {isHtmlTool && (preview?.template_name || preview?.variables) && (
+          <div className="rounded-lg border border-indigo-700/40 bg-indigo-900/10 overflow-hidden">
+            {/* Template name row */}
+            {preview.template_name && (
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-indigo-700/30 bg-indigo-900/20">
+                <span className="text-xs text-indigo-400 font-bold uppercase tracking-wider">Template</span>
+                <span className="text-xs text-indigo-200 font-semibold">{preview.template_name}</span>
+              </div>
+            )}
+            {/* Variables table */}
+            {preview.variables && Object.keys(preview.variables).length > 0 && (
+              <div className="px-3 py-2.5">
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2">Variables</p>
+                <div className="space-y-1.5">
+                  {Object.entries(preview.variables).map(([key, value]) => (
+                    <div key={key} className="grid grid-cols-[140px_1fr] gap-2 items-start">
+                      <span className="text-xs font-mono text-indigo-400 bg-indigo-900/30 px-1.5 py-0.5 rounded truncate">
+                        {`{{${key}}}`}
+                      </span>
+                      <span className="text-xs text-gray-300 break-words leading-relaxed">{String(value) || <em className="text-gray-600">empty</em>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Body / HTML preview */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
