@@ -25,7 +25,7 @@ export interface EmailEvent {
   primary_recipient?: string;
   event_type: EmailEventType;
   provider?: string;
-  provider_message_id?: string;
+  message_id?: string;
   event_metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -45,7 +45,7 @@ export interface EmailEventStats {
 export interface ListEmailEventsParams {
   event_type?: string;
   primary_recipient?: string;
-  provider_message_id?: string;
+  message_id?: string;
   provider?: string;
   campaign_id?: number;
   tool_approval_id?: number;
@@ -87,7 +87,7 @@ class EmailEventsService {
     const url = new URL(`${API_BASE_URL}/api/email-events/`);
     if (params?.event_type) url.searchParams.set("event_type", params.event_type);
     if (params?.primary_recipient) url.searchParams.set("primary_recipient", params.primary_recipient);
-    if (params?.provider_message_id) url.searchParams.set("provider_message_id", params.provider_message_id);
+    if (params?.message_id) url.searchParams.set("message_id", params.message_id);
     if (params?.provider) url.searchParams.set("provider", params.provider);
     if (params?.campaign_id != null) url.searchParams.set("campaign_id", String(params.campaign_id));
     if (params?.tool_approval_id != null) url.searchParams.set("tool_approval_id", String(params.tool_approval_id));

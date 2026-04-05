@@ -193,7 +193,7 @@ export function SesEmailAnalyticsContainer() {
   const buildParams = (): ListEmailEventsParams => {
     const p: ListEmailEventsParams = {};
     if (recipient.trim()) p.primary_recipient = recipient.trim();
-    if (messageId.trim()) p.provider_message_id = messageId.trim();
+    if (messageId.trim()) p.message_id = messageId.trim();
     if (eventType) p.event_type = eventType;
     if (fromDate) p.from_date = new Date(fromDate).toISOString();
     if (toDate) p.to_date = new Date(toDate).toISOString();
@@ -424,8 +424,8 @@ export function SesEmailAnalyticsContainer() {
                     <td className="px-5 py-3 text-sm text-gray-400">
                       {ev.provider ?? <span className="text-gray-600">—</span>}
                     </td>
-                    <td className="px-5 py-3 text-xs text-gray-400 font-mono max-w-[200px] truncate" title={ev.provider_message_id ?? ""}>
-                      {ev.provider_message_id ?? <span className="text-gray-600">—</span>}
+                    <td className="px-5 py-3 text-xs text-gray-400 font-mono max-w-[200px] truncate" title={ev.message_id ?? ""}>
+                      {ev.message_id ?? <span className="text-gray-600">—</span>}
                     </td>
                     <td className="px-5 py-3 text-sm text-gray-400 whitespace-nowrap" title={formatDate(ev.created_at)}>
                       {relativeTime(ev.created_at)}
