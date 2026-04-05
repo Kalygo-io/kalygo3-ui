@@ -5,6 +5,7 @@ import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareI
 import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailWithSesTool, SendHtmlEmailWithSesTool, SendTemplateEmailWithSesTool, SendTxtEmailWithGoogleOAuthTool, SendTxtEmailWithGoogleSmtpTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { credentialService, Credential, CredentialType, ServiceName, formatServiceName } from "@/services/credentialService";
+import { emailTemplatesService, EmailTemplate } from "@/services/emailTemplatesService";
 import { errorToast } from "@/shared/toasts/errorToast";
 
 interface AddToolModalProps {
@@ -65,6 +66,11 @@ export function AddToolModal({
   const [selectedGoogleSmtpCredentialId, setSelectedGoogleSmtpCredentialId] = useState<number | "">("");
   const [googleSmtpCredentials, setGoogleSmtpCredentials] = useState<Credential[]>([]);
 
+  // Send Template Email (SES) template picker state
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | "">("");
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
   const isEditing = !!initialTool;
 
   // Initialize from existing tool
@@ -94,6 +100,7 @@ export function AddToolModal({
       } else if (initialTool.type === "sendTemplateEmailWithSes") {
         setToolCategory("sendTemplateEmailWithSes");
         setSelectedSesCredentialId(initialTool.credentialId);
+        setSelectedTemplateId(initialTool.templateId);
       } else if (initialTool.type === "sendTxtEmailWithGoogleOAuth") {
         setToolCategory("sendTxtEmailWithGoogleOAuth");
         setSelectedGoogleOAuthCredentialId(initialTool.credentialId);
@@ -119,6 +126,7 @@ export function AddToolModal({
   useEffect(() => {
     loadIndices();
     loadDbCredentials();
+    loadEmailTemplates();
   }, []);
 
   useEffect(() => {
@@ -179,6 +187,18 @@ export function AddToolModal({
       console.error("Failed to load credentials:", error);
     } finally {
       setLoadingCredentials(false);
+    }
+  };
+
+  const loadEmailTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      const data = await emailTemplatesService.list();
+      setEmailTemplates(data);
+    } catch (error: any) {
+      console.error("Failed to load email templates:", error);
+    } finally {
+      setLoadingTemplates(false);
     }
   };
 
@@ -316,9 +336,15 @@ export function AddToolModal({
         return;
       }
 
+      if (!selectedTemplateId) {
+        errorToast("Please select an email template");
+        return;
+      }
+
       const templateSesTool: SendTemplateEmailWithSesTool = {
         type: "sendTemplateEmailWithSes",
         credentialId: selectedSesCredentialId as number,
+        templateId: selectedTemplateId as number,
       };
 
       if (description.trim()) {
@@ -1220,11 +1246,75 @@ export function AddToolModal({
                 </div>
               )}
 
+              {/* Email Template Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Email Template *
+                </label>
+                {loadingTemplates ? (
+                  <div className="text-gray-400 text-sm">Loading templates...</div>
+                ) : emailTemplates.length === 0 ? (
+                  <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <KeyIcon className="h-5 w-5 text-yellow-400 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-yellow-300">No Email Templates Found</h4>
+                        <p className="text-xs text-yellow-400/80 mt-1">
+                          Create an email template first from the{" "}
+                          <strong>Email Templates</strong> page, then return here to configure this tool.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => setSelectedTemplateId(e.target.value ? parseInt(e.target.value) : "")}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  >
+                    <option value="">Select a template...</option>
+                    {emailTemplates.map((tpl) => (
+                      <option key={tpl.id} value={tpl.id}>
+                        #{tpl.id} — {tpl.name}
+                        {tpl.description ? ` · ${tpl.description}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-gray-400 text-xs mt-2">
+                  The HTML structure is fixed at configuration time. The agent supplies only the recipient
+                  and template variable values at runtime — it cannot compose arbitrary markup.
+                </p>
+              </div>
+
+              {selectedTemplateId !== "" && (() => {
+                const tpl = emailTemplates.find((t) => t.id === selectedTemplateId);
+                return tpl ? (
+                  <div className="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-4 space-y-1">
+                    <p className="text-xs font-medium text-indigo-300">{tpl.name}</p>
+                    {tpl.description && (
+                      <p className="text-xs text-gray-400">{tpl.description}</p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      Subject template: <code className="text-indigo-300">{tpl.subject_template}</code>
+                    </p>
+                    {tpl.variables && tpl.variables.length > 0 && (
+                      <p className="text-xs text-gray-500">
+                        Variables:{" "}
+                        {tpl.variables.map((v) => (
+                          <code key={v.name} className="text-indigo-300 mr-1">{`{{${v.name}}}`}</code>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+                ) : null;
+              })()}
+
               <div className="bg-indigo-900/20 border border-indigo-700/50 rounded-lg p-3">
                 <p className="text-xs text-indigo-300">
-                  The agent selects a template by ID from your{" "}
-                  <strong>Email Templates</strong> library and provides variable values.
-                  A live HTML preview and open-tracking are included automatically.
+                  Open-tracking is injected automatically before sending.
+                  Human approval is always required before the email is dispatched.
                 </p>
               </div>
             </>
@@ -1410,7 +1500,7 @@ export function AddToolModal({
                 (isDbTool && dbCredentials.length === 0) ||
                 (toolCategory === "sendTxtEmailWithSes" && sesCredentials.length === 0) ||
                 (toolCategory === "sendHtmlEmailWithSes" && sesCredentials.length === 0) ||
-                (toolCategory === "sendTemplateEmailWithSes" && sesCredentials.length === 0) ||
+                (toolCategory === "sendTemplateEmailWithSes" && (sesCredentials.length === 0 || emailTemplates.length === 0)) ||
                 (toolCategory === "sendTxtEmailWithGoogleOAuth" && googleOAuthCredentials.length === 0) ||
                 (toolCategory === "sendTxtEmailWithGoogleSmtp" && googleSmtpCredentials.length === 0)
               }

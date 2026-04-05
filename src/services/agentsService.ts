@@ -56,6 +56,8 @@ export interface SendHtmlEmailWithSesTool {
 export interface SendTemplateEmailWithSesTool {
   type: "sendTemplateEmailWithSes";
   credentialId: number;
+  /** ID of the email template from the Email Templates library */
+  templateId: number;
   description?: string;
 }
 
@@ -169,7 +171,10 @@ export const TOOL_TYPE_METADATA: Record<AgentTool["type"], ToolTypeMeta> = {
     label: "Send Template Email (SES)",
     borderClass: "border-indigo-700/30",
     iconClass: "text-indigo-400",
-    summary: () => "AWS SES · HTML template · open tracking · requires human approval",
+    summary: (t) => {
+      const tool = t as SendTemplateEmailWithSesTool;
+      return `AWS SES · template #${tool.templateId} · requires human approval`;
+    },
   },
   sendTxtEmailWithGoogleOAuth: {
     label: "Send Email (Google OAuth)",

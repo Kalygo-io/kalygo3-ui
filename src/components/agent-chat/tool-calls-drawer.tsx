@@ -391,6 +391,8 @@ function DbWriteCard({ index, call }: { index: number; call: any }) {
 function EmailCard({ index, call }: { index: number; call: any }) {
   const htmlBody: string | undefined = call.input?.html_body;
   const txtBody: string | undefined = call.input?.body;
+  const templateId: number | undefined = call.input?.template_id;
+  const vars: Record<string, string> | undefined = call.input?.variables;
   return (
     <CardShell
       index={index}
@@ -402,14 +404,22 @@ function EmailCard({ index, call }: { index: number; call: any }) {
       <div className="space-y-1.5">
         <Row label="To" value={call.input?.to} />
         <Row label="Subject" value={call.input?.subject} />
+        {templateId != null && (
+          <Row label="Template ID" value={String(templateId)} />
+        )}
         {call.output?.messageId && (
           <Row label="Message ID" value={call.output.messageId} />
         )}
         {call.output?.error && <Row label="Error" value={call.output.error} />}
       </div>
+      {vars && Object.keys(vars).length > 0 && (
+        <JsonBlock label="Variables" data={vars} />
+      )}
       {htmlBody && (
         <div className="mt-2">
-          <p className="text-xs text-gray-500 mb-1 font-medium">HTML Preview</p>
+          <p className="text-xs text-gray-500 mb-1 font-medium">
+            {templateId != null ? "Rendered Preview" : "HTML Preview"}
+          </p>
           <iframe
             srcDoc={htmlBody}
             sandbox="allow-same-origin"

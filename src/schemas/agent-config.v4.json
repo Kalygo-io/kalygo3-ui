@@ -350,12 +350,17 @@
     },
     "sendTemplateEmailWithSesTool": {
       "type": "object",
-      "description": "Sends a pre-designed HTML template email via AWS SES. The agent selects a template by ID and provides variable values. Open-tracking is injected automatically. Requires human approval before sending.",
+      "description": "Sends a pre-designed HTML template email via AWS SES. The agent provides recipient and variable values; the template HTML is fixed at configuration time by templateId. Open-tracking is injected automatically. Requires human approval before sending.",
       "additionalProperties": false,
-      "required": ["type", "credentialId"],
+      "required": ["type", "credentialId", "templateId"],
       "properties": {
         "type": { "type": "string", "const": "sendTemplateEmailWithSes" },
         "credentialId": { "type": "integer", "minimum": 1, "description": "ID of stored AWS SES credential." },
+        "templateId": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "ID of the email template from the Email Templates library. Fixes the HTML structure at configuration time so the agent cannot compose arbitrary markup."
+        },
         "description": { "type": "string", "minLength": 1 }
       }
     },

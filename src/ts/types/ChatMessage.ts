@@ -327,41 +327,24 @@ export interface SendTxtEmailWithSesToolCall {
  * Tool call for sending an HTML email via AWS SES
  */
 export interface SendHtmlEmailWithSesToolCall {
-  /**
-   * The type of tool (sendHtmlEmailWithSes)
-   */
   toolType: "sendHtmlEmailWithSes";
-  /**
-   * The specific tool instance name (e.g., 'send_html_email_with_ses')
-   */
   toolName: string;
   input: {
-    /**
-     * Recipient email address
-     */
+    /** Recipient email address */
     to: string;
-    /**
-     * Email subject line
-     */
+    /** Email subject line */
     subject?: string;
-    /**
-     * Complete production-grade HTML email body authored by the agent
-     */
+    /** Template ID (preferred mode) */
+    template_id?: number;
+    /** Variable values passed to the template */
+    variables?: Record<string, string>;
+    /** Raw HTML body (fallback mode — no template) */
     html_body?: string;
     [k: string]: unknown;
   };
   output: {
-    /**
-     * Whether the email was sent successfully
-     */
     success: boolean;
-    /**
-     * SES message ID if sent successfully
-     */
     messageId?: string;
-    /**
-     * Error message if send failed
-     */
     error?: string;
     [k: string]: unknown;
   };
