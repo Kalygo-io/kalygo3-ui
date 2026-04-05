@@ -71,7 +71,7 @@ export const SignupForm = () => {
           <p className="text-gray-400 mt-2">
             {step === "email"
               ? "Enter your email to create an account"
-              : `We sent a 6-digit code to ${email}`}
+              : `We sent an 8-digit code to ${email}`}
           </p>
         </div>
 
@@ -111,7 +111,7 @@ export const SignupForm = () => {
                 htmlFor="code"
                 className="block text-sm font-medium text-gray-300 mb-2"
               >
-                6-digit code
+                8-digit code
               </label>
               <input
                 type="text"
@@ -123,7 +123,7 @@ export const SignupForm = () => {
                 required
                 autoFocus
                 inputMode="numeric"
-                maxLength={6}
+                maxLength={8}
                 className="bg-gray-900/50 w-full px-4 py-3 border border-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-center text-2xl tracking-widest"
               />
             </div>

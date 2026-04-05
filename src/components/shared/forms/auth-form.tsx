@@ -57,7 +57,7 @@ export const AuthForm = () => {
         <p className="text-sm text-center text-gray-400">
           {step === "email"
             ? "Enter your email to receive a sign-in code"
-            : `We sent a 6-digit code to ${email}`}
+            : `We sent an 8-digit code to ${email}`}
         </p>
 
         {step === "email" ? (
@@ -96,7 +96,7 @@ export const AuthForm = () => {
                 htmlFor="code"
                 className="block text-sm font-medium text-gray-200"
               >
-                6-digit code
+                8-digit code
               </label>
               <input
                 type="text"
@@ -108,7 +108,7 @@ export const AuthForm = () => {
                 required
                 autoFocus
                 inputMode="numeric"
-                maxLength={6}
+                maxLength={8}
                 className="bg-gray-800 w-full px-3 py-2 mt-1 border border-gray-700 text-gray-200 rounded shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-center text-2xl tracking-widest"
               />
             </div>
