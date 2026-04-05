@@ -1120,8 +1120,9 @@ export function AddToolModal({
 
               <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3">
                 <p className="text-xs text-blue-300">
-                  The agent writes the email body as plain text. Each non-empty line is automatically
-                  wrapped in a &lt;p&gt; tag, producing a clean HTML email that looks like a text email.
+                  The agent selects a saved template by ID and supplies variable values — the preferred
+                  mode. If no template is provided, the agent may supply a raw HTML document as a
+                  fallback. Open-tracking and human approval are always required before sending.
                 </p>
               </div>
             </>
