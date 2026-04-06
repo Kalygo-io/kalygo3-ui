@@ -102,9 +102,11 @@ export const AuthForm = () => {
                 type="text"
                 id="code"
                 name="code"
-                placeholder="000000"
+                placeholder="00000000"
                 value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onChange={(e) =>
+                  setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
                 required
                 autoFocus
                 inputMode="numeric"
@@ -121,7 +123,10 @@ export const AuthForm = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setStep("email"); setCode(""); }}
+              onClick={() => {
+                setStep("email");
+                setCode("");
+              }}
               className="w-full text-sm text-gray-400 hover:text-gray-200 transition-colors"
             >
               Use a different email
