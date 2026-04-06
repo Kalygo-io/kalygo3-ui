@@ -120,7 +120,7 @@ export const SignupForm = () => {
                 placeholder="00000000"
                 value={code}
                 onChange={(e) =>
-                  setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  setCode(e.target.value.replace(/\D/g, "").slice(0, 8))
                 }
                 required
                 autoFocus
@@ -131,7 +131,7 @@ export const SignupForm = () => {
             </div>
             <button
               type="submit"
-              disabled={isLoading || code.length !== 6}
+              disabled={isLoading || code.length !== 8}
               className="w-full px-4 py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg hover:shadow-blue-500/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? <Spinner /> : "Create Account"}
