@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { agentsService, Agent, getAgentModelConfig } from "@/services/agentsService";
+import { agentsService, Agent, getAgentModelConfig, TOOL_TYPE_METADATA } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
-import { ArrowRightIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, PlusIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 
 export function AgentsContainer() {
   const router = useRouter();
@@ -85,6 +85,8 @@ export function AgentsContainer() {
   );
 }
 
+const TOOL_DISPLAY_LIMIT = 4;
+
 function AgentCard({
   agent,
   onViewDetails,
@@ -94,6 +96,9 @@ function AgentCard({
 }) {
   const modelConfig = getAgentModelConfig(agent);
   const isOwner = agent.is_owner !== false;
+  const tools = agent.config?.data?.tools ?? [];
+  const visibleTools = tools.slice(0, TOOL_DISPLAY_LIMIT);
+  const hiddenCount = tools.length - visibleTools.length;
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 transition-all duration-200 hover:shadow-lg hover:border-gray-600/50 flex flex-col">
@@ -109,7 +114,7 @@ function AgentCard({
         {agent.description && (
           <p className="text-sm text-gray-400 mb-4">{agent.description}</p>
         )}
-        <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-3">
           <span className="px-2 py-1 bg-gray-700/50 rounded capitalize">
             {modelConfig.provider}: {modelConfig.model}
           </span>
@@ -122,6 +127,38 @@ function AgentCard({
             <span className="px-2 py-1 bg-gray-700/50 rounded">
               Created: {new Date(agent.created_at).toLocaleDateString()}
             </span>
+          )}
+        </div>
+
+        {/* Tools section */}
+        <div className="border-t border-gray-700/50 pt-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <WrenchScrewdriverIcon className="h-3.5 w-3.5 text-gray-500" />
+            <span className="text-xs text-gray-500 font-medium">
+              {tools.length === 0
+                ? "No tools"
+                : `${tools.length} tool${tools.length !== 1 ? "s" : ""}`}
+            </span>
+          </div>
+          {tools.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {visibleTools.map((tool, i) => {
+                const meta = TOOL_TYPE_METADATA[tool.type];
+                return (
+                  <span
+                    key={i}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-gray-900/60 ${meta.borderClass} ${meta.iconClass}`}
+                  >
+                    {meta.label}
+                  </span>
+                );
+              })}
+              {hiddenCount > 0 && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border border-gray-600/50 text-gray-400 bg-gray-900/60">
+                  +{hiddenCount} more
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
