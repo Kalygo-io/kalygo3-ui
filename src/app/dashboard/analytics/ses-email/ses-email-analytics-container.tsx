@@ -20,6 +20,11 @@ import {
   EmailEventStats,
   ListEmailEventsParams,
 } from "@/services/emailEventsService";
+import {
+  credentialService,
+  Credential,
+  ServiceName,
+} from "@/services/credentialService";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -148,6 +153,10 @@ export function SesEmailAnalyticsContainer() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
+  // Credential switcher
+  const [sesCredentials, setSesCredentials] = useState<Credential[]>([]);
+  const [selectedCredentialId, setSelectedCredentialId] = useState<number | "all">("all");
+
   // Filters (draft — committed on Search)
   const [recipient, setRecipient] = useState("");
   const [messageId, setMessageId] = useState("");
@@ -183,6 +192,7 @@ export function SesEmailAnalyticsContainer() {
           emailEventsService.getStats({
             from_date: params.from_date,
             to_date: params.to_date,
+            credential_id: params.credential_id,
           }),
         ]);
         setEvents(eventsData);
@@ -198,9 +208,23 @@ export function SesEmailAnalyticsContainer() {
     [],
   );
 
-  // Initial load
+  // Initial load — fetch credentials + events in parallel
   useEffect(() => {
-    fetchData({});
+    async function init() {
+      try {
+        const creds = await credentialService.listCredentials();
+        const ses = creds.filter(
+          (c) =>
+            c.credential_type === ServiceName.AWS_SES ||
+            c.credential_type === "AWS_SES",
+        );
+        setSesCredentials(ses);
+      } catch {
+        // non-blocking — switcher will simply not render
+      }
+      fetchData({});
+    }
+    init();
   }, [fetchData]);
 
   // Auto-refresh
@@ -238,6 +262,7 @@ export function SesEmailAnalyticsContainer() {
     if (eventType) p.event_type = eventType;
     if (fromDate) p.from_date = new Date(fromDate).toISOString();
     if (toDate) p.to_date = new Date(toDate).toISOString();
+    if (selectedCredentialId !== "all") p.credential_id = selectedCredentialId;
     return p;
   };
 
@@ -254,9 +279,24 @@ export function SesEmailAnalyticsContainer() {
     setEventType("");
     setFromDate("");
     setToDate("");
-    setApplied({});
+    const base: ListEmailEventsParams =
+      selectedCredentialId !== "all"
+        ? { credential_id: selectedCredentialId }
+        : {};
+    setApplied(base);
     setPage(1);
-    fetchData({});
+    fetchData(base);
+  };
+
+  const handleCredentialChange = (value: string) => {
+    const next = value === "all" ? "all" as const : Number(value);
+    setSelectedCredentialId(next);
+    const p = buildParams();
+    if (next !== "all") p.credential_id = next;
+    else delete p.credential_id;
+    setApplied(p);
+    setPage(1);
+    fetchData(p);
   };
 
   const handleRefresh = () => fetchData(applied, true);
@@ -328,6 +368,31 @@ export function SesEmailAnalyticsContainer() {
           </button>
         </div>
       </div>
+
+      {/* Credential switcher */}
+      {sesCredentials.length > 0 && (
+        <div className="flex items-center gap-3">
+          <label
+            htmlFor="credential-filter"
+            className="text-sm font-medium text-gray-400"
+          >
+            Credential
+          </label>
+          <select
+            id="credential-filter"
+            value={selectedCredentialId === "all" ? "all" : String(selectedCredentialId)}
+            onChange={(e) => handleCredentialChange(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[180px]"
+          >
+            <option value="all">All credentials</option>
+            {sesCredentials.map((cred) => (
+              <option key={cred.id} value={String(cred.id)}>
+                {cred.credential_name || `SES #${cred.id}`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">

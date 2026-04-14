@@ -22,6 +22,8 @@ export interface EmailEvent {
   tool_approval_id?: number;
   campaign_id?: number;
   contact_id?: number;
+  credential_id?: number;
+  sender_domain?: string;
   primary_recipient?: string;
   event_type: EmailEventType;
   provider?: string;
@@ -49,6 +51,8 @@ export interface ListEmailEventsParams {
   provider?: string;
   campaign_id?: number;
   tool_approval_id?: number;
+  credential_id?: number;
+  sender_domain?: string;
   from_date?: string;
   to_date?: string;
   limit?: number;
@@ -58,6 +62,7 @@ export interface ListEmailEventsParams {
 export interface EmailEventStatsParams {
   campaign_id?: number;
   tool_approval_id?: number;
+  credential_id?: number;
   from_date?: string;
   to_date?: string;
 }
@@ -91,6 +96,8 @@ class EmailEventsService {
     if (params?.provider) url.searchParams.set("provider", params.provider);
     if (params?.campaign_id != null) url.searchParams.set("campaign_id", String(params.campaign_id));
     if (params?.tool_approval_id != null) url.searchParams.set("tool_approval_id", String(params.tool_approval_id));
+    if (params?.credential_id != null) url.searchParams.set("credential_id", String(params.credential_id));
+    if (params?.sender_domain) url.searchParams.set("sender_domain", params.sender_domain);
     if (params?.from_date) url.searchParams.set("from_date", params.from_date);
     if (params?.to_date) url.searchParams.set("to_date", params.to_date);
     if (params?.limit != null) url.searchParams.set("limit", String(params.limit));
@@ -108,6 +115,7 @@ class EmailEventsService {
     const url = new URL(`${API_BASE_URL}/api/email-events/stats`);
     if (params?.campaign_id != null) url.searchParams.set("campaign_id", String(params.campaign_id));
     if (params?.tool_approval_id != null) url.searchParams.set("tool_approval_id", String(params.tool_approval_id));
+    if (params?.credential_id != null) url.searchParams.set("credential_id", String(params.credential_id));
     if (params?.from_date) url.searchParams.set("from_date", params.from_date);
     if (params?.to_date) url.searchParams.set("to_date", params.to_date);
 
