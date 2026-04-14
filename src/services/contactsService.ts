@@ -73,6 +73,32 @@ export interface UpdateContactEventRequest {
   occurred_at?: string;
 }
 
+export interface CareerTimelineEntry {
+  id: number;
+  contact_id: number;
+  account_id: number;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCareerTimelineRequest {
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date?: string;
+}
+
+export interface UpdateCareerTimelineRequest {
+  title?: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
 // ============================================================================
 // Service
 // ============================================================================
@@ -197,6 +223,68 @@ class ContactsService {
   async deleteEvent(contactId: number, eventId: number): Promise<void> {
     const response = await fetch(
       `${API_BASE_URL}/api/contacts/${contactId}/events/${eventId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+    return this.handleResponse<void>(response);
+  }
+
+  // ── Career Timeline ──────────────────────────────────────────────────────
+
+  async listCareerTimeline(contactId: number): Promise<CareerTimelineEntry[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+    return this.handleResponse<CareerTimelineEntry[]>(response);
+  }
+
+  async createCareerTimelineEntry(
+    contactId: number,
+    data: CreateCareerTimelineRequest
+  ): Promise<CareerTimelineEntry> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+    return this.handleResponse<CareerTimelineEntry>(response);
+  }
+
+  async updateCareerTimelineEntry(
+    contactId: number,
+    entryId: number,
+    data: UpdateCareerTimelineRequest
+  ): Promise<CareerTimelineEntry> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/${entryId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+    return this.handleResponse<CareerTimelineEntry>(response);
+  }
+
+  async deleteCareerTimelineEntry(
+    contactId: number,
+    entryId: number
+  ): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/${entryId}`,
       {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
