@@ -21,6 +21,7 @@ import {
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
 import { navigation } from "@/config/navigation";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { logoutRequest } from "@/services/logoutRequest";
@@ -253,23 +254,19 @@ export function DashboardLayout({
                         <ul className="ml-4 mt-1 space-y-1">
                           {item.children.map((child) => (
                             <li key={child.name}>
-                              {child.enabled ? (
-                                <span
-                                  onClick={() => {
-                                    if (child.href) {
-                                      router.push(child.href);
-                                      setSidebarOpen(false);
-                                    }
-                                  }}
+                              {child.enabled && child.href ? (
+                                <Link
+                                  href={child.href}
+                                  onClick={() => setSidebarOpen(false)}
                                   className={classNames(
-                                    child.href && pathname === child.href
+                                    pathname === child.href
                                       ? "bg-blue-700 text-white"
                                       : "text-blue-200 hover:text-white hover:bg-blue-700",
                                     "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-medium cursor-pointer transition-colors duration-150",
                                   )}
                                 >
                                   {child.name}
-                                </span>
+                                </Link>
                               ) : (
                                 <span className="text-gray-500 cursor-default group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-medium">
                                   {child.name}
@@ -281,26 +278,21 @@ export function DashboardLayout({
                       )}
                     </div>
                   ) : // Single item without children
-                  item.enabled ? (
-                    <span
-                      onClick={() => {
-                        if (item.href) {
-                          router.push(item.href);
-                          setSidebarOpen(false);
-                        }
-                      }}
+                  item.enabled && item.href ? (
+                    <Link
+                      href={item.href}
+                      onClick={() => setSidebarOpen(false)}
                       className={classNames(
-                        item.href &&
-                          item.href.split("/")[
-                            item.href.split("/").length - 1
-                          ] === current
+                        item.href.split("/")[
+                          item.href.split("/").length - 1
+                        ] === current
                           ? "bg-blue-700 text-white"
                           : "text-blue-200 hover:text-white hover:bg-blue-700",
                         "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold cursor-pointer transition-colors duration-150",
                       )}
                     >
                       {item.name}
-                    </span>
+                    </Link>
                   ) : (
                     <span className="text-gray-500 cursor-default group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold">
                       {item.name}
