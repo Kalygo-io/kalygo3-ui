@@ -21,20 +21,7 @@ import {
   UsersIcon,
   MagnifyingGlassIcon,
   EnvelopeIcon,
-  BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function statusBadgeClass(status?: string) {
-  switch (status) {
-    case "customer": return "bg-emerald-700/40 text-emerald-300 border-emerald-600/50";
-    case "prospect": return "bg-blue-700/40 text-blue-300 border-blue-600/50";
-    case "lead": return "bg-amber-700/40 text-amber-300 border-amber-600/50";
-    case "churned": return "bg-red-700/40 text-red-300 border-red-600/50";
-    default: return "bg-gray-700/40 text-gray-400 border-gray-600/50";
-  }
-}
 
 // ── Main container ────────────────────────────────────────────────────────────
 
@@ -212,10 +199,7 @@ export function ContactListDetailContainer({ listId }: { listId: number }) {
                     Contact
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                    Company
-                  </th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                    Status
+                    Phone
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                     Added
@@ -249,23 +233,8 @@ export function ContactListDetailContainer({ listId }: { listId: number }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 hidden sm:table-cell">
-                      {member.contact.company ? (
-                        <div className="flex items-center gap-1.5 text-gray-300 text-sm">
-                          <BuildingOfficeIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                          <span className="truncate max-w-[160px]">{member.contact.company}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-600 text-sm">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      {member.contact.status ? (
-                        <span
-                          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeClass(member.contact.status)}`}
-                        >
-                          {member.contact.status.charAt(0).toUpperCase() +
-                            member.contact.status.slice(1)}
-                        </span>
+                      {member.contact.phone ? (
+                        <span className="text-gray-300 text-sm">{member.contact.phone}</span>
                       ) : (
                         <span className="text-gray-600 text-sm">—</span>
                       )}
