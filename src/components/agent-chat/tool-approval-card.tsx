@@ -285,8 +285,9 @@ export function ToolApprovalCard({ toolApproval }: Props) {
 
           {/* Template metadata badge */}
           {preview?.template_name && (
-            <p className="mt-1.5 text-xs text-amber-400/80">
-              Template: <span className="font-semibold">{preview.template_name}</span>
+            <p className="mt-1.5 text-xs text-gray-400">
+              Template:{" "}
+              <span className="font-semibold text-gray-200">{preview.template_name}</span>
             </p>
           )}
         </div>
