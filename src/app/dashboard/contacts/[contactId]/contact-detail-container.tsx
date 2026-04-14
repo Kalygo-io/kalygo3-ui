@@ -385,6 +385,7 @@ function ContactEditSection({
 }) {
   const [form, setForm] = useState({
     first_name: contact.first_name,
+    middle_name: contact.middle_name ?? "",
     last_name: contact.last_name ?? "",
     email: contact.email,
     phone: contact.phone ?? "",
@@ -409,6 +410,7 @@ function ContactEditSection({
     try {
       await onSave({
         first_name: form.first_name.trim(),
+        middle_name: form.middle_name.trim() || undefined,
         last_name: form.last_name.trim() || undefined,
         email: form.email.trim(),
         phone: form.phone.trim() || undefined,
@@ -440,7 +442,7 @@ function ContactEditSection({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
               First Name <span className="text-red-400">*</span>
@@ -451,6 +453,15 @@ function ContactEditSection({
               onChange={set("first_name")}
               required
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Middle Name</label>
+            <input
+              type="text"
+              value={form.middle_name}
+              onChange={set("middle_name")}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
           <div>

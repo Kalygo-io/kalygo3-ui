@@ -29,8 +29,9 @@ export interface Contact {
   id: number;
   account_id: number;
   first_name: string;
+  middle_name?: string;
   last_name?: string;
-  /** Computed by API: `"${first_name} ${last_name}".trim()` */
+  /** Computed by API: `"${first_name} ${middle_name} ${last_name}".trim()` */
   name: string;
   email: string;
   phone?: string;
@@ -46,6 +47,7 @@ export interface Contact {
 
 export interface CreateContactRequest {
   first_name: string;
+  middle_name?: string;
   last_name?: string;
   email: string;
   phone?: string;
@@ -58,6 +60,7 @@ export interface CreateContactRequest {
 
 export interface UpdateContactRequest {
   first_name?: string;
+  middle_name?: string;
   last_name?: string;
   email?: string;
   phone?: string;

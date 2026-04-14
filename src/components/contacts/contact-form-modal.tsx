@@ -34,6 +34,7 @@ export function ContactFormModal({
   const isEdit = !!initial;
   const [form, setForm] = useState({
     first_name: initial?.first_name ?? "",
+    middle_name: initial?.middle_name ?? "",
     last_name: initial?.last_name ?? "",
     email: initial?.email ?? "",
     phone: initial?.phone ?? "",
@@ -62,6 +63,7 @@ export function ContactFormModal({
     try {
       const payload = {
         first_name: form.first_name.trim(),
+        middle_name: form.middle_name.trim() || undefined,
         last_name: form.last_name.trim() || undefined,
         email: form.email.trim(),
         phone: form.phone.trim() || undefined,
@@ -100,7 +102,7 @@ export function ContactFormModal({
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   First Name <span className="text-red-400">*</span>
@@ -112,6 +114,18 @@ export function ContactFormModal({
                   required
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
                   placeholder="Jane"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Middle Name
+                </label>
+                <input
+                  type="text"
+                  value={form.middle_name}
+                  onChange={set("middle_name")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="Marie"
                 />
               </div>
               <div>

@@ -18,6 +18,7 @@ export interface ContactSummary {
   id: number;
   account_id: number;
   first_name: string;
+  middle_name?: string;
   last_name?: string;
   name: string;
   email: string;
