@@ -67,8 +67,7 @@ export function ContactsContainer() {
       c.first_name.toLowerCase().includes(search.toLowerCase()) ||
       (c.middle_name || "").toLowerCase().includes(search.toLowerCase()) ||
       (c.last_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase()) ||
-      (c.company || "").toLowerCase().includes(search.toLowerCase());
+      c.email.toLowerCase().includes(search.toLowerCase());
     return matchesSearch;
   });
 

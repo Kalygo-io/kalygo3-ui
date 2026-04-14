@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
@@ -19,8 +19,6 @@ import {
   XMarkIcon,
   EnvelopeIcon,
   PhoneIcon,
-  BuildingOfficeIcon,
-  BriefcaseIcon,
   TagIcon,
   ClockIcon,
   ChatBubbleLeftEllipsisIcon,
@@ -52,15 +50,9 @@ function getEventType(value: string) {
   };
 }
 
-function statusBadgeClass(status?: string) {
-  switch (status) {
-    case "customer": return "bg-emerald-700/40 text-emerald-300 border-emerald-600/50";
-    case "prospect": return "bg-blue-700/40 text-blue-300 border-blue-600/50";
-    case "lead": return "bg-amber-700/40 text-amber-300 border-amber-600/50";
-    case "churned": return "bg-red-700/40 text-red-300 border-red-600/50";
-    default: return "bg-gray-700/40 text-gray-400 border-gray-600/50";
-  }
-}
+const SOURCE_OPTIONS = [
+  "website", "referral", "chat_bot", "import", "cold_outreach", "event", "other",
+];
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -68,9 +60,22 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
   const router = useRouter();
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editEvent, setEditEvent] = useState<ContactEvent | null>(null);
+
+  // Inline-edit form state
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const formRef = useRef<Record<string, string>>({});
+
+  const buildForm = (c: Contact) => ({
+    first_name: c.first_name,
+    middle_name: c.middle_name ?? "",
+    last_name: c.last_name ?? "",
+    email: c.email,
+    phone: c.phone ?? "",
+    source: c.source ?? "",
+  });
 
   useEffect(() => {
     loadContact();
@@ -81,6 +86,9 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
       setLoading(true);
       const data = await contactsService.getContact(contactId);
       setContact(data);
+      const f = buildForm(data);
+      setForm(f);
+      formRef.current = f;
     } catch (error: any) {
       errorToast(error.message || "Failed to load contact");
       router.push("/dashboard/contacts");
@@ -88,6 +96,46 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
       setLoading(false);
     }
   };
+
+  const set =
+    (key: string) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const isDirty = contact
+    ? Object.keys(form).some((k) => form[k] !== formRef.current[k])
+    : false;
+
+  const handleSave = useCallback(async () => {
+    if (!contact || !isDirty) return;
+    if (!form.first_name.trim()) return errorToast("First name is required");
+    if (!form.email.trim()) return errorToast("Email is required");
+    setSaving(true);
+    try {
+      const payload: UpdateContactRequest = {
+        first_name: form.first_name.trim(),
+        middle_name: form.middle_name.trim() || undefined,
+        last_name: form.last_name.trim() || undefined,
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        source: form.source || undefined,
+      };
+      const updated = await contactsService.updateContact(contact.id, payload);
+      setContact((prev) => (prev ? { ...updated, events: prev.events } : prev));
+      const f = buildForm(updated);
+      setForm(f);
+      formRef.current = f;
+      successToast("Contact saved");
+    } catch (error: any) {
+      errorToast(error.message || "Failed to save contact");
+    } finally {
+      setSaving(false);
+    }
+  }, [contact, form, isDirty]);
+
+  const handleDiscard = useCallback(() => {
+    setForm({ ...formRef.current });
+  }, []);
 
   const handleDeleteEvent = async (event: ContactEvent) => {
     const confirmed = window.confirm(`Delete event "${event.title}"?`);
@@ -117,6 +165,11 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
     (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
   );
 
+  const inputClass =
+    "w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-sm";
+  const selectClass =
+    "w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm";
+
   return (
     <div className="space-y-6">
       {/* Back */}
@@ -128,99 +181,92 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         Back to Contacts
       </button>
 
-      {/* Contact card / inline edit */}
-      {isEditing ? (
-        <ContactEditSection
-          contact={contact}
-          onCancel={() => setIsEditing(false)}
-          onSave={async (data) => {
-            const updated = await contactsService.updateContact(
-              contact.id,
-              data as UpdateContactRequest,
-            );
-            setContact((prev) => (prev ? { ...updated, events: prev.events } : prev));
-            setIsEditing(false);
-            successToast(`Contact "${updated.name}" updated`);
-          }}
-        />
-      ) : (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl font-bold text-blue-300">
-                  {contact.first_name.charAt(0).toUpperCase()}
-                </span>
+      {/* Contact card — always editable */}
+      <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+        {/* Avatar + name row */}
+        <div className="flex items-start gap-4">
+          <div className="h-14 w-14 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0 mt-1">
+            <span className="text-xl font-bold text-blue-300">
+              {(form.first_name || "?").charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">First Name <span className="text-red-400">*</span></label>
+                <input type="text" value={form.first_name} onChange={set("first_name")} className={inputClass} placeholder="First" />
               </div>
               <div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-2xl font-semibold text-white">
-                    {contact.first_name}{contact.last_name ? ` ${contact.last_name}` : ""}
-                  </h1>
-                  {contact.status && (
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeClass(contact.status)}`}
-                    >
-                      {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
-                    </span>
-                  )}
-                </div>
-                {contact.title && (
-                  <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-1.5">
-                    <BriefcaseIcon className="h-4 w-4" />
-                    {contact.title}
-                    {contact.company && <span className="text-gray-600">·</span>}
-                    {contact.company && (
-                      <span className="flex items-center gap-1">
-                        <BuildingOfficeIcon className="h-4 w-4" />
-                        {contact.company}
-                      </span>
-                    )}
-                  </p>
-                )}
-                {!contact.title && contact.company && (
-                  <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-1.5">
-                    <BuildingOfficeIcon className="h-4 w-4" />
-                    {contact.company}
-                  </p>
-                )}
+                <label className="block text-xs text-gray-500 mb-1">Middle Name</label>
+                <input type="text" value={form.middle_name} onChange={set("middle_name")} className={inputClass} placeholder="Middle" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Last Name</label>
+                <input type="text" value={form.last_name} onChange={set("last_name")} className={inputClass} placeholder="Last" />
               </div>
             </div>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
-            >
-              <PencilIcon className="h-4 w-4" />
-              Edit
-            </button>
           </div>
+        </div>
 
-          {/* Contact details grid */}
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <DetailChip icon={EnvelopeIcon} label="Email" value={contact.email} />
-            {contact.phone && <DetailChip icon={PhoneIcon} label="Phone" value={contact.phone} />}
-            {contact.source && (
-              <DetailChip
-                icon={TagIcon}
-                label="Source"
-                value={contact.source.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-              />
-            )}
-            <DetailChip
-              icon={ClockIcon}
-              label="Added"
-              value={new Date(contact.created_at).toLocaleDateString()}
-            />
+        {/* Details grid */}
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <EnvelopeIcon className="h-3.5 w-3.5" /> Email <span className="text-red-400">*</span>
+            </label>
+            <input type="email" value={form.email} onChange={set("email")} className={inputClass} placeholder="email@example.com" />
           </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <PhoneIcon className="h-3.5 w-3.5" /> Phone
+            </label>
+            <input type="tel" value={form.phone} onChange={set("phone")} className={inputClass} placeholder="+1 (555) 000-0000" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <TagIcon className="h-3.5 w-3.5" /> Source
+            </label>
+            <select value={form.source} onChange={set("source")} className={selectClass}>
+              <option value="">— Select —</option>
+              {SOURCE_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-          {contact.notes && (
-            <div className="mt-4 p-4 bg-gray-900/50 rounded-lg">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Notes</p>
-              <p className="text-gray-300 text-sm whitespace-pre-wrap">{contact.notes}</p>
-            </div>
+        {/* Read-only metadata */}
+        <div className="mt-4 flex items-center gap-4 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <ClockIcon className="h-3.5 w-3.5" />
+            Added {new Date(contact.created_at).toLocaleDateString()}
+          </span>
+          {contact.updated_at !== contact.created_at && (
+            <span>· Updated {new Date(contact.updated_at).toLocaleDateString()}</span>
           )}
         </div>
-      )}
+
+        {/* Save / discard bar — appears when dirty */}
+        {isDirty && (
+          <div className="mt-4 flex items-center justify-end gap-3 pt-3 border-t border-gray-700/50">
+            <button
+              type="button"
+              onClick={handleDiscard}
+              className="px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {saving ? "Saving…" : "Save Changes"}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Event timeline */}
       <div>
@@ -341,237 +387,6 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
           }}
         />
       )}
-    </div>
-  );
-}
-
-// ── Detail chip ───────────────────────────────────────────────────────────────
-
-function DetailChip({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 bg-gray-700/30 rounded-lg px-3 py-2">
-      <Icon className="h-4 w-4 text-gray-500 flex-shrink-0" />
-      <div className="min-w-0">
-        <p className="text-xs text-gray-500">{label}</p>
-        <p className="text-sm text-gray-200 truncate">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-// ── Inline contact edit section ───────────────────────────────────────────────
-
-const STATUS_OPTIONS = ["lead", "prospect", "customer", "churned"];
-const SOURCE_OPTIONS = [
-  "website", "referral", "chat_bot", "import", "cold_outreach", "event", "other",
-];
-
-function ContactEditSection({
-  contact,
-  onCancel,
-  onSave,
-}: {
-  contact: Contact;
-  onCancel: () => void;
-  onSave: (data: UpdateContactRequest) => Promise<void>;
-}) {
-  const [form, setForm] = useState({
-    first_name: contact.first_name,
-    middle_name: contact.middle_name ?? "",
-    last_name: contact.last_name ?? "",
-    email: contact.email,
-    phone: contact.phone ?? "",
-    company: contact.company ?? "",
-    title: contact.title ?? "",
-    source: contact.source ?? "",
-    status: contact.status ?? "",
-    notes: contact.notes ?? "",
-  });
-  const [saving, setSaving] = useState(false);
-
-  const set =
-    (key: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setForm((prev) => ({ ...prev, [key]: e.target.value }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.first_name.trim()) return errorToast("First name is required");
-    if (!form.email.trim()) return errorToast("Email is required");
-    setSaving(true);
-    try {
-      await onSave({
-        first_name: form.first_name.trim(),
-        middle_name: form.middle_name.trim() || undefined,
-        last_name: form.last_name.trim() || undefined,
-        email: form.email.trim(),
-        phone: form.phone.trim() || undefined,
-        company: form.company.trim() || undefined,
-        title: form.title.trim() || undefined,
-        source: form.source || undefined,
-        status: form.status || undefined,
-        notes: form.notes.trim() || undefined,
-      });
-    } catch (error: any) {
-      errorToast(error.message || "Failed to save contact");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">Edit Contact</h2>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-          title="Cancel"
-        >
-          <XMarkIcon className="h-5 w-5" />
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              First Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.first_name}
-              onChange={set("first_name")}
-              required
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Middle Name</label>
-            <input
-              type="text"
-              value={form.middle_name}
-              onChange={set("middle_name")}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Last Name</label>
-            <input
-              type="text"
-              value={form.last_name}
-              onChange={set("last_name")}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Email <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={set("email")}
-              required
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
-            <input
-              type="tel"
-              value={form.phone}
-              onChange={set("phone")}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Company</label>
-            <input
-              type="text"
-              value={form.company}
-              onChange={set("company")}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Job Title</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={set("title")}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
-            <select
-              value={form.status}
-              onChange={set("status")}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            >
-              <option value="">— Select —</option>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Source</label>
-            <select
-              value={form.source}
-              onChange={set("source")}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            >
-              <option value="">— Select —</option>
-              {SOURCE_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Notes</label>
-          <textarea
-            value={form.notes}
-            onChange={set("notes")}
-            rows={3}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
-            placeholder="Any additional notes…"
-          />
-        </div>
-
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-          >
-            {saving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
-      </form>
     </div>
   );
 }

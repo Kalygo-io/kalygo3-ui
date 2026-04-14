@@ -9,7 +9,6 @@ import {
 import { UserIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { errorToast } from "@/shared/toasts/errorToast";
 
-const STATUS_OPTIONS = ["lead", "prospect", "customer", "churned"];
 const SOURCE_OPTIONS = [
   "website",
   "referral",
@@ -38,11 +37,7 @@ export function ContactFormModal({
     last_name: initial?.last_name ?? "",
     email: initial?.email ?? "",
     phone: initial?.phone ?? "",
-    company: initial?.company ?? "",
-    title: initial?.title ?? "",
     source: initial?.source ?? "",
-    status: initial?.status ?? "",
-    notes: initial?.notes ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -67,11 +62,7 @@ export function ContactFormModal({
         last_name: form.last_name.trim() || undefined,
         email: form.email.trim(),
         phone: form.phone.trim() || undefined,
-        company: form.company.trim() || undefined,
-        title: form.title.trim() || undefined,
         source: form.source || undefined,
-        status: form.status || undefined,
-        notes: form.notes.trim() || undefined,
       };
       await onSave(payload);
     } catch (error: any) {
@@ -167,47 +158,6 @@ export function ContactFormModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Company
-                </label>
-                <input
-                  type="text"
-                  value={form.company}
-                  onChange={set("company")}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="Acme Inc."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Job Title
-                </label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={set("title")}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="VP of Engineering"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Status
-                </label>
-                <select
-                  value={form.status}
-                  onChange={set("status")}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                >
-                  <option value="">— Select —</option>
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s.charAt(0).toUpperCase() + s.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Source
                 </label>
                 <select
@@ -225,19 +175,6 @@ export function ContactFormModal({
                   ))}
                 </select>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Notes
-              </label>
-              <textarea
-                value={form.notes}
-                onChange={set("notes")}
-                rows={3}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
-                placeholder="Any additional notes…"
-              />
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">

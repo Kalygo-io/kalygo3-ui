@@ -35,11 +35,7 @@ export interface Contact {
   name: string;
   email: string;
   phone?: string;
-  company?: string;
-  title?: string;
   source?: string;
-  status?: string;
-  notes?: string;
   created_at: string;
   updated_at: string;
   events?: ContactEvent[];
@@ -51,11 +47,7 @@ export interface CreateContactRequest {
   last_name?: string;
   email: string;
   phone?: string;
-  company?: string;
-  title?: string;
   source?: string;
-  status?: string;
-  notes?: string;
 }
 
 export interface UpdateContactRequest {
@@ -64,11 +56,7 @@ export interface UpdateContactRequest {
   last_name?: string;
   email?: string;
   phone?: string;
-  company?: string;
-  title?: string;
   source?: string;
-  status?: string;
-  notes?: string;
 }
 
 export interface CreateContactEventRequest {
