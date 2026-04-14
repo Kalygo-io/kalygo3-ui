@@ -17,29 +17,9 @@ import {
   TrashIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
-  BuildingOfficeIcon,
   EnvelopeIcon,
   PhoneIcon,
 } from "@heroicons/react/24/outline";
-
-const STATUS_OPTIONS = ["lead", "prospect", "customer", "churned"];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function statusBadgeClass(status?: string) {
-  switch (status) {
-    case "customer":
-      return "bg-emerald-700/40 text-emerald-300 border-emerald-600/50";
-    case "prospect":
-      return "bg-blue-700/40 text-blue-300 border-blue-600/50";
-    case "lead":
-      return "bg-amber-700/40 text-amber-300 border-amber-600/50";
-    case "churned":
-      return "bg-red-700/40 text-red-300 border-red-600/50";
-    default:
-      return "bg-gray-700/40 text-gray-400 border-gray-600/50";
-  }
-}
 
 // ── Main container ────────────────────────────────────────────────────────────
 
@@ -48,7 +28,6 @@ export function ContactsContainer() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
@@ -89,8 +68,7 @@ export function ContactsContainer() {
       (c.last_name || "").toLowerCase().includes(search.toLowerCase()) ||
       c.email.toLowerCase().includes(search.toLowerCase()) ||
       (c.company || "").toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = !statusFilter || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
   if (loading) {
@@ -141,18 +119,6 @@ export function ContactsContainer() {
             </button>
           )}
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-        >
-          <option value="">All statuses</option>
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Table / Empty state */}
@@ -184,12 +150,6 @@ export function ContactsContainer() {
               <tr className="border-b border-gray-700/50">
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Name
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                  Company
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                  Status
                 </th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                   Added
@@ -229,27 +189,6 @@ export function ContactsContainer() {
                         )}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 hidden sm:table-cell">
-                    {contact.company ? (
-                      <div className="flex items-center gap-1.5 text-gray-300 text-sm">
-                        <BuildingOfficeIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                        <span className="truncate max-w-[160px]">{contact.company}</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-600 text-sm">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 hidden md:table-cell">
-                    {contact.status ? (
-                      <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeClass(contact.status)}`}
-                      >
-                        {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
-                      </span>
-                    ) : (
-                      <span className="text-gray-600 text-sm">—</span>
-                    )}
                   </td>
                   <td className="px-6 py-4 hidden lg:table-cell text-gray-400 text-sm">
                     {new Date(contact.created_at).toLocaleDateString()}
