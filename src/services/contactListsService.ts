@@ -23,6 +23,7 @@ export interface ContactSummary {
   name: string;
   email: string;
   phone?: string;
+  company?: string;
   source?: string;
   created_at: string;
   updated_at: string;
