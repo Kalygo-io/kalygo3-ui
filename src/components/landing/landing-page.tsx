@@ -77,9 +77,9 @@ const GitHubIcon = () => (
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-      <div className="w-full bg-yellow-500 text-black text-center py-3 px-4 font-semibold text-sm md:text-base">
+      {/* <div className="w-full bg-yellow-500 text-black text-center py-3 px-4 font-semibold text-sm md:text-base">
         Down for maintenance until 4/18/2026.
-      </div>
+      </div> */}
 
       {/* Navigation */}
       <nav className="container mx-auto px-6 py-6 flex items-center justify-between">
