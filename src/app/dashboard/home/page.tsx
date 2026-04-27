@@ -1,10 +1,12 @@
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import { protectedPageGuard } from "@/components/shared/utils/validate-token";
 import { Suspense } from "react";
 import { HomeContainer } from "./home-container";
 
 export const dynamic = "force-dynamic";
 
-export default function Page() {
+export default async function Page() {
+  await protectedPageGuard();
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
