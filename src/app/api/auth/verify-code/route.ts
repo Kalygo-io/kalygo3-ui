@@ -25,13 +25,17 @@ export async function POST(request: Request) {
   if (setCookieHeader) {
     const match = setCookieHeader.match(/jwt=([^;]+)/);
     if (match) {
+      const isProduction = process.env.NODE_ENV === "production";
+      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+
       const cookieStore = await cookies();
       cookieStore.set("jwt", match[1], {
         httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 7,
+        ...(cookieDomain ? { domain: cookieDomain } : {}),
       });
     }
   }
