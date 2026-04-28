@@ -8,6 +8,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+node_modules/playwright-core/.local-browsers/
 
 # next.js
 /.next/
