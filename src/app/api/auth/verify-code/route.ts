@@ -10,14 +10,14 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, code }),
-    }
+    },
   );
 
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}));
     return NextResponse.json(
       { error: data?.detail ?? "Invalid or expired code" },
-      { status: resp.status }
+      { status: resp.status },
     );
   }
 
@@ -30,6 +30,12 @@ export async function POST(request: Request) {
       const cookieDomain =
         process.env.COOKIE_DOMAIN ||
         (host !== "localhost" && host !== "127.0.0.1" ? host : undefined);
+
+      console.log("cookieDomain: ", cookieDomain);
+      console.log("host: ", host);
+      console.log("isProduction: ", isProduction);
+      console.log("request.url: ", request.url);
+      console.log("match: ", match);
 
       const res = NextResponse.json({ ok: true });
       res.cookies.set("jwt", match[1], {
