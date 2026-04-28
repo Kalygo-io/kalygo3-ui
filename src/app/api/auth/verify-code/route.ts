@@ -26,10 +26,13 @@ export async function POST(request: Request) {
     const match = setCookieHeader.match(/jwt=([^;]+)/);
     if (match) {
       const isProduction = process.env.NODE_ENV === "production";
-      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+      const host = new URL(request.url).hostname;
+      const cookieDomain =
+        process.env.COOKIE_DOMAIN ||
+        (host !== "localhost" && host !== "127.0.0.1" ? host : undefined);
 
-      const cookieStore = await cookies();
-      cookieStore.set("jwt", match[1], {
+      const res = NextResponse.json({ ok: true });
+      res.cookies.set("jwt", match[1], {
         httpOnly: true,
         secure: isProduction,
         sameSite: "lax",
@@ -37,6 +40,7 @@ export async function POST(request: Request) {
         maxAge: 60 * 60 * 24 * 7,
         ...(cookieDomain ? { domain: cookieDomain } : {}),
       });
+      return res;
     }
   }
 
