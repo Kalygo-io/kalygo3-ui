@@ -11,7 +11,6 @@
  * - error
  */
 
-import { getCookie } from "@/shared/utils";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_COMPLETION_API_URL ||
@@ -125,12 +124,10 @@ export async function callSwarmTtsNextTurn(
   signal?: AbortSignal
 ): Promise<SwarmTtsNextTurnResponse> {
   const url = `${BASE_URL}${PATH.startsWith("/") ? "" : "/"}${PATH}`;
-  const jwt = typeof document !== "undefined" ? getCookie("jwt") : null;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "text/event-stream",
   };
-  if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
 
   const body: Record<string, unknown> = {
     sessionId,
@@ -158,7 +155,6 @@ export async function callSwarmTtsNextTurn(
     contentType.includes("application/x-ndjson") ||
     contentType.includes("stream");
 
-  // Non-streaming: single JSON body
   if (!isLikelyStream) {
     const data = (await res.json()) as SwarmTtsNextTurnResponse & Record<string, unknown>;
     return {
@@ -260,12 +256,10 @@ export async function callSwarmTtsNextTurnStream(
   signal?: AbortSignal
 ): Promise<SwarmTtsNextTurnResponse> {
   const url = `${BASE_URL}${PATH.startsWith("/") ? "" : "/"}${PATH}`;
-  const jwt = typeof document !== "undefined" ? getCookie("jwt") : null;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "text/event-stream",
   };
-  if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
 
   const body: Record<string, unknown> = { sessionId, swarm };
   if (options.prompt != null) body.prompt = options.prompt;

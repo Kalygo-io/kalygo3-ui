@@ -2,7 +2,7 @@
  * Call LangGraph swarm completion endpoint. Streams SSE and invokes callbacks for messages/loading.
  * POST /api/swarms/langgraph/completion with { prompt, sessionId, swarm: { supervisor, workers, outputMode } }.
  */
-import { nanoid, getCookie } from "@/shared/utils";
+import { nanoid } from "@/shared/utils";
 import type { Message } from "@/ts/types/Message";
 
 const BASE_URL =
@@ -46,9 +46,7 @@ export async function callSwarmCompletion(
   abortController?: AbortController
 ): Promise<void> {
   const url = `${BASE_URL}${PATH.startsWith("/") ? "" : "/"}${PATH}`;
-  const jwt = typeof document !== "undefined" ? getCookie("jwt") : null;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
 
   const streamController = new AbortController();
   const timeoutId = setTimeout(() => streamController.abort(), TIMEOUT_MS);

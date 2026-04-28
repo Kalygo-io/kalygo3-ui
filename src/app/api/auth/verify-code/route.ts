@@ -30,9 +30,9 @@ export async function POST(request: Request) {
 
       const cookieStore = await cookies();
       cookieStore.set("jwt", match[1], {
-        httpOnly: false,
+        httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? "none" : "lax",
+        sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 7,
         ...(cookieDomain ? { domain: cookieDomain } : {}),
