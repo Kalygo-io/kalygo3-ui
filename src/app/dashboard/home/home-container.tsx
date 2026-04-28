@@ -252,7 +252,7 @@ export function HomeContainer() {
           value={data?.indexCount ?? 0}
           sublabel="Knowledge bases indexed"
           href="/dashboard/vector-stores"
-          actionLabel="Explore vector stores"
+          actionLabel="Explore knowledge bases"
         />
       </div>
 
@@ -409,7 +409,7 @@ export function HomeContainer() {
               />
               <QuickAction
                 icon={CircleStackIcon}
-                label="Browse Vector Stores"
+                label="Browse Knowledge Bases"
                 description="Manage your knowledge base indexes"
                 href="/dashboard/vector-stores"
                 accent="bg-purple-600"

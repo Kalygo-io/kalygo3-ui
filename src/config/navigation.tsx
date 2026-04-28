@@ -37,7 +37,7 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
-    name: "Vector Stores",
+    name: "Knowledge Bases",
     href: "/dashboard/vector-stores",
     enabled: true,
   },

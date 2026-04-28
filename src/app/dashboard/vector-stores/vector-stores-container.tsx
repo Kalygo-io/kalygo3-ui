@@ -121,7 +121,7 @@ export function VectorStoresContainer() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-semibold text-white">Vector Stores</h1>
+        <h1 className="text-4xl font-semibold text-white">Knowledge Bases</h1>
         <button
           onClick={() => setShowCreateIndexForm(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2"
