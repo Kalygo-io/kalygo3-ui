@@ -23,10 +23,8 @@ import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { navigation } from "@/config/navigation";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { usePostHog } from "posthog-js/react";
 import { logoutRequest } from "@/services/logoutRequest";
 import { useChatSessions } from "@/shared/hooks/use-chat-sessions";
-import { PostHogIdentify } from "@/components/shared/providers/PostHogIdentify";
 import { ChatSession } from "@/services/chatSessionService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import {
@@ -49,7 +47,6 @@ export function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const posthog = usePostHog();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(),
@@ -74,7 +71,6 @@ export function DashboardLayout({
       name: "Sign out",
       onClick: async () => {
         await logoutRequest();
-        posthog?.reset();
         setSidebarOpen(false);
         router.push("/");
       },
@@ -391,7 +387,6 @@ export function DashboardLayout({
               <span
                 onClick={async () => {
                   await logoutRequest();
-                  posthog?.reset();
                   router.push("/");
                 }}
                 className={classNames(
@@ -414,7 +409,6 @@ export function DashboardLayout({
 
   return (
     <>
-      <PostHogIdentify />
       <div>
         <Dialog
           open={sidebarOpen}

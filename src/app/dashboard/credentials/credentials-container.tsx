@@ -29,7 +29,6 @@ import {
   DocumentTextIcon,
   CircleStackIcon,
 } from "@heroicons/react/24/outline";
-import posthog from "posthog-js";
 
 function getCredentialTypeIcon(authType: AuthType | string) {
   const icons: Record<string, React.ReactNode> = {
@@ -83,7 +82,6 @@ export function CredentialsContainer() {
         credential_data: credentialData,
         metadata: metadata,
       });
-      posthog.capture("credential_created", { credential_type: credentialTypeVal, auth_type: authType });
       successToast("Credential created successfully");
       setShowCreateForm(false);
       loadCredentials();
@@ -118,7 +116,6 @@ export function CredentialsContainer() {
     if (!confirm("Are you sure you want to delete this credential?")) return;
     try {
       await credentialService.deleteCredential(credentialId);
-      posthog.capture("credential_deleted", { credential_id: credentialId });
       successToast("Credential deleted successfully");
       loadCredentials();
     } catch (error: any) {

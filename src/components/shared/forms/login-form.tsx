@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/shared/common/spinner";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import posthog from "posthog-js";
 
 type Step = "email" | "code";
 
@@ -38,8 +37,6 @@ export const LoginForm = () => {
     try {
       setIsLoading(true);
       await verifyLoginCode(email, code);
-      posthog.identify(email, { email });
-      posthog.capture("user_logged_in", { email });
       router.push("/dashboard");
     } catch (err) {
       setIsLoading(false);

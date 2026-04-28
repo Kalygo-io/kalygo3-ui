@@ -6,7 +6,6 @@ import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
 import { promptsService } from "@/services/promptsService";
 import { ArrowLeftIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
-import posthog from "posthog-js";
 
 export function CreatePromptContainer() {
   const router = useRouter();
@@ -36,7 +35,6 @@ export function CreatePromptContainer() {
         description: description.trim() || undefined,
         content: content.trim(),
       });
-      posthog.capture("prompt_created", { name: name.trim() });
       successToast("Prompt created successfully");
       router.push("/dashboard/prompts");
     } catch (error: any) {

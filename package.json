@@ -18,8 +18,6 @@
     "@tanstack/react-query": "^5.55.0",
     "bufferutil": "^4.1.0",
     "next": "^15.3.0",
-    "posthog-js": "^1.364.1",
-    "posthog-node": "^5.28.8",
     "react": "^19",
     "react-dom": "^19",
     "react-icons": "^5.3.0",

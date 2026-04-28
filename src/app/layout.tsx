@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Suspense } from "react";
 import { ToastContainer } from "react-toastify";
 import "@/app/globals.css";
 import "@/app/custom-scrollbar.css";
 import "react-toastify/dist/ReactToastify.css";
 import "@/app/react-markdown.css";
 import { ReactQueryClientProvider } from "@/components/shared/providers/ReactQueryClientProvider";
-import { PHProvider } from "@/components/shared/providers/PHProvider";
-import { PostHogPageView } from "@/components/shared/providers/PostHogPageView";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,18 +20,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <PHProvider>
-      <ReactQueryClientProvider>
-        <html lang="en">
-          <body className={inter.className}>
-            <Suspense>
-              <PostHogPageView />
-            </Suspense>
-            {children}
-            <ToastContainer />
-          </body>
-        </html>
-      </ReactQueryClientProvider>
-    </PHProvider>
+    <ReactQueryClientProvider>
+      <html lang="en">
+        <body className={inter.className}>
+          {children}
+          <ToastContainer />
+        </body>
+      </html>
+    </ReactQueryClientProvider>
   );
 }
