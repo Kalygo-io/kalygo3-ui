@@ -1,12 +1,101 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { useState, useEffect, useRef } from "react";
+import { XMarkIcon, CircleStackIcon, MagnifyingGlassIcon, KeyIcon, PencilSquareIcon, EnvelopeIcon, ChevronUpDownIcon } from "@heroicons/react/24/outline";
 import { AgentTool, DbTableReadTool, DbTableWriteTool, SendTxtEmailWithSesTool, SendHtmlEmailWithSesTool, SendTxtEmailWithGoogleOAuthTool, SendTxtEmailWithGoogleSmtpTool } from "@/services/agentsService";
 import { vectorStoresService, Index, Namespace } from "@/services/vectorStoresService";
 import { credentialService, Credential, CredentialType, ServiceName, formatServiceName } from "@/services/credentialService";
 import { emailTemplatesService, EmailTemplate } from "@/services/emailTemplatesService";
 import { errorToast } from "@/shared/toasts/errorToast";
+
+type ToolCategoryValue =
+  | "vectorSearch"
+  | "dbTableRead"
+  | "dbTableWrite"
+  | "sendTxtEmailWithSes"
+  | "sendHtmlEmailWithSes"
+  | "sendTxtEmailWithGoogleOAuth"
+  | "sendTxtEmailWithGoogleSmtp";
+
+const TOOL_CATEGORIES: {
+  value: ToolCategoryValue;
+  label: string;
+  subtitle: string;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  color: string;
+}[] = [
+  { value: "vectorSearch",                label: "Vector Search",              subtitle: "Semantic retrieval",  Icon: MagnifyingGlassIcon, color: "text-blue-400" },
+  { value: "dbTableRead",                 label: "DB Read",                    subtitle: "Query data",          Icon: CircleStackIcon,     color: "text-green-400" },
+  { value: "dbTableWrite",                label: "DB Write",                   subtitle: "Insert records",      Icon: PencilSquareIcon,    color: "text-orange-400" },
+  { value: "sendTxtEmailWithSes",         label: "Send Email",                 subtitle: "AWS SES",             Icon: EnvelopeIcon,        color: "text-pink-400" },
+  { value: "sendHtmlEmailWithSes",        label: "Send Templated HTML Email",  subtitle: "AWS SES",             Icon: EnvelopeIcon,        color: "text-pink-400" },
+  { value: "sendTxtEmailWithGoogleOAuth", label: "Send Email",                 subtitle: "Google OAuth",        Icon: EnvelopeIcon,        color: "text-blue-400" },
+  { value: "sendTxtEmailWithGoogleSmtp",  label: "Send Email",                 subtitle: "Google SMTP",         Icon: EnvelopeIcon,        color: "text-cyan-400" },
+];
+
+function ToolCategorySelect({
+  value,
+  onChange,
+}: {
+  value: ToolCategoryValue;
+  onChange: (v: ToolCategoryValue) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = TOOL_CATEGORIES.find((c) => c.value === value)!;
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-sm font-medium text-gray-300 mb-2">
+        Tool Category *
+      </label>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-left hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+      >
+        <selected.Icon className={`h-5 w-5 shrink-0 ${selected.color}`} />
+        <span className="flex-1 text-white text-sm font-medium">
+          {selected.label}
+          <span className="text-gray-500 font-normal ml-2">{selected.subtitle}</span>
+        </span>
+        <ChevronUpDownIcon className="h-5 w-5 text-gray-500 shrink-0" />
+      </button>
+
+      {open && (
+        <ul className="absolute z-10 mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+          {TOOL_CATEGORIES.map((cat) => (
+            <li key={cat.value}>
+              <button
+                type="button"
+                onClick={() => { onChange(cat.value); setOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                  cat.value === value
+                    ? "bg-gray-800 text-white"
+                    : "text-gray-300 hover:bg-gray-800/60"
+                }`}
+              >
+                <cat.Icon className={`h-5 w-5 shrink-0 ${cat.color}`} />
+                <span className="text-sm font-medium">
+                  {cat.label}
+                  <span className="text-gray-500 font-normal ml-2">{cat.subtitle}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 interface AddToolModalProps {
   onClose: () => void;
@@ -20,7 +109,7 @@ export function AddToolModal({
   initialTool,
 }: AddToolModalProps) {
   // Tool category selection
-  const [toolCategory, setToolCategory] = useState<"vectorSearch" | "dbTableRead" | "dbTableWrite" | "sendTxtEmailWithSes" | "sendHtmlEmailWithSes" | "sendTxtEmailWithGoogleOAuth" | "sendTxtEmailWithGoogleSmtp">("vectorSearch");
+  const [toolCategory, setToolCategory] = useState<ToolCategoryValue>("vectorSearch");
   
   // Vector search state
   const [vectorToolType, setVectorToolType] = useState<"vectorSearch" | "vectorSearchWithReranking">("vectorSearch");
@@ -446,160 +535,7 @@ export function AddToolModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Tool Category Selection */}
           {!isEditing && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
-                Tool Category *
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setToolCategory("vectorSearch")}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "vectorSearch"
-                      ? "border-blue-500 bg-blue-500/10"
-                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
-                  }`}
-                >
-                  <MagnifyingGlassIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "vectorSearch" ? "text-blue-400" : "text-gray-500"
-                  }`} />
-                  <div className={`text-sm font-medium ${
-                    toolCategory === "vectorSearch" ? "text-blue-300" : "text-gray-400"
-                  }`}>
-                    Vector Search
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Semantic retrieval
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setToolCategory("dbTableRead")}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "dbTableRead"
-                      ? "border-green-500 bg-green-500/10"
-                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
-                  }`}
-                >
-                  <CircleStackIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "dbTableRead" ? "text-green-400" : "text-gray-500"
-                  }`} />
-                  <div className={`text-sm font-medium ${
-                    toolCategory === "dbTableRead" ? "text-green-300" : "text-gray-400"
-                  }`}>
-                    DB Read
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Query data
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setToolCategory("dbTableWrite")}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "dbTableWrite"
-                      ? "border-orange-500 bg-orange-500/10"
-                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
-                  }`}
-                >
-                  <PencilSquareIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "dbTableWrite" ? "text-orange-400" : "text-gray-500"
-                  }`} />
-                  <div className={`text-sm font-medium ${
-                    toolCategory === "dbTableWrite" ? "text-orange-300" : "text-gray-400"
-                  }`}>
-                    DB Write
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Insert records
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setToolCategory("sendTxtEmailWithSes")}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "sendTxtEmailWithSes"
-                      ? "border-pink-500 bg-pink-500/10"
-                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
-                  }`}
-                >
-                  <EnvelopeIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "sendTxtEmailWithSes" ? "text-pink-400" : "text-gray-500"
-                  }`} />
-                  <div className={`text-sm font-medium ${
-                    toolCategory === "sendTxtEmailWithSes" ? "text-pink-300" : "text-gray-400"
-                  }`}>
-                    Send Email
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    AWS SES
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setToolCategory("sendHtmlEmailWithSes")}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "sendHtmlEmailWithSes"
-                      ? "border-pink-500 bg-pink-500/10"
-                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
-                  }`}
-                >
-                  <EnvelopeIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "sendHtmlEmailWithSes" ? "text-pink-400" : "text-gray-500"
-                  }`} />
-                  <div className={`text-sm font-medium ${
-                    toolCategory === "sendHtmlEmailWithSes" ? "text-pink-300" : "text-gray-400"
-                  }`}>
-                    Send Templated HTML Email
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    AWS SES
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setToolCategory("sendTxtEmailWithGoogleOAuth")}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "sendTxtEmailWithGoogleOAuth"
-                      ? "border-blue-500 bg-blue-500/10"
-                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
-                  }`}
-                >
-                  <EnvelopeIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "sendTxtEmailWithGoogleOAuth" ? "text-blue-400" : "text-gray-500"
-                  }`} />
-                  <div className={`text-sm font-medium ${
-                    toolCategory === "sendTxtEmailWithGoogleOAuth" ? "text-blue-300" : "text-gray-400"
-                  }`}>
-                    Send Email
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Google OAuth
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setToolCategory("sendTxtEmailWithGoogleSmtp")}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    toolCategory === "sendTxtEmailWithGoogleSmtp"
-                      ? "border-cyan-500 bg-cyan-500/10"
-                      : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
-                  }`}
-                >
-                  <EnvelopeIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    toolCategory === "sendTxtEmailWithGoogleSmtp" ? "text-cyan-400" : "text-gray-500"
-                  }`} />
-                  <div className={`text-sm font-medium ${
-                    toolCategory === "sendTxtEmailWithGoogleSmtp" ? "text-cyan-300" : "text-gray-400"
-                  }`}>
-                    Send Email
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Google SMTP
-                  </div>
-                </button>
-              </div>
-            </div>
+            <ToolCategorySelect value={toolCategory} onChange={setToolCategory} />
           )}
 
           {/* Vector Search Options */}
