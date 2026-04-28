@@ -1,5 +1,14 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+function getPublicHostname(request: Request): string {
+  return (
+    request.headers.get("x-forwarded-host") ||
+    request.headers.get("host")?.replace(/:\d+$/, "") ||
+    new URL(request.url).hostname
+  );
+}
+
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 
 export async function POST(request: Request) {
   const { email, code } = await request.json();
@@ -26,16 +35,10 @@ export async function POST(request: Request) {
     const match = setCookieHeader.match(/jwt=([^;]+)/);
     if (match) {
       const isProduction = process.env.NODE_ENV === "production";
-      const host = new URL(request.url).hostname;
+      const host = getPublicHostname(request);
       const cookieDomain =
         process.env.COOKIE_DOMAIN ||
-        (host !== "localhost" && host !== "127.0.0.1" ? host : undefined);
-
-      console.log("cookieDomain: ", cookieDomain);
-      console.log("host: ", host);
-      console.log("isProduction: ", isProduction);
-      console.log("request.url: ", request.url);
-      console.log("match: ", match);
+        (!LOOPBACK.has(host) ? host : undefined);
 
       const res = NextResponse.json({ ok: true });
       res.cookies.set("jwt", match[1], {

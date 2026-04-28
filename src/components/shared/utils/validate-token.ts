@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 
 export async function protectedPageGuard() {
   try {
+    console.log("process.env.COOKIE_DOMAIN: ", process.env.COOKIE_DOMAIN);
     console.log("protectedPageGuard called");
 
     const cookieStore = await cookies();
