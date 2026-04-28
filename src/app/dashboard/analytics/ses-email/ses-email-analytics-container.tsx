@@ -106,6 +106,7 @@ function StatCard({
   color,
   bg,
   border,
+  ringColor,
 }: {
   label: string;
   value: number;
@@ -114,22 +115,27 @@ function StatCard({
   color: string;
   bg: string;
   border: string;
+  ringColor: string;
 }) {
   return (
     <div
-      className={`rounded-xl border ${border} ${bg} p-5 flex items-center gap-4`}
+      className={`group relative rounded-2xl border ${border} ${bg} p-4 sm:p-5 flex flex-col items-center text-center gap-3 transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:shadow-black/20 hover:border-opacity-80`}
     >
-      <div className={`rounded-lg p-2 ${bg} shrink-0`}>
-        <Icon className={`h-6 w-6 ${color}`} />
+      <div
+        className={`rounded-xl p-2.5 ${bg} ring-1 ${ringColor} transition-transform duration-200 group-hover:scale-110`}
+      >
+        <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${color}`} />
       </div>
-      <div>
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+      <div className="space-y-1 min-w-0">
+        <p className="text-[10px] sm:text-xs font-semibold text-gray-400 uppercase tracking-wider truncate">
           {label}
         </p>
-        <p className={`text-2xl font-bold ${color}`}>
+        <p className={`text-xl sm:text-2xl lg:text-3xl font-bold tabular-nums ${color}`}>
           {value.toLocaleString()}
         </p>
-        {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
+        {sub && (
+          <p className="text-[10px] sm:text-xs text-gray-500">{sub}</p>
+        )}
       </div>
     </div>
   );
@@ -399,7 +405,7 @@ export function SesEmailAnalyticsContainer() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-7">
         <StatCard
           label="Submitted"
           value={stats.send_to_ses}
@@ -407,6 +413,7 @@ export function SesEmailAnalyticsContainer() {
           color="text-indigo-400"
           bg="bg-indigo-900/20"
           border="border-indigo-700/40"
+          ringColor="ring-indigo-700/30"
         />
         <StatCard
           label="Sent"
@@ -415,6 +422,7 @@ export function SesEmailAnalyticsContainer() {
           color="text-blue-400"
           bg="bg-blue-900/20"
           border="border-blue-700/40"
+          ringColor="ring-blue-700/30"
         />
         <StatCard
           label="Delivered"
@@ -428,6 +436,7 @@ export function SesEmailAnalyticsContainer() {
           color="text-green-400"
           bg="bg-green-900/20"
           border="border-green-700/40"
+          ringColor="ring-green-700/30"
         />
         <StatCard
           label="Opens"
@@ -441,6 +450,7 @@ export function SesEmailAnalyticsContainer() {
           color="text-purple-400"
           bg="bg-purple-900/20"
           border="border-purple-700/40"
+          ringColor="ring-purple-700/30"
         />
         <StatCard
           label="Bounces"
@@ -454,6 +464,7 @@ export function SesEmailAnalyticsContainer() {
           color="text-red-400"
           bg="bg-red-900/20"
           border="border-red-700/40"
+          ringColor="ring-red-700/30"
         />
         <StatCard
           label="Complaints"
@@ -467,6 +478,7 @@ export function SesEmailAnalyticsContainer() {
           color="text-orange-400"
           bg="bg-orange-900/20"
           border="border-orange-700/40"
+          ringColor="ring-orange-700/30"
         />
         <StatCard
           label="Clicks"
@@ -480,6 +492,7 @@ export function SesEmailAnalyticsContainer() {
           color="text-cyan-400"
           bg="bg-cyan-900/20"
           border="border-cyan-700/40"
+          ringColor="ring-cyan-700/30"
         />
       </div>
 
