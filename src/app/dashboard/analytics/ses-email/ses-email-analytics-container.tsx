@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   EnvelopeIcon,
+  PaperAirplaneIcon,
   ArrowTrendingUpIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
@@ -33,7 +34,8 @@ const AUTO_REFRESH_INTERVAL = 5000;
 
 const EVENT_TYPE_OPTIONS = [
   { value: "", label: "All types" },
-  { value: "send", label: "Send" },
+  { value: "send", label: "Send (SES)" },
+  { value: "send_to_ses", label: "Send to SES" },
   { value: "delivery", label: "Delivery" },
   { value: "open", label: "Open" },
   { value: "bounce", label: "Bounce" },
@@ -44,6 +46,7 @@ const EVENT_TYPE_OPTIONS = [
 
 const EVENT_BADGE: Record<string, string> = {
   send: "bg-blue-900/40   text-blue-300   border border-blue-700/40",
+  send_to_ses: "bg-indigo-900/40 text-indigo-300 border border-indigo-700/40",
   delivery: "bg-green-900/40  text-green-300  border border-green-700/40",
   open: "bg-purple-900/40 text-purple-300 border border-purple-700/40",
   bounce: "bg-red-900/40    text-red-300    border border-red-700/40",
@@ -54,6 +57,7 @@ const EVENT_BADGE: Record<string, string> = {
 
 const EMPTY_STATS: EmailEventStats = {
   send: 0,
+  send_to_ses: 0,
   delivery: 0,
   open: 0,
   bounce: 0,
@@ -395,7 +399,15 @@ export function SesEmailAnalyticsContainer() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-7">
+        <StatCard
+          label="Submitted"
+          value={stats.send_to_ses}
+          icon={PaperAirplaneIcon}
+          color="text-indigo-400"
+          bg="bg-indigo-900/20"
+          border="border-indigo-700/40"
+        />
         <StatCard
           label="Sent"
           value={stats.send}
