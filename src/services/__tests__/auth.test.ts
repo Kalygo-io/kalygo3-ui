@@ -29,7 +29,7 @@ describe("validateToken", () => {
   });
 
   it("throws when the API returns a non-ok response", async () => {
-    fetchSpy.mockResolvedValue({ ok: false, status: 401 });
+    fetchSpy.mockResolvedValue({ ok: false, status: 401, text: () => Promise.resolve("Unauthorized") });
 
     await expect(validateToken("bad-token")).rejects.toThrow(
       "Failed to validate token",

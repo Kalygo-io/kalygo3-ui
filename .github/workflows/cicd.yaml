@@ -56,12 +56,44 @@ env:
   ARTIFACTORY_URL: us-central1-docker.pkg.dev/kalygo-436411/kalygo-nextjs/kalygo-nextjs
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Type-check / build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_AUTH_API_URL: https://placeholder.test
+          NEXT_PUBLIC_AI_API_URL: https://placeholder.test
+          NEXT_PUBLIC_COMPLETION_API_URL: https://placeholder.test
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+          NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: placeholder
+          NEXT_PUBLIC_POSTHOG_HOST: https://placeholder.test
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Google Cloud Auth
         uses: "google-github-actions/auth@v2"
