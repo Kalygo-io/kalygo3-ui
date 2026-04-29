@@ -1,3 +1,5 @@
+import { getAiApiBaseUrl, handleResponse } from "./lib/api";
+
 // ============================================================================
 // Tool Types
 // ============================================================================
@@ -256,45 +258,16 @@ export function getAgentElevenLabsVoiceId(agent: Agent): string | undefined {
 // Service
 // ============================================================================
 
-function getApiBaseUrl(): string {
-  console.log("getApiBaseUrl", process.env.NEXT_PUBLIC_AI_API_URL);
-  const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    if (apiUrl.startsWith("http://")) {
-      return apiUrl.replace("http://", "https://");
-    }
-  }
-  return apiUrl;
-}
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getAiApiBaseUrl();
 
 class AgentsService {
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Request failed: ${response.status}`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.detail || errorJson.message || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-      throw new Error(errorMessage);
-    }
-    if (response.status === 204) {
-      return undefined as T;
-    }
-    return response.json();
-  }
-
   async listAgents(): Promise<Agent[]> {
     const response = await fetch(`${API_BASE_URL}/api/agents`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<Agent[]>(response);
+    return handleResponse<Agent[]>(response);
   }
 
   async getAgent(agentId: string): Promise<Agent> {
@@ -306,7 +279,7 @@ class AgentsService {
         credentials: "include",
       },
     );
-    return this.handleResponse<Agent>(response);
+    return handleResponse<Agent>(response);
   }
 
   async createAgent(data: CreateAgentRequest): Promise<Agent> {
@@ -316,7 +289,7 @@ class AgentsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-    return this.handleResponse<Agent>(response);
+    return handleResponse<Agent>(response);
   }
 
   async updateAgent(agentId: string, data: UpdateAgentRequest): Promise<Agent> {
@@ -329,7 +302,7 @@ class AgentsService {
         body: JSON.stringify(data),
       },
     );
-    return this.handleResponse<Agent>(response);
+    return handleResponse<Agent>(response);
   }
 
   async deleteAgent(agentId: string): Promise<void> {
@@ -341,7 +314,7 @@ class AgentsService {
         credentials: "include",
       },
     );
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 }
 

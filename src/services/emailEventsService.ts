@@ -1,14 +1,6 @@
-function getApiBaseUrl(): string {
-  const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    if (apiUrl.startsWith("http://")) {
-      return apiUrl.replace("http://", "https://");
-    }
-  }
-  return apiUrl;
-}
+import { getAiApiBaseUrl, handleResponse } from "./lib/api";
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getAiApiBaseUrl();
 
 // ============================================================================
 // Types
@@ -73,22 +65,6 @@ export interface EmailEventStatsParams {
 // ============================================================================
 
 class EmailEventsService {
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Request failed: ${response.status}`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.detail || errorJson.message || errorMessage;
-      } catch {
-        // keep default
-      }
-      throw new Error(errorMessage);
-    }
-    if (response.status === 204) return undefined as T;
-    return response.json();
-  }
-
   async listEvents(params?: ListEmailEventsParams): Promise<EmailEvent[]> {
     const url = new URL(`${API_BASE_URL}/api/email-events/`);
     if (params?.event_type) url.searchParams.set("event_type", params.event_type);
@@ -109,7 +85,7 @@ class EmailEventsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<EmailEvent[]>(response);
+    return handleResponse<EmailEvent[]>(response);
   }
 
   async getStats(params?: EmailEventStatsParams): Promise<EmailEventStats> {
@@ -125,7 +101,7 @@ class EmailEventsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<EmailEventStats>(response);
+    return handleResponse<EmailEventStats>(response);
   }
 
   async deleteEvent(eventId: number): Promise<void> {
@@ -134,7 +110,7 @@ class EmailEventsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 }
 

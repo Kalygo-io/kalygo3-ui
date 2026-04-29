@@ -3,7 +3,6 @@ export async function resetPassword(
   resetToken: string,
   newPassword: string
 ) {
-  console.log("resetPassword...");
   const resp = await fetch(
     `${process.env.NEXT_PUBLIC_AUTH_API_URL}/api/auth/reset-password`,
     {

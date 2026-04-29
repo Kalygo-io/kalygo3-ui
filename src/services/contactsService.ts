@@ -1,14 +1,6 @@
-function getApiBaseUrl(): string {
-  const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    if (apiUrl.startsWith("http://")) {
-      return apiUrl.replace("http://", "https://");
-    }
-  }
-  return apiUrl;
-}
+import { getAiApiBaseUrl, handleResponse } from "./lib/api";
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getAiApiBaseUrl();
 
 // ============================================================================
 // Types
@@ -106,22 +98,6 @@ export interface UpdateCareerTimelineRequest {
 // ============================================================================
 
 class ContactsService {
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Request failed: ${response.status}`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.detail || errorJson.message || errorMessage;
-      } catch {
-        // keep default
-      }
-      throw new Error(errorMessage);
-    }
-    if (response.status === 204) return undefined as T;
-    return response.json();
-  }
-
   // ── Contacts ──────────────────────────────────────────────────────────────
 
   async listContacts(params?: { status?: string; search?: string }): Promise<Contact[]> {
@@ -134,7 +110,7 @@ class ContactsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<Contact[]>(response);
+    return handleResponse<Contact[]>(response);
   }
 
   async getContact(contactId: number): Promise<Contact> {
@@ -143,7 +119,7 @@ class ContactsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<Contact>(response);
+    return handleResponse<Contact>(response);
   }
 
   async createContact(data: CreateContactRequest): Promise<Contact> {
@@ -153,7 +129,7 @@ class ContactsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-    return this.handleResponse<Contact>(response);
+    return handleResponse<Contact>(response);
   }
 
   async updateContact(contactId: number, data: UpdateContactRequest): Promise<Contact> {
@@ -163,7 +139,7 @@ class ContactsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-    return this.handleResponse<Contact>(response);
+    return handleResponse<Contact>(response);
   }
 
   async deleteContact(contactId: number): Promise<void> {
@@ -172,7 +148,7 @@ class ContactsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 
   // ── Events ────────────────────────────────────────────────────────────────
@@ -186,7 +162,7 @@ class ContactsService {
         credentials: "include",
       }
     );
-    return this.handleResponse<ContactEvent[]>(response);
+    return handleResponse<ContactEvent[]>(response);
   }
 
   async createEvent(
@@ -202,7 +178,7 @@ class ContactsService {
         body: JSON.stringify(data),
       }
     );
-    return this.handleResponse<ContactEvent>(response);
+    return handleResponse<ContactEvent>(response);
   }
 
   async updateEvent(
@@ -219,7 +195,7 @@ class ContactsService {
         body: JSON.stringify(data),
       }
     );
-    return this.handleResponse<ContactEvent>(response);
+    return handleResponse<ContactEvent>(response);
   }
 
   async deleteEvent(contactId: number, eventId: number): Promise<void> {
@@ -231,7 +207,7 @@ class ContactsService {
         credentials: "include",
       }
     );
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 
   // ── Career Timeline ──────────────────────────────────────────────────────
@@ -245,7 +221,7 @@ class ContactsService {
         credentials: "include",
       }
     );
-    return this.handleResponse<CareerTimelineEntry[]>(response);
+    return handleResponse<CareerTimelineEntry[]>(response);
   }
 
   async createCareerTimelineEntry(
@@ -261,7 +237,7 @@ class ContactsService {
         body: JSON.stringify(data),
       }
     );
-    return this.handleResponse<CareerTimelineEntry>(response);
+    return handleResponse<CareerTimelineEntry>(response);
   }
 
   async updateCareerTimelineEntry(
@@ -278,7 +254,7 @@ class ContactsService {
         body: JSON.stringify(data),
       }
     );
-    return this.handleResponse<CareerTimelineEntry>(response);
+    return handleResponse<CareerTimelineEntry>(response);
   }
 
   async deleteCareerTimelineEntry(
@@ -293,7 +269,7 @@ class ContactsService {
         credentials: "include",
       }
     );
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 }
 

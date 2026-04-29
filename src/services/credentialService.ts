@@ -1,3 +1,7 @@
+import { getAiApiBaseUrl, handleResponse } from "./lib/api";
+
+const API_BASE_URL = getAiApiBaseUrl();
+
 // Enum identifying which service/provider a credential belongs to
 export enum ServiceName {
   OPENAI_API_KEY = "OPENAI_API_KEY",
@@ -85,36 +89,14 @@ export interface UpdateCredentialRequest {
   metadata?: CredentialMetadata;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_AI_API_URL;
-
 class CredentialService {
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Request failed: ${response.status}`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.detail || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-      throw new Error(errorMessage);
-    }
-
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return response.json();
-  }
-
   async listCredentials(): Promise<Credential[]> {
     const response = await fetch(`${API_BASE_URL}/api/credentials/`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<Credential[]>(response);
+    return handleResponse<Credential[]>(response);
   }
 
   async getCredential(credentialId: number): Promise<CredentialDetail> {
@@ -126,7 +108,7 @@ class CredentialService {
         credentials: "include",
       },
     );
-    return this.handleResponse<CredentialDetail>(response);
+    return handleResponse<CredentialDetail>(response);
   }
 
   async getCredentialByService(
@@ -140,7 +122,7 @@ class CredentialService {
         credentials: "include",
       },
     );
-    return this.handleResponse<CredentialDetail>(response);
+    return handleResponse<CredentialDetail>(response);
   }
 
   async createCredential(data: CreateCredentialRequest): Promise<Credential> {
@@ -150,7 +132,7 @@ class CredentialService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-    return this.handleResponse<Credential>(response);
+    return handleResponse<Credential>(response);
   }
 
   async updateCredential(
@@ -166,7 +148,7 @@ class CredentialService {
         body: JSON.stringify(data),
       },
     );
-    return this.handleResponse<Credential>(response);
+    return handleResponse<Credential>(response);
   }
 
   async deleteCredential(credentialId: number): Promise<void> {
@@ -178,7 +160,7 @@ class CredentialService {
         credentials: "include",
       },
     );
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 }
 

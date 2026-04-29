@@ -42,7 +42,7 @@ describe("ApiKeysService", () => {
   });
 
   it("throws with message from error body on list", async () => {
-    fetchSpy.mockResolvedValue({ ok: false, json: () => Promise.resolve({ message: "Forbidden" }) });
+    fetchSpy.mockResolvedValue({ ok: false, status: 403, text: () => Promise.resolve(JSON.stringify({ message: "Forbidden" })) });
     await expect(apiKeysService.listApiKeys()).rejects.toThrow("Forbidden");
   });
 });

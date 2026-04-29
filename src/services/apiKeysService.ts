@@ -1,19 +1,6 @@
-// Helper function to ensure HTTPS in production
-function getApiBaseUrl(): string {
-  const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
-  
-  // If we're in the browser and the page is HTTPS, ensure API URL is also HTTPS
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    // Replace http:// with https:// for production domains
-    if (apiUrl.startsWith("http://")) {
-      return apiUrl.replace("http://", "https://");
-    }
-  }
-  
-  return apiUrl;
-}
+import { getAiApiBaseUrl, handleResponse } from "./lib/api";
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getAiApiBaseUrl();
 
 export enum ApiKeyStatus {
   ACTIVE = "active",
@@ -23,7 +10,7 @@ export enum ApiKeyStatus {
 export interface ApiKey {
   id: number;
   name: string;
-  key?: string; // The actual API key value (only shown once when created)
+  key?: string;
   status: ApiKeyStatus;
   created_at?: string;
   last_used_at?: string;
@@ -34,39 +21,23 @@ export interface CreateApiKeyRequest {
 }
 
 class ApiKeysService {
-  private handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      return response.json().then((data) => {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      });
-    }
-    return response.json();
-  }
-
   async listApiKeys(): Promise<ApiKey[]> {
     const response = await fetch(`${API_BASE_URL}/api/api-keys`, {
       method: "GET",
-      headers: {
-        Accept: "*/*",
-      },
+      headers: { Accept: "*/*" },
       credentials: "include",
     });
-
-    return this.handleResponse<ApiKey[]>(response);
+    return handleResponse<ApiKey[]>(response);
   }
 
   async createApiKey(data: CreateApiKeyRequest): Promise<ApiKey> {
     const response = await fetch(`${API_BASE_URL}/api/api-keys`, {
       method: "POST",
-      headers: {
-        Accept: "*/*",
-        "Content-Type": "application/json",
-      },
+      headers: { Accept: "*/*", "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify(data),
     });
-
-    return this.handleResponse<ApiKey>(response);
+    return handleResponse<ApiKey>(response);
   }
 
   async deleteApiKey(apiKeyId: number): Promise<void> {
@@ -74,18 +45,11 @@ class ApiKeysService {
       `${API_BASE_URL}/api/api-keys/${encodeURIComponent(apiKeyId)}`,
       {
         method: "DELETE",
-        headers: {
-          Accept: "*/*",
-        },
+        headers: { Accept: "*/*" },
         credentials: "include",
       }
     );
-
-    if (!response.ok) {
-      return response.json().then((data) => {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      });
-    }
+    return handleResponse<void>(response);
   }
 }
 

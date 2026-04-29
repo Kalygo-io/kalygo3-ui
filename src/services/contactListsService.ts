@@ -1,14 +1,6 @@
-function getApiBaseUrl(): string {
-  const apiUrl = process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    if (apiUrl.startsWith("http://")) {
-      return apiUrl.replace("http://", "https://");
-    }
-  }
-  return apiUrl;
-}
+import { getAiApiBaseUrl, handleResponse } from "./lib/api";
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getAiApiBaseUrl();
 
 // ============================================================================
 // Types
@@ -86,31 +78,13 @@ export interface BulkAddResult {
 // ============================================================================
 
 class ContactListsService {
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Request failed: ${response.status}`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.detail || errorJson.message || errorMessage;
-      } catch {
-        // keep default
-      }
-      throw new Error(errorMessage);
-    }
-    if (response.status === 204) return undefined as T;
-    return response.json();
-  }
-
-  // ── Contact Lists ──────────────────────────────────────────────────────────
-
   async listContactLists(): Promise<ContactList[]> {
     const response = await fetch(`${API_BASE_URL}/api/contact-lists/`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<ContactList[]>(response);
+    return handleResponse<ContactList[]>(response);
   }
 
   async getContactList(listId: number): Promise<ContactListDetail> {
@@ -119,7 +93,7 @@ class ContactListsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<ContactListDetail>(response);
+    return handleResponse<ContactListDetail>(response);
   }
 
   async createContactList(data: CreateContactListRequest): Promise<ContactList> {
@@ -129,7 +103,7 @@ class ContactListsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-    return this.handleResponse<ContactList>(response);
+    return handleResponse<ContactList>(response);
   }
 
   async updateContactList(listId: number, data: UpdateContactListRequest): Promise<ContactList> {
@@ -139,7 +113,7 @@ class ContactListsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-    return this.handleResponse<ContactList>(response);
+    return handleResponse<ContactList>(response);
   }
 
   async deleteContactList(listId: number): Promise<void> {
@@ -148,7 +122,7 @@ class ContactListsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 
   // ── Members ────────────────────────────────────────────────────────────────
@@ -159,7 +133,7 @@ class ContactListsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return this.handleResponse<ContactListMember[]>(response);
+    return handleResponse<ContactListMember[]>(response);
   }
 
   async addMember(listId: number, data: AddContactToListRequest): Promise<ContactListMember> {
@@ -169,7 +143,7 @@ class ContactListsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-    return this.handleResponse<ContactListMember>(response);
+    return handleResponse<ContactListMember>(response);
   }
 
   async bulkAddMembers(listId: number, data: BulkAddContactsToListRequest): Promise<BulkAddResult> {
@@ -179,7 +153,7 @@ class ContactListsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-    return this.handleResponse<BulkAddResult>(response);
+    return handleResponse<BulkAddResult>(response);
   }
 
   async removeMember(listId: number, contactId: number): Promise<void> {
@@ -191,7 +165,7 @@ class ContactListsService {
         credentials: "include",
       }
     );
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 }
 

@@ -1,26 +1,6 @@
-// ============================================================================
-// Access Groups Service
-// ============================================================================
-// Manages access groups for sharing agents with other accounts.
-// Access rule: account can view/use an agent if they own it OR are a member
-// of a group that has been granted access to it.
-// ============================================================================
+import { getAiApiBaseUrl, handleResponse } from "./lib/api";
 
-// Helper function to ensure HTTPS in production
-function getApiBaseUrl(): string {
-  const apiUrl =
-    process.env.NEXT_PUBLIC_AI_API_URL || "http://127.0.0.1:4000";
-
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    if (apiUrl.startsWith("http://")) {
-      return apiUrl.replace("http://", "https://");
-    }
-  }
-
-  return apiUrl;
-}
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getAiApiBaseUrl();
 
 // ============================================================================
 // Types
@@ -72,26 +52,6 @@ export interface CreateAgentAccessGrantRequest {
 // ============================================================================
 
 class AccessGroupsService {
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Request failed: ${response.status}`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.detail || errorJson.message || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-      throw new Error(errorMessage);
-    }
-
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return response.json();
-  }
-
   // ------------------------------------------------------------------
   // Access Groups CRUD
   // ------------------------------------------------------------------
@@ -102,8 +62,7 @@ class AccessGroupsService {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-
-    return this.handleResponse<AccessGroup[]>(response);
+    return handleResponse<AccessGroup[]>(response);
   }
 
   async getGroup(groupId: number): Promise<AccessGroup> {
@@ -115,8 +74,7 @@ class AccessGroupsService {
         credentials: "include",
       },
     );
-
-    return this.handleResponse<AccessGroup>(response);
+    return handleResponse<AccessGroup>(response);
   }
 
   async createGroup(data: CreateAccessGroupRequest): Promise<AccessGroup> {
@@ -126,8 +84,7 @@ class AccessGroupsService {
       credentials: "include",
       body: JSON.stringify(data),
     });
-
-    return this.handleResponse<AccessGroup>(response);
+    return handleResponse<AccessGroup>(response);
   }
 
   async updateGroup(
@@ -143,8 +100,7 @@ class AccessGroupsService {
         body: JSON.stringify(data),
       },
     );
-
-    return this.handleResponse<AccessGroup>(response);
+    return handleResponse<AccessGroup>(response);
   }
 
   async deleteGroup(groupId: number): Promise<void> {
@@ -156,8 +112,7 @@ class AccessGroupsService {
         credentials: "include",
       },
     );
-
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 
   // ------------------------------------------------------------------
@@ -173,8 +128,7 @@ class AccessGroupsService {
         credentials: "include",
       },
     );
-
-    return this.handleResponse<AccessGroupMember[]>(response);
+    return handleResponse<AccessGroupMember[]>(response);
   }
 
   async addMember(
@@ -190,8 +144,7 @@ class AccessGroupsService {
         body: JSON.stringify(data),
       },
     );
-
-    return this.handleResponse<AccessGroupMember>(response);
+    return handleResponse<AccessGroupMember>(response);
   }
 
   async removeMember(groupId: number, accountId: number): Promise<void> {
@@ -203,8 +156,7 @@ class AccessGroupsService {
         credentials: "include",
       },
     );
-
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 
   // ------------------------------------------------------------------
@@ -220,8 +172,7 @@ class AccessGroupsService {
         credentials: "include",
       },
     );
-
-    return this.handleResponse<AgentAccessGrant[]>(response);
+    return handleResponse<AgentAccessGrant[]>(response);
   }
 
   async grantAgentAccess(
@@ -237,8 +188,7 @@ class AccessGroupsService {
         body: JSON.stringify(data),
       },
     );
-
-    return this.handleResponse<AgentAccessGrant>(response);
+    return handleResponse<AgentAccessGrant>(response);
   }
 
   async revokeAgentAccess(
@@ -253,8 +203,7 @@ class AccessGroupsService {
         credentials: "include",
       },
     );
-
-    return this.handleResponse<void>(response);
+    return handleResponse<void>(response);
   }
 }
 
