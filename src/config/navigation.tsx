@@ -57,6 +57,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Email Campaigns",
+    href: "/dashboard/email-campaigns",
+    enabled: true,
+  },
+  {
     name: "Analytics",
     enabled: true,
     children: [
