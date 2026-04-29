@@ -91,6 +91,12 @@ export function LandingPage() {
         </div>
         <div className="flex items-center space-x-6">
           <Link
+            href="/docs"
+            className="text-gray-300 hover:text-white transition-colors"
+          >
+            Docs
+          </Link>
+          <Link
             href="/login"
             className="text-gray-300 hover:text-white transition-colors"
           >
@@ -415,6 +421,12 @@ export function LandingPage() {
             <div>
               <h3 className="text-white font-semibold mb-4">Quick Links</h3>
               <div className="flex flex-col space-y-2">
+                <Link
+                  href="/docs"
+                  className="text-gray-400 hover:text-white text-sm transition-colors"
+                >
+                  Docs
+                </Link>
                 <Link
                   href="/login"
                   className="text-gray-400 hover:text-white text-sm transition-colors"

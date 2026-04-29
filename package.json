@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test",
-    "test:e2e:ui": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test --ui"
+    "test:e2e:ui": "PLAYWRIGHT_BROWSERS_PATH=0 playwright test --ui",
+    "export-openapi": "bash scripts/export-openapi.sh"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -28,6 +29,7 @@
     "react-markdown": "^9.0.1",
     "react-toastify": "^10.0.5",
     "rehype-raw": "^7.0.0",
+    "swagger-ui-react": "^5.32.5",
     "tailwind-merge": "^2.5.2",
     "usehooks-ts": "^3.1.1",
     "utf-8-validate": "^6.0.6",
