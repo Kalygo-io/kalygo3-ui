@@ -1,9 +1,8 @@
+@import "./custom-scrollbar.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import custom scrollbar and fade effects */
-@import "./custom-scrollbar.css";
 
 :root {
   --default_background_color: theme(colors.default_background_color);
