@@ -121,7 +121,7 @@ export function LandingPage() {
           <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-[1.3] overflow-visible">
             Kalygo,
             <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent pb-3 relative">
-              the world&apos;s leading agentic CRM
+              the world&apos;s leading Agentic CRM
             </span>
           </h1>
 
