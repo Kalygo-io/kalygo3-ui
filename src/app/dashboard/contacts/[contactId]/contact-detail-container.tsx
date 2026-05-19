@@ -31,7 +31,9 @@ import {
   CheckCircleIcon,
   BriefcaseIcon,
   CalendarDaysIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
+import { ContactAgentDrawer } from "./contact-agent-drawer";
 
 // ── Event type config ─────────────────────────────────────────────────────────
 
@@ -66,6 +68,7 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
   const [loading, setLoading] = useState(true);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editEvent, setEditEvent] = useState<ContactEvent | null>(null);
+  const [showAssistant, setShowAssistant] = useState(false);
 
   // Career timeline state
   const [careerEntries, setCareerEntries] = useState<CareerTimelineEntry[]>([]);
@@ -197,14 +200,23 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
 
   return (
     <div className="space-y-6">
-      {/* Back */}
-      <button
-        onClick={() => router.push("/dashboard/contacts")}
-        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Back to Contacts
-      </button>
+      {/* Back + AI Assistant */}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => router.push("/dashboard/contacts")}
+          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Back to Contacts
+        </button>
+        <button
+          onClick={() => setShowAssistant(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+        >
+          <SparklesIcon className="h-4 w-4" />
+          AI Assistant
+        </button>
+      </div>
 
       {/* Contact card — always editable */}
       <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
@@ -537,6 +549,17 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
           }}
         />
       )}
+
+      {/* Contact-scoped AI assistant drawer */}
+      <ContactAgentDrawer
+        contactId={contact.id}
+        contactName={
+          [contact.first_name, contact.last_name].filter(Boolean).join(" ") ||
+          contact.email
+        }
+        isOpen={showAssistant}
+        onClose={() => setShowAssistant(false)}
+      />
     </div>
   );
 }
