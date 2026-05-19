@@ -14,6 +14,13 @@ import {
   CreateCareerTimelineRequest,
 } from "@/services/contactsService";
 import {
+  dealsService,
+  Deal,
+  CreateDealRequest,
+  DEAL_STAGES,
+  DealStage,
+} from "@/services/dealsService";
+import {
   ArrowLeftIcon,
   PlusIcon,
   PencilIcon,
@@ -33,6 +40,7 @@ import {
   CalendarDaysIcon,
   SparklesIcon,
   ArrowPathIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
 import { ContactAgentDrawer } from "./contact-agent-drawer";
 
@@ -61,6 +69,29 @@ const SOURCE_OPTIONS = [
   "website", "referral", "chat_bot", "import", "cold_outreach", "event", "other",
 ];
 
+// Per-stage badge styling for the Deals section.
+const STAGE_META: Record<DealStage, { label: string; badge: string }> = {
+  lead: { label: "Lead", badge: "bg-gray-600/20 text-gray-300 border-gray-500/30" },
+  qualified: { label: "Qualified", badge: "bg-sky-600/20 text-sky-300 border-sky-500/30" },
+  proposal: { label: "Proposal", badge: "bg-indigo-600/20 text-indigo-300 border-indigo-500/30" },
+  negotiation: { label: "Negotiation", badge: "bg-amber-600/20 text-amber-300 border-amber-500/30" },
+  won: { label: "Won", badge: "bg-emerald-600/20 text-emerald-300 border-emerald-500/30" },
+  lost: { label: "Lost", badge: "bg-red-600/20 text-red-300 border-red-500/30" },
+};
+
+function formatMoney(amount?: number | null, currency = "USD"): string | null {
+  if (amount == null) return null;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${amount.toLocaleString()} ${currency}`;
+  }
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ContactDetailContainer({ contactId }: { contactId: number }) {
@@ -76,6 +107,11 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
   const [careerEntries, setCareerEntries] = useState<CareerTimelineEntry[]>([]);
   const [showCareerModal, setShowCareerModal] = useState(false);
   const [editCareerEntry, setEditCareerEntry] = useState<CareerTimelineEntry | null>(null);
+
+  // Deals state
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [showDealModal, setShowDealModal] = useState(false);
+  const [editDeal, setEditDeal] = useState<Deal | null>(null);
 
   // Inline-edit form state
   const [form, setForm] = useState<Record<string, string>>({});
@@ -100,12 +136,14 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
   const loadContact = async () => {
     try {
       setLoading(true);
-      const [data, career] = await Promise.all([
+      const [data, career, dealList] = await Promise.all([
         contactsService.getContact(contactId),
         contactsService.listCareerTimeline(contactId),
+        dealsService.listDealsForContact(contactId),
       ]);
       setContact(data);
       setCareerEntries(career);
+      setDeals(dealList);
       const f = buildForm(data);
       setForm(f);
       formRef.current = f;
@@ -196,6 +234,18 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
       successToast("Entry deleted");
     } catch (error: any) {
       errorToast(error.message || "Failed to delete entry");
+    }
+  };
+
+  const handleDeleteDeal = async (deal: Deal) => {
+    const confirmed = window.confirm(`Delete deal "${deal.title}"?`);
+    if (!confirmed || !contact) return;
+    try {
+      await dealsService.deleteDeal(deal.id);
+      setDeals((prev) => prev.filter((d) => d.id !== deal.id));
+      successToast("Deal deleted");
+    } catch (error: any) {
+      errorToast(error.message || "Failed to delete deal");
     }
   };
 
@@ -421,6 +471,106 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         )}
       </div>
 
+      {/* Deals */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white">Deals</h2>
+          <button
+            onClick={() => setShowDealModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 text-sm"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Add Deal
+          </button>
+        </div>
+
+        {deals.length === 0 ? (
+          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
+            <CurrencyDollarIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-400 mb-2">No deals yet</p>
+            <p className="text-gray-500 text-sm mb-5">
+              Track sales opportunities associated with this contact.
+            </p>
+            <button
+              onClick={() => setShowDealModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add First Deal
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {deals.map((deal) => {
+              const stageMeta = STAGE_META[deal.stage] ?? STAGE_META.lead;
+              const money = formatMoney(deal.amount, deal.currency);
+              const closeLabel = deal.expected_close_date
+                ? new Date(deal.expected_close_date + "T00:00:00").toLocaleDateString(
+                    undefined,
+                    { month: "short", day: "numeric", year: "numeric" }
+                  )
+                : null;
+              return (
+                <div
+                  key={deal.id}
+                  className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 hover:border-gray-600/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-lg bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <CurrencyDollarIcon className="h-4 w-4 text-emerald-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-white font-medium">{deal.title}</p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full border ${stageMeta.badge}`}
+                          >
+                            {stageMeta.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          {money && (
+                            <span className="text-gray-300 text-sm font-medium">{money}</span>
+                          )}
+                          {closeLabel && (
+                            <span className="flex items-center gap-1.5 text-gray-400 text-sm">
+                              <CalendarDaysIcon className="h-3.5 w-3.5 text-gray-500 flex-shrink-0" />
+                              Close {closeLabel}
+                            </span>
+                          )}
+                        </div>
+                        {deal.description && (
+                          <p className="text-gray-400 text-sm mt-2 whitespace-pre-wrap">
+                            {deal.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => setEditDeal(deal)}
+                        className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-blue-600/10 rounded-lg transition-colors"
+                        title="Edit deal"
+                      >
+                        <PencilIcon className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDeal(deal)}
+                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-600/10 rounded-lg transition-colors"
+                        title="Delete deal"
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Event timeline */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -591,6 +741,36 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
             );
             setEditCareerEntry(null);
             successToast("Career entry updated");
+          }}
+        />
+      )}
+
+      {/* Create deal modal */}
+      {showDealModal && (
+        <DealFormModal
+          onClose={() => setShowDealModal(false)}
+          onSave={async (data) => {
+            const created = await dealsService.createDeal({
+              ...data,
+              contact_id: contact.id,
+            });
+            setDeals((prev) => [created, ...prev]);
+            setShowDealModal(false);
+            successToast("Deal added");
+          }}
+        />
+      )}
+
+      {/* Edit deal modal */}
+      {editDeal && (
+        <DealFormModal
+          initial={editDeal}
+          onClose={() => setEditDeal(null)}
+          onSave={async (data) => {
+            const updated = await dealsService.updateDeal(editDeal.id, data);
+            setDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+            setEditDeal(null);
+            successToast("Deal updated");
           }}
         />
       )}
@@ -873,6 +1053,193 @@ function CareerTimelineFormModal({
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
               >
                 {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Entry"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Deal form modal ───────────────────────────────────────────────────────────
+
+function DealFormModal({
+  initial,
+  onClose,
+  onSave,
+}: {
+  initial?: Deal;
+  onClose: () => void;
+  onSave: (data: CreateDealRequest) => Promise<void>;
+}) {
+  const isEdit = !!initial;
+  const [form, setForm] = useState({
+    title: initial?.title ?? "",
+    description: initial?.description ?? "",
+    amount: initial?.amount != null ? String(initial.amount) : "",
+    currency: initial?.currency ?? "USD",
+    stage: (initial?.stage ?? "lead") as DealStage,
+    expected_close_date: initial?.expected_close_date ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const set =
+    (key: keyof typeof form) =>
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >
+    ) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim()) return errorToast("Title is required");
+    let amount: number | undefined;
+    if (form.amount.trim()) {
+      const parsed = Number(form.amount);
+      if (isNaN(parsed) || parsed < 0) {
+        return errorToast("Amount must be a non-negative number");
+      }
+      amount = parsed;
+    }
+    setSaving(true);
+    try {
+      await onSave({
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        amount,
+        currency: form.currency.trim().toUpperCase() || undefined,
+        stage: form.stage,
+        expected_close_date: form.expected_close_date || undefined,
+      });
+    } catch (error: any) {
+      errorToast(error.message || "Failed to save deal");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/70" onClick={onClose} />
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="relative w-full max-w-md bg-gray-800 border border-gray-700 rounded-xl shadow-2xl">
+          <div className="flex items-center justify-between p-5 border-b border-gray-700">
+            <h2 className="text-lg font-semibold text-white">
+              {isEdit ? "Edit Deal" : "Add Deal"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Title <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={set("title")}
+                required
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                placeholder="e.g. Annual subscription — Acme Corp"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Description
+              </label>
+              <textarea
+                value={form.description}
+                onChange={set("description")}
+                rows={3}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+                placeholder="Scope, terms, notes…"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Amount
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.amount}
+                  onChange={set("amount")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Currency
+                </label>
+                <input
+                  type="text"
+                  value={form.currency}
+                  onChange={set("currency")}
+                  maxLength={3}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white uppercase placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="USD"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Stage
+                </label>
+                <select
+                  value={form.stage}
+                  onChange={set("stage")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                >
+                  {DEAL_STAGES.map((s) => (
+                    <option key={s} value={s}>
+                      {STAGE_META[s].label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Expected Close
+                </label>
+                <input
+                  type="date"
+                  value={form.expected_close_date}
+                  onChange={set("expected_close_date")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+              >
+                {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Deal"}
               </button>
             </div>
           </form>
