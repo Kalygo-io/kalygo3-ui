@@ -61,6 +61,7 @@ export function chatReducer(
     currentTool: string;
     currentRequest: AbortController | null;
     agentId?: string;
+    contactId?: number;
   },
   action: Action
 ) {
@@ -170,6 +171,7 @@ export const initialState: {
   currentTool: string;
   currentRequest: AbortController | null;
   agentId?: string;
+  contactId?: number;
 } = {
   messages: [],
   completionLoading: false,
@@ -177,4 +179,5 @@ export const initialState: {
   currentTool: "",
   currentRequest: null,
   agentId: undefined,
+  contactId: undefined,
 };

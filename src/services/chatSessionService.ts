@@ -10,11 +10,13 @@ export interface ChatSession {
   chatHistory: Message[];
   createdAt: string;
   title?: string;
+  contactId?: number | null;
 }
 
 export interface ChatSessionCreate {
-  agentId: number;
+  agentId?: number;
   title?: string;
+  contactId?: number;
 }
 
 class ChatSessionService {
@@ -23,10 +25,16 @@ class ChatSessionService {
   async getSessions(
     limit: number = 50,
     offset: number = 0,
+    contactId?: number,
   ): Promise<ChatSession[]> {
     const params = new URLSearchParams();
     params.append("limit", limit.toString());
     params.append("offset", offset.toString());
+    // Contact-bound sessions are excluded by the backend unless contact_id is
+    // explicitly requested (keeps them out of global chat history).
+    if (contactId != null) {
+      params.append("contact_id", contactId.toString());
+    }
 
     const resp = await fetch(
       `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions?${params.toString()}`,
@@ -54,6 +62,7 @@ class ChatSessionService {
       accountId: sessionData.accountId,
       createdAt: sessionData.createdAt,
       title: sessionData.title,
+      contactId: sessionData.contactId,
       chatHistory: [],
     }));
 
@@ -93,6 +102,7 @@ class ChatSessionService {
       accountId: sessionData.accountId,
       createdAt: sessionData.createdAt,
       title: sessionData.title,
+      contactId: sessionData.contactId,
       chatHistory: sessionData.messages || [],
     };
 
@@ -124,6 +134,47 @@ class ChatSessionService {
 
     const session: ChatSession = await resp.json();
     return session;
+  }
+
+  /**
+   * Create a chat session bound to a CRM contact (no agent — the contact-chat
+   * endpoint injects a code-defined agent). The backend validates that the
+   * contact belongs to the caller's account.
+   */
+  async createContactSession(
+    contactId: number,
+    title?: string,
+  ): Promise<ChatSession> {
+    const body: ChatSessionCreate = { contactId, title };
+
+    const resp = await fetch(
+      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "include",
+      },
+    );
+
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(
+        `Failed to create contact session: ${resp.status} - ${errorText}`,
+      );
+    }
+
+    return (await resp.json()) as ChatSession;
+  }
+
+  /**
+   * Return the most recent chat session bound to this contact, or null.
+   * Used to resume an existing contact conversation instead of spawning a new
+   * one each time the drawer opens.
+   */
+  async findContactSession(contactId: number): Promise<ChatSession | null> {
+    const sessions = await this.getSessions(1, 0, contactId);
+    return sessions[0] ?? null;
   }
 
   async deleteSession(sessionId: string): Promise<void> {

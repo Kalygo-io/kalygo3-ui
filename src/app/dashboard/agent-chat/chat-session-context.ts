@@ -7,6 +7,9 @@ export interface ChatState {
   currentTool: string;
   currentRequest: AbortController | null;
   agentId?: string;
+  // When set, the chat is bound to a CRM contact and streams via the
+  // contact-scoped endpoint instead of a user-selected agent.
+  contactId?: number;
 }
 
 export const ChatContext = createContext<ChatState>({
@@ -16,6 +19,7 @@ export const ChatContext = createContext<ChatState>({
   currentTool: "",
   currentRequest: null,
   agentId: undefined,
+  contactId: undefined,
 });
 
 export const ChatDispatchContext = createContext<any>(null);

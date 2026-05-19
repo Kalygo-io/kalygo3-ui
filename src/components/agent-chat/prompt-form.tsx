@@ -8,7 +8,7 @@ import {
 } from "@/app/dashboard/agent-chat/chat-session-context";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { nanoid } from "@/shared/utils";
-import { callAgent } from "@/services/callAgent";
+import { callAgent, callContactAgent } from "@/services/callAgent";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { StopIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import { ArrowsPointingOutIcon, XMarkIcon } from "@heroicons/react/24/outline";
@@ -94,13 +94,17 @@ export function PromptForm({
             payload: true,
           });
 
-          // Get agentId from context
-          const agentId = chatState.agentId;
-          if (!agentId) {
-            throw new Error("Agent ID is required");
+          // Contact-scoped chat streams via the dedicated endpoint (the agent
+          // is server-fixed; no agentId). Otherwise stream the selected agent.
+          if (chatState.contactId != null) {
+            await callContactAgent(sessionId, prompt, dispatch, abortController);
+          } else {
+            const agentId = chatState.agentId;
+            if (!agentId) {
+              throw new Error("Agent ID is required");
+            }
+            await callAgent(agentId, sessionId, prompt, dispatch, abortController);
           }
-          
-          await callAgent(agentId, sessionId, prompt, dispatch, abortController);
 
           dispatch({
             type: "SET_COMPLETION_LOADING",

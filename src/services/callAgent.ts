@@ -86,43 +86,42 @@ function extractNextJsonObject(
   return null;
 }
 
-export async function callAgent(
-  agentId: string,
+async function buildRequestBody(
   sessionId: string,
   prompt: string,
-  dispatch: React.Dispatch<Action>,
-  abortController?: AbortController,
   pdfAttachment?: PdfAttachment,
-) {
-  console.log(
-    `[callAgent] agentId=${agentId} sessionId=${sessionId}${pdfAttachment ? ` pdf=${pdfAttachment.file.name}` : ""}`,
-  );
-
-  // Build request body
-  const requestBody: Record<string, any> = {
-    sessionId: sessionId,
-    prompt: prompt,
-  };
-
+): Promise<Record<string, any>> {
+  const requestBody: Record<string, any> = { sessionId, prompt };
   if (pdfAttachment) {
-    const pdfBase64 = await fileToBase64(pdfAttachment.file);
-    requestBody.pdf = pdfBase64;
+    requestBody.pdf = await fileToBase64(pdfAttachment.file);
     requestBody.pdfFilename = pdfAttachment.file.name;
     requestBody.pdfUseVision = pdfAttachment.useVision ?? false;
   }
+  return requestBody;
+}
 
-  const resp = await fetch(
-    `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/agents/${encodeURIComponent(agentId)}/stream`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-      credentials: "include",
-      signal: abortController?.signal,
+/**
+ * Streams an agent SSE response and updates chat state via dispatch.
+ *
+ * This is the shared core. Only the endpoint URL differs between the normal
+ * agent stream and the contact-scoped stream — the SSE parsing, buffering,
+ * and event handling are identical and live here so they are never forked.
+ */
+async function streamAgentResponse(
+  url: string,
+  requestBody: Record<string, any>,
+  dispatch: React.Dispatch<Action>,
+  abortController?: AbortController,
+) {
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify(requestBody),
+    credentials: "include",
+    signal: abortController?.signal,
+  });
 
   if (!resp.ok) {
     const errorText = await resp.text();
@@ -199,6 +198,52 @@ export async function callAgent(
       reader.releaseLock();
     }
   }
+}
+
+/**
+ * Stream a normal, user-selected agent. Public signature unchanged — existing
+ * callers are unaffected.
+ */
+export async function callAgent(
+  agentId: string,
+  sessionId: string,
+  prompt: string,
+  dispatch: React.Dispatch<Action>,
+  abortController?: AbortController,
+  pdfAttachment?: PdfAttachment,
+) {
+  console.log(
+    `[callAgent] agentId=${agentId} sessionId=${sessionId}${pdfAttachment ? ` pdf=${pdfAttachment.file.name}` : ""}`,
+  );
+  const requestBody = await buildRequestBody(sessionId, prompt, pdfAttachment);
+  await streamAgentResponse(
+    `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/agents/${encodeURIComponent(agentId)}/stream`,
+    requestBody,
+    dispatch,
+    abortController,
+  );
+}
+
+/**
+ * Stream the code-defined, contact-scoped CRM agent. No agentId — the agent is
+ * server-fixed; the contact binding rides on the session. Reuses the exact
+ * same SSE core as callAgent.
+ */
+export async function callContactAgent(
+  sessionId: string,
+  prompt: string,
+  dispatch: React.Dispatch<Action>,
+  abortController?: AbortController,
+  pdfAttachment?: PdfAttachment,
+) {
+  console.log(`[callContactAgent] sessionId=${sessionId}`);
+  const requestBody = await buildRequestBody(sessionId, prompt, pdfAttachment);
+  await streamAgentResponse(
+    `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/contact-chat/${encodeURIComponent(sessionId)}/stream`,
+    requestBody,
+    dispatch,
+    abortController,
+  );
 }
 
 /**
