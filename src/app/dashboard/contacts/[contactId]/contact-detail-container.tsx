@@ -85,6 +85,8 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
     middle_name: c.middle_name ?? "",
     last_name: c.last_name ?? "",
     email: c.email,
+    alt_email_1: c.alt_email_1 ?? "",
+    alt_email_2: c.alt_email_2 ?? "",
     phone: c.phone ?? "",
     source: c.source ?? "",
   });
@@ -133,6 +135,9 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         middle_name: form.middle_name.trim() || undefined,
         last_name: form.last_name.trim() || undefined,
         email: form.email.trim(),
+        // Sent as "" (not undefined) when blank so the backend clears it.
+        alt_email_1: form.alt_email_1.trim(),
+        alt_email_2: form.alt_email_2.trim(),
         phone: form.phone.trim() || undefined,
         source: form.source || undefined,
       };
@@ -249,9 +254,21 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-              <EnvelopeIcon className="h-3.5 w-3.5" /> Email <span className="text-red-400">*</span>
+              <EnvelopeIcon className="h-3.5 w-3.5" /> Default Email <span className="text-red-400">*</span>
             </label>
             <input type="email" value={form.email} onChange={set("email")} className={inputClass} placeholder="email@example.com" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <EnvelopeIcon className="h-3.5 w-3.5" /> Alternate Email 1
+            </label>
+            <input type="email" value={form.alt_email_1} onChange={set("alt_email_1")} className={inputClass} placeholder="alternate@example.com" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <EnvelopeIcon className="h-3.5 w-3.5" /> Alternate Email 2
+            </label>
+            <input type="email" value={form.alt_email_2} onChange={set("alt_email_2")} className={inputClass} placeholder="alternate@example.com" />
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">

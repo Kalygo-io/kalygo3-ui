@@ -36,6 +36,8 @@ export function ContactFormModal({
     middle_name: initial?.middle_name ?? "",
     last_name: initial?.last_name ?? "",
     email: initial?.email ?? "",
+    alt_email_1: initial?.alt_email_1 ?? "",
+    alt_email_2: initial?.alt_email_2 ?? "",
     phone: initial?.phone ?? "",
     source: initial?.source ?? "",
   });
@@ -61,6 +63,9 @@ export function ContactFormModal({
         middle_name: form.middle_name.trim() || undefined,
         last_name: form.last_name.trim() || undefined,
         email: form.email.trim(),
+        // Sent as "" (not undefined) when blank so an edit clears the field.
+        alt_email_1: form.alt_email_1.trim(),
+        alt_email_2: form.alt_email_2.trim(),
         phone: form.phone.trim() || undefined,
         source: form.source || undefined,
       };
@@ -133,7 +138,7 @@ export function ContactFormModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Email <span className="text-red-400">*</span>
+                  Default Email <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="email"
@@ -142,6 +147,30 @@ export function ContactFormModal({
                   required
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
                   placeholder="jane@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Alternate Email 1
+                </label>
+                <input
+                  type="email"
+                  value={form.alt_email_1}
+                  onChange={set("alt_email_1")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="jane.alt@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Alternate Email 2
+                </label>
+                <input
+                  type="email"
+                  value={form.alt_email_2}
+                  onChange={set("alt_email_2")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="jane.other@example.com"
                 />
               </div>
               <div>

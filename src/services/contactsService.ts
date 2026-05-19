@@ -25,7 +25,10 @@ export interface Contact {
   last_name?: string;
   /** Computed by API: `"${first_name} ${middle_name} ${last_name}".trim()` */
   name: string;
+  /** The default (primary) email — shown as "Default email" in the UI. */
   email: string;
+  alt_email_1?: string;
+  alt_email_2?: string;
   phone?: string;
   company?: string;
   source?: string;
@@ -40,6 +43,8 @@ export interface CreateContactRequest {
   middle_name?: string;
   last_name?: string;
   email: string;
+  alt_email_1?: string;
+  alt_email_2?: string;
   phone?: string;
   source?: string;
 }
@@ -49,6 +54,8 @@ export interface UpdateContactRequest {
   middle_name?: string;
   last_name?: string;
   email?: string;
+  alt_email_1?: string;
+  alt_email_2?: string;
   phone?: string;
   source?: string;
 }
