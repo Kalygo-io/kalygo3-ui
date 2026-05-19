@@ -3,11 +3,8 @@
 import Link from "next/link";
 import {
   ArrowRightIcon,
-  AcademicCapIcon,
-  BoltIcon,
   ShieldCheckIcon,
   SparklesIcon,
-  ChartBarIcon,
   CodeBracketIcon,
   RocketLaunchIcon,
   MagnifyingGlassIcon,
@@ -160,8 +157,8 @@ export function LandingPage() {
               How It Works
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              From first contact to closed deal — Kalygo gives your team AI
-              agents that help you and your team deliver immaculate customer
+              From first contact to closed deal — Kalygo gives you and your team
+              fully open source AI agents that help deliver immaculate customer
               service.
             </p>
           </div>
