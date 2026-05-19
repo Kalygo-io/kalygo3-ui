@@ -32,6 +32,7 @@ import {
   BriefcaseIcon,
   CalendarDaysIcon,
   SparklesIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { ContactAgentDrawer } from "./contact-agent-drawer";
 
@@ -69,6 +70,7 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
   const [showEventModal, setShowEventModal] = useState(false);
   const [editEvent, setEditEvent] = useState<ContactEvent | null>(null);
   const [showAssistant, setShowAssistant] = useState(false);
+  const [refreshingEvents, setRefreshingEvents] = useState(false);
 
   // Career timeline state
   const [careerEntries, setCareerEntries] = useState<CareerTimelineEntry[]>([]);
@@ -157,6 +159,19 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
   const handleDiscard = useCallback(() => {
     setForm({ ...formRef.current });
   }, []);
+
+  const handleRefreshEvents = async () => {
+    if (!contact || refreshingEvents) return;
+    setRefreshingEvents(true);
+    try {
+      const events = await contactsService.listEvents(contact.id);
+      setContact((prev) => (prev ? { ...prev, events } : prev));
+    } catch (error: any) {
+      errorToast(error.message || "Failed to refresh activity timeline");
+    } finally {
+      setRefreshingEvents(false);
+    }
+  };
 
   const handleDeleteEvent = async (event: ContactEvent) => {
     const confirmed = window.confirm(`Delete event "${event.title}"?`);
@@ -410,13 +425,26 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-white">Activity Timeline</h2>
-          <button
-            onClick={() => setShowEventModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 text-sm"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Log Event
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefreshEvents}
+              disabled={refreshingEvents}
+              title="Refresh activity timeline"
+              aria-label="Refresh activity timeline"
+              className="bg-gray-800 hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed text-gray-300 hover:text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-2 text-sm border border-gray-700"
+            >
+              <ArrowPathIcon
+                className={`h-4 w-4 ${refreshingEvents ? "animate-spin" : ""}`}
+              />
+            </button>
+            <button
+              onClick={() => setShowEventModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 text-sm"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Log Event
+            </button>
+          </div>
         </div>
 
         {events.length === 0 ? (
