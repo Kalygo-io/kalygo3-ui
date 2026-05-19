@@ -27,6 +27,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Deals",
+    href: "/dashboard/deals",
+    enabled: true,
+  },
+  {
     name: "Prompts",
     href: "/dashboard/prompts",
     enabled: true,

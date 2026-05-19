@@ -23,6 +23,8 @@ export interface Deal {
   account_id: number;
   /** Optional: a deal can exist without being tied to a contact. */
   contact_id?: number | null;
+  /** Display name of the linked contact (server-joined); null if unlinked. */
+  contact_name?: string | null;
   title: string;
   description?: string | null;
   amount?: number | null;
@@ -42,7 +44,8 @@ export interface CreateDealRequest {
   stage?: DealStage;
   expected_close_date?: string;
   closed_at?: string;
-  contact_id?: number;
+  /** Link to a contact; null = no contact (account-level deal). */
+  contact_id?: number | null;
 }
 
 export interface UpdateDealRequest {
@@ -53,7 +56,8 @@ export interface UpdateDealRequest {
   stage?: DealStage;
   expected_close_date?: string;
   closed_at?: string;
-  contact_id?: number;
+  /** Link to a contact; null = unlink (account-level deal). */
+  contact_id?: number | null;
 }
 
 export interface DealListResponse {
@@ -102,6 +106,22 @@ class DealsService {
       credentials: "include",
     });
     return handleResponse<DealListResponse>(response);
+  }
+
+  /** All deals across the account (paged through to completion). */
+  async listAllDeals(): Promise<Deal[]> {
+    const all: Deal[] = [];
+    let offset = 0;
+    while (true) {
+      const page = await this.listDealsPage({
+        limit: DEALS_MAX_PAGE,
+        offset,
+      });
+      all.push(...page.deals);
+      if (!page.has_more || page.deals.length === 0) break;
+      offset += DEALS_MAX_PAGE;
+    }
+    return all;
   }
 
   /** All deals for a given contact (paged through to completion). */

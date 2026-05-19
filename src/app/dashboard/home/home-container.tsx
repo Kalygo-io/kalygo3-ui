@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { agentsService, Agent } from "@/services/agentsService";
 import { contactsService, Contact } from "@/services/contactsService";
+import { dealsService, Deal, DEAL_STAGES } from "@/services/dealsService";
+import { STAGE_META } from "@/components/deals/deal-form-modal";
 import { vectorStoresService } from "@/services/vectorStoresService";
 import {
   CpuChipIcon,
   UserGroupIcon,
   CircleStackIcon,
+  CurrencyDollarIcon,
   ArrowRightIcon,
   PlusIcon,
   ChevronRightIcon,
@@ -20,25 +23,11 @@ import {
 interface DashboardData {
   agents: Agent[];
   contacts: Contact[];
+  deals: Deal[];
   indexCount: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function statusBadgeClass(status?: string) {
-  switch (status) {
-    case "customer":
-      return "bg-emerald-700/40 text-emerald-300 border-emerald-600/50";
-    case "prospect":
-      return "bg-blue-700/40 text-blue-300 border-blue-600/50";
-    case "lead":
-      return "bg-amber-700/40 text-amber-300 border-amber-600/50";
-    case "churned":
-      return "bg-red-700/40 text-red-300 border-red-600/50";
-    default:
-      return "bg-gray-700/40 text-gray-400 border-gray-600/50";
-  }
-}
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -138,14 +127,16 @@ export function HomeContainer() {
   useEffect(() => {
     async function load() {
       try {
-        const [agents, contacts, indexes] = await Promise.allSettled([
+        const [agents, contacts, deals, indexes] = await Promise.allSettled([
           agentsService.listAgents(),
           contactsService.listContacts(),
+          dealsService.listAllDeals(),
           vectorStoresService.listIndexes(),
         ]);
         setData({
           agents: agents.status === "fulfilled" ? agents.value : [],
           contacts: contacts.status === "fulfilled" ? contacts.value : [],
+          deals: deals.status === "fulfilled" ? deals.value : [],
           indexCount: indexes.status === "fulfilled" ? indexes.value.length : 0,
         });
       } finally {
@@ -155,20 +146,14 @@ export function HomeContainer() {
     load();
   }, []);
 
-  // ── Contact status breakdown ──────────────────────────────────────────────
+  // ── Deal stage breakdown ──────────────────────────────────────────────────
 
-  const contactsByStatus = data
-    ? (["lead", "prospect", "customer", "churned"] as const)
-        .map((status) => ({
-          status,
-          count: data.contacts.filter((c) => c.status === status).length,
-        }))
-        .filter((s) => s.count > 0)
+  const dealsByStage = data
+    ? DEAL_STAGES.map((stage) => ({
+        stage,
+        count: data.deals.filter((d) => d.stage === stage).length,
+      })).filter((s) => s.count > 0)
     : [];
-
-  const unstagedContacts = data
-    ? data.contacts.filter((c) => !c.status).length
-    : 0;
 
   // ── Skeleton loader ───────────────────────────────────────────────────────
 
@@ -258,14 +243,14 @@ export function HomeContainer() {
 
       {/* ── Lower section ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Contact breakdown */}
+        {/* Deal stage breakdown */}
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-semibold text-white">
-              Contacts by Status
+              Deals by Status
             </h2>
             <button
-              onClick={() => router.push("/dashboard/contacts")}
+              onClick={() => router.push("/dashboard/deals")}
               className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
             >
               View all
@@ -273,32 +258,32 @@ export function HomeContainer() {
             </button>
           </div>
 
-          {(data?.contacts.length ?? 0) === 0 ? (
+          {(data?.deals.length ?? 0) === 0 ? (
             <div className="text-center py-8">
-              <UserGroupIcon className="h-10 w-10 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm mb-4">No contacts yet</p>
+              <CurrencyDollarIcon className="h-10 w-10 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400 text-sm mb-4">No deals yet</p>
               <button
-                onClick={() => router.push("/dashboard/contacts")}
+                onClick={() => router.push("/dashboard/deals")}
                 className="inline-flex items-center gap-2 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
               >
                 <PlusIcon className="h-3.5 w-3.5" />
-                Add your first contact
+                Add your first deal
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              {contactsByStatus.map(({ status, count }) => (
-                <div key={status} className="flex items-center gap-3">
+              {dealsByStage.map(({ stage, count }) => (
+                <div key={stage} className="flex items-center gap-3">
                   <span
-                    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border w-24 justify-center flex-shrink-0 ${statusBadgeClass(status)}`}
+                    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border w-24 justify-center flex-shrink-0 ${STAGE_META[stage].badge}`}
                   >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                    {STAGE_META[stage].label}
                   </span>
                   <div className="flex-1 h-2 bg-gray-700/50 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-500/60 rounded-full transition-all duration-500"
                       style={{
-                        width: `${Math.round((count / (data?.contacts.length ?? 1)) * 100)}%`,
+                        width: `${Math.round((count / (data?.deals.length ?? 1)) * 100)}%`,
                       }}
                     />
                   </div>
@@ -307,24 +292,6 @@ export function HomeContainer() {
                   </span>
                 </div>
               ))}
-              {unstagedContacts > 0 && (
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border w-24 justify-center flex-shrink-0 bg-gray-700/40 text-gray-400 border-gray-600/50">
-                    Untagged
-                  </span>
-                  <div className="flex-1 h-2 bg-gray-700/50 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gray-500/60 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.round((unstagedContacts / (data?.contacts.length ?? 1)) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-sm font-medium text-gray-300 w-8 text-right tabular-nums">
-                    {unstagedContacts}
-                  </span>
-                </div>
-              )}
             </div>
           )}
         </div>
