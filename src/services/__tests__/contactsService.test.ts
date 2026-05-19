@@ -16,9 +16,13 @@ function okJson(data: unknown) {
 }
 
 describe("ContactsService", () => {
-  it("listContacts sends GET /api/contacts/", async () => {
-    fetchSpy.mockResolvedValue(okJson([]));
-    await contactsService.listContacts();
+  const emptyPage = (over: Record<string, unknown> = {}) =>
+    okJson({ contacts: [], total: 0, limit: 500, offset: 0, has_more: false, ...over });
+
+  it("listContacts sends GET /api/contacts/ and returns a flat array", async () => {
+    fetchSpy.mockResolvedValue(emptyPage());
+    const result = await contactsService.listContacts();
+    expect(Array.isArray(result)).toBe(true);
     expect(fetchSpy).toHaveBeenCalledWith(
       expect.stringContaining("/api/contacts/"),
       expect.objectContaining({ method: "GET", credentials: "include" }),
@@ -26,11 +30,41 @@ describe("ContactsService", () => {
   });
 
   it("listContacts passes search params", async () => {
-    fetchSpy.mockResolvedValue(okJson([]));
+    fetchSpy.mockResolvedValue(emptyPage());
     await contactsService.listContacts({ status: "active", search: "john" });
     const url = fetchSpy.mock.calls[0][0] as string;
     expect(url).toContain("status=active");
     expect(url).toContain("search=john");
+  });
+
+  it("listContacts pages through until has_more is false", async () => {
+    fetchSpy
+      .mockResolvedValueOnce(
+        okJson({ contacts: [{ id: 1 }], total: 2, limit: 500, offset: 0, has_more: true }),
+      )
+      .mockResolvedValueOnce(
+        okJson({ contacts: [{ id: 2 }], total: 2, limit: 500, offset: 500, has_more: false }),
+      );
+    const result = await contactsService.listContacts();
+    expect(result.map((c) => c.id)).toEqual([1, 2]);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("listContactsPage sends limit/offset and returns the envelope", async () => {
+    fetchSpy.mockResolvedValue(emptyPage({ total: 7, limit: 25, offset: 25 }));
+    const res = await contactsService.listContactsPage({ limit: 25, offset: 25 });
+    const url = fetchSpy.mock.calls[0][0] as string;
+    expect(url).toContain("limit=25");
+    expect(url).toContain("offset=25");
+    expect(res.total).toBe(7);
+  });
+
+  it("listContactsPage clamps limit (<=500) and offset (>=0)", async () => {
+    fetchSpy.mockResolvedValue(emptyPage());
+    await contactsService.listContactsPage({ limit: 99999, offset: -5 });
+    const url = fetchSpy.mock.calls[0][0] as string;
+    expect(url).toContain("limit=500");
+    expect(url).toContain("offset=0");
   });
 
   it("getContact sends GET /api/contacts/:id", async () => {

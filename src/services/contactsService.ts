@@ -93,6 +93,16 @@ export interface UpdateCareerTimelineRequest {
   end_date?: string;
 }
 
+export interface ContactListResponse {
+  contacts: Contact[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
+const CONTACTS_MAX_PAGE = 500; // matches the backend Query(le=500) cap
+
 // ============================================================================
 // Service
 // ============================================================================
@@ -100,17 +110,61 @@ export interface UpdateCareerTimelineRequest {
 class ContactsService {
   // ── Contacts ──────────────────────────────────────────────────────────────
 
-  async listContacts(params?: { status?: string; search?: string }): Promise<Contact[]> {
+  /**
+   * Server-side paginated contacts (the canonical endpoint). limit/offset are
+   * clamped to the backend's accepted range, mirroring the ingestion-logs
+   * pattern.
+   */
+  async listContactsPage(params?: {
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ContactListResponse> {
     const url = new URL(`${API_BASE_URL}/api/contacts/`);
     if (params?.status) url.searchParams.set("status", params.status);
     if (params?.search) url.searchParams.set("search", params.search);
+
+    const limit =
+      typeof params?.limit === "number" && !isNaN(params.limit)
+        ? Math.max(1, Math.min(CONTACTS_MAX_PAGE, params.limit))
+        : 50;
+    const offset =
+      typeof params?.offset === "number" && !isNaN(params.offset)
+        ? Math.max(0, params.offset)
+        : 0;
+    url.searchParams.set("limit", String(limit));
+    url.searchParams.set("offset", String(offset));
 
     const response = await fetch(url.toString(), {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
-    return handleResponse<Contact[]>(response);
+    return handleResponse<ContactListResponse>(response);
+  }
+
+  /**
+   * Back-compat: return ALL matching contacts as a flat array by paging
+   * through the server-side endpoint. Used by callers that aggregate over the
+   * full set (dashboard stats, contact-list picker). Bounded by page size.
+   */
+  async listContacts(params?: { status?: string; search?: string }): Promise<Contact[]> {
+    const all: Contact[] = [];
+    let offset = 0;
+    // Loop is bounded: each page is up to CONTACTS_MAX_PAGE and we stop as
+    // soon as the server reports no more.
+    while (true) {
+      const page = await this.listContactsPage({
+        ...params,
+        limit: CONTACTS_MAX_PAGE,
+        offset,
+      });
+      all.push(...page.contacts);
+      if (!page.has_more || page.contacts.length === 0) break;
+      offset += CONTACTS_MAX_PAGE;
+    }
+    return all;
   }
 
   async getContact(contactId: number): Promise<Contact> {
