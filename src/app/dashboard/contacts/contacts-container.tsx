@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
@@ -19,32 +19,60 @@ import {
   XMarkIcon,
   EnvelopeIcon,
   PhoneIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 // ── Main container ────────────────────────────────────────────────────────────
 
 export function ContactsContainer() {
   const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
+  // Debounce the search box so each keystroke does not hit the server.
   useEffect(() => {
-    loadContacts();
-  }, []);
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const loadContacts = async () => {
+  // Any new filter / page-size resets to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, pageSize]);
+
+  const loadPage = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await contactsService.listContacts();
-      setContacts(data);
+      const res = await contactsService.listContactsPage({
+        search: debouncedSearch || undefined,
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+      });
+      setContacts(res.contacts);
+      setTotal(res.total);
+
+      // If the current page fell past the end (e.g. after deletes), step back.
+      const lastPage = Math.max(1, Math.ceil(res.total / pageSize));
+      if (page > lastPage) setPage(lastPage);
     } catch (error: any) {
       errorToast(error.message || "Failed to load contacts");
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, page, pageSize]);
+
+  useEffect(() => {
+    loadPage();
+  }, [loadPage]);
 
   const handleDeleteContact = async (contact: Contact) => {
     const confirmed = window.confirm(
@@ -53,25 +81,21 @@ export function ContactsContainer() {
     if (!confirmed) return;
     try {
       await contactsService.deleteContact(contact.id);
-      setContacts((prev) => prev.filter((c) => c.id !== contact.id));
       successToast(`"${contact.name}" deleted`);
+      // Counts/offsets shifted server-side — refetch the current page.
+      await loadPage();
     } catch (error: any) {
       errorToast(error.message || "Failed to delete contact");
     }
   };
 
-  const filtered = contacts.filter((c) => {
-    const matchesSearch =
-      !search ||
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.first_name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.middle_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (c.last_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
-  });
+  // ── Server-side pagination math ──────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startRow = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRow = Math.min(currentPage * pageSize, total);
 
-  if (loading) {
+  if (loading && contacts.length === 0 && total === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-gray-400">Loading contacts...</div>
@@ -86,7 +110,7 @@ export function ContactsContainer() {
         <div>
           <h1 className="text-4xl font-semibold text-white">Contacts</h1>
           <p className="text-gray-400 mt-1">
-            {contacts.length} contact{contacts.length !== 1 ? "s" : ""}
+            {total} contact{total !== 1 ? "s" : ""}
           </p>
         </div>
         <button
@@ -106,7 +130,7 @@ export function ContactsContainer() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, email, company…"
+            placeholder="Search name, email…"
             className="w-full pl-9 pr-9 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
           />
           {search && (
@@ -122,13 +146,13 @@ export function ContactsContainer() {
       </div>
 
       {/* Table / Empty state */}
-      {filtered.length === 0 ? (
+      {total === 0 ? (
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
           <UserIcon className="h-16 w-16 text-gray-600 mx-auto mb-4" />
           <p className="text-gray-400 text-lg mb-2">
-            {contacts.length === 0 ? "No contacts yet" : "No contacts match your filters"}
+            {debouncedSearch ? "No contacts match your search" : "No contacts yet"}
           </p>
-          {contacts.length === 0 && (
+          {!debouncedSearch && (
             <>
               <p className="text-gray-500 text-sm mb-6">
                 Add your first contact to start building your CRM.
@@ -145,6 +169,12 @@ export function ContactsContainer() {
         </div>
       ) : (
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl overflow-hidden">
+          <div
+            aria-busy={loading}
+            className={`transition-opacity duration-200 ${
+              loading ? "opacity-50 pointer-events-none" : "opacity-100"
+            }`}
+          >
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700/50">
@@ -160,7 +190,7 @@ export function ContactsContainer() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700/30">
-              {filtered.map((contact) => (
+              {contacts.map((contact) => (
                 <tr
                   key={contact.id}
                   className="hover:bg-gray-700/20 transition-colors cursor-pointer"
@@ -218,6 +248,104 @@ export function ContactsContainer() {
               ))}
             </tbody>
           </table>
+          </div>
+
+          {/* Pagination footer */}
+          <div className="px-6 py-3 border-t border-gray-700/50 flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-xs text-gray-500">
+              {startRow}–{endRow} of {total.toLocaleString()}
+              {loading && " · loading…"}
+            </span>
+            <div className="flex items-center gap-4">
+              {/* Rows per page */}
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <span>Rows</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {PAGE_SIZE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Page navigation */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="First page"
+                >
+                  «
+                </button>
+                <button
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Previous page"
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(
+                    (p) =>
+                      p === 1 ||
+                      p === totalPages ||
+                      Math.abs(p - currentPage) <= 1
+                  )
+                  .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === "…" ? (
+                      <span
+                        key={`ellipsis-${i}`}
+                        className="px-2 py-1 text-xs text-gray-600"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p as number)}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                          currentPage === p
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-400 hover:text-white hover:bg-gray-700"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+
+                <button
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Next page"
+                >
+                  <ChevronRightIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Last page"
+                >
+                  »
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -227,15 +355,17 @@ export function ContactsContainer() {
           onClose={() => setShowCreateModal(false)}
           onSave={async (data) => {
             const created = await contactsService.createContact(data as CreateContactRequest);
-            setContacts((prev) => [created, ...prev]);
             setShowCreateModal(false);
             successToast(`Contact "${created.name}" created`);
+            // Show the newest contact (ordered by updated_at desc -> page 1).
+            if (page === 1) {
+              await loadPage();
+            } else {
+              setPage(1);
+            }
           }}
         />
       )}
-
-
     </div>
   );
 }
-
