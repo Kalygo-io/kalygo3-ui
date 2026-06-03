@@ -40,6 +40,7 @@ import {
   SparklesIcon,
   ArrowPathIcon,
   CurrencyDollarIcon,
+  LinkIcon,
 } from "@heroicons/react/24/outline";
 import { ContactAgentDrawer } from "./contact-agent-drawer";
 
@@ -103,6 +104,10 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
     alt_email_2: c.alt_email_2 ?? "",
     phone: c.phone ?? "",
     source: c.source ?? "",
+    linkedin_url: c.linkedin_url ?? "",
+    instagram_url: c.instagram_url ?? "",
+    youtube_url: c.youtube_url ?? "",
+    x_url: c.x_url ?? "",
   });
 
   useEffect(() => {
@@ -156,6 +161,11 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         alt_email_2: form.alt_email_2.trim(),
         phone: form.phone.trim() || undefined,
         source: form.source || undefined,
+        // Sent as "" when blank so an edit clears the field.
+        linkedin_url: form.linkedin_url.trim(),
+        instagram_url: form.instagram_url.trim(),
+        youtube_url: form.youtube_url.trim(),
+        x_url: form.x_url.trim(),
       };
       const updated = await contactsService.updateContact(contact.id, payload);
       setContact((prev) => (prev ? { ...updated, events: prev.events } : prev));
@@ -327,6 +337,30 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
                 <option key={s} value={s}>{s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <LinkIcon className="h-3.5 w-3.5" /> LinkedIn
+            </label>
+            <input type="url" value={form.linkedin_url} onChange={set("linkedin_url")} className={inputClass} placeholder="https://linkedin.com/in/…" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <LinkIcon className="h-3.5 w-3.5" /> Instagram
+            </label>
+            <input type="url" value={form.instagram_url} onChange={set("instagram_url")} className={inputClass} placeholder="https://instagram.com/…" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <LinkIcon className="h-3.5 w-3.5" /> YouTube
+            </label>
+            <input type="url" value={form.youtube_url} onChange={set("youtube_url")} className={inputClass} placeholder="https://youtube.com/@…" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+              <LinkIcon className="h-3.5 w-3.5" /> X (Twitter)
+            </label>
+            <input type="url" value={form.x_url} onChange={set("x_url")} className={inputClass} placeholder="https://x.com/…" />
           </div>
         </div>
 
@@ -614,9 +648,9 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
                               {new Date(event.occurred_at).toLocaleString()}
                             </span>
                           </div>
-                          <p className="text-white font-medium mt-1">{event.title}</p>
+                          <p className="text-white font-medium mt-1 break-words">{event.title}</p>
                           {event.description && (
-                            <p className="text-gray-400 text-sm mt-1 whitespace-pre-wrap">
+                            <p className="text-gray-400 text-sm mt-1 whitespace-pre-wrap break-words">
                               {event.description}
                             </p>
                           )}

@@ -32,6 +32,10 @@ export interface Contact {
   phone?: string;
   company?: string;
   source?: string;
+  linkedin_url?: string;
+  instagram_url?: string;
+  youtube_url?: string;
+  x_url?: string;
   created_at: string;
   updated_at: string;
   status?: string;
@@ -47,6 +51,10 @@ export interface CreateContactRequest {
   alt_email_2?: string;
   phone?: string;
   source?: string;
+  linkedin_url?: string;
+  instagram_url?: string;
+  youtube_url?: string;
+  x_url?: string;
 }
 
 export interface UpdateContactRequest {
@@ -58,6 +66,10 @@ export interface UpdateContactRequest {
   alt_email_2?: string;
   phone?: string;
   source?: string;
+  linkedin_url?: string;
+  instagram_url?: string;
+  youtube_url?: string;
+  x_url?: string;
 }
 
 export interface CreateContactEventRequest {

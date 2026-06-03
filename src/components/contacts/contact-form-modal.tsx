@@ -40,6 +40,10 @@ export function ContactFormModal({
     alt_email_2: initial?.alt_email_2 ?? "",
     phone: initial?.phone ?? "",
     source: initial?.source ?? "",
+    linkedin_url: initial?.linkedin_url ?? "",
+    instagram_url: initial?.instagram_url ?? "",
+    youtube_url: initial?.youtube_url ?? "",
+    x_url: initial?.x_url ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -68,6 +72,10 @@ export function ContactFormModal({
         alt_email_2: form.alt_email_2.trim(),
         phone: form.phone.trim() || undefined,
         source: form.source || undefined,
+        linkedin_url: form.linkedin_url.trim(),
+        instagram_url: form.instagram_url.trim(),
+        youtube_url: form.youtube_url.trim(),
+        x_url: form.x_url.trim(),
       };
       await onSave(payload);
     } catch (error: any) {
@@ -203,6 +211,54 @@ export function ContactFormModal({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  LinkedIn
+                </label>
+                <input
+                  type="url"
+                  value={form.linkedin_url}
+                  onChange={set("linkedin_url")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="https://linkedin.com/in/…"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Instagram
+                </label>
+                <input
+                  type="url"
+                  value={form.instagram_url}
+                  onChange={set("instagram_url")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="https://instagram.com/…"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  YouTube
+                </label>
+                <input
+                  type="url"
+                  value={form.youtube_url}
+                  onChange={set("youtube_url")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="https://youtube.com/@…"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  X (Twitter)
+                </label>
+                <input
+                  type="url"
+                  value={form.x_url}
+                  onChange={set("x_url")}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  placeholder="https://x.com/…"
+                />
               </div>
             </div>
 
