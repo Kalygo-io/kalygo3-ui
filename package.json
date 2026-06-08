@@ -29,6 +29,7 @@
     "react-markdown": "^9.0.1",
     "react-toastify": "^10.0.5",
     "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
     "swagger-ui-react": "^5.32.5",
     "tailwind-merge": "^2.5.2",
     "usehooks-ts": "^3.1.1",
