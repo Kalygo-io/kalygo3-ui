@@ -1,7 +1,6 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 import { cn } from "@/shared/utils";
 
 interface ChatMarkdownProps {
@@ -16,7 +15,6 @@ export function ChatMarkdown({ content, className }: ChatMarkdownProps) {
     <ReactMarkdown
       className={cn("chat-markdown", className)}
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw]}
       components={{
         // Paragraphs - clean, readable text
         p({ children, ...props }) {
