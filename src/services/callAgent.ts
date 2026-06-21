@@ -2,11 +2,18 @@ import { Action } from "@/app/dashboard/agent-chat/chat-session-reducer";
 import { nanoid } from "@/shared/utils";
 import React from "react";
 
-// PDF attachment options
-export interface PdfAttachment {
+// Chat attachment options. A file attached to a chat turn, already uploaded to
+// the account's GCS bucket (gcsBucket/gcsFilePath set by the ai-api upload
+// endpoint). The content also rides inline to the model based on its type.
+export interface ChatAttachment {
   file: File;
-  useVision?: boolean; // false = text extraction (default), true = vision mode
+  useVision?: boolean; // PDF only: false = text extraction (default), true = vision
+  gcsBucket?: string;
+  gcsFilePath?: string;
 }
+
+/** @deprecated use ChatAttachment */
+export type PdfAttachment = ChatAttachment;
 
 // Helper to convert File to base64
 async function fileToBase64(file: File): Promise<string> {
@@ -20,6 +27,24 @@ async function fileToBase64(file: File): Promise<string> {
     };
     reader.onerror = reject;
   });
+}
+
+// Helper to read a File as UTF-8 text (for txt/csv/md attachments).
+async function fileToText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsText(file);
+    reader.onload = () => resolve((reader.result as string) ?? "");
+    reader.onerror = reject;
+  });
+}
+
+function isImageFile(file: File): boolean {
+  return (file.type || "").startsWith("image/") || /\.(png|jpe?g)$/i.test(file.name);
+}
+
+function isPdfFile(file: File): boolean {
+  return file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 }
 
 /**
@@ -89,13 +114,29 @@ function extractNextJsonObject(
 async function buildRequestBody(
   sessionId: string,
   prompt: string,
-  pdfAttachment?: PdfAttachment,
+  attachment?: ChatAttachment,
 ): Promise<Record<string, any>> {
   const requestBody: Record<string, any> = { sessionId, prompt };
-  if (pdfAttachment) {
-    requestBody.pdf = await fileToBase64(pdfAttachment.file);
-    requestBody.pdfFilename = pdfAttachment.file.name;
-    requestBody.pdfUseVision = pdfAttachment.useVision ?? false;
+  if (attachment) {
+    const file = attachment.file;
+
+    if (isPdfFile(file)) {
+      requestBody.pdf = await fileToBase64(file);
+      requestBody.pdfFilename = file.name;
+      requestBody.pdfUseVision = attachment.useVision ?? false;
+    } else if (isImageFile(file)) {
+      requestBody.image = await fileToBase64(file);
+    } else {
+      // txt / csv / md → inline document text
+      requestBody.documentText = await fileToText(file);
+    }
+
+    // Common attachment metadata + GCS-backed reference (persisted on the
+    // chat message so the original file can be resolved later).
+    requestBody.attachmentFilename = file.name;
+    requestBody.attachmentContentType = file.type || undefined;
+    requestBody.gcsBucket = attachment.gcsBucket;
+    requestBody.gcsFilePath = attachment.gcsFilePath;
   }
   return requestBody;
 }
@@ -210,12 +251,12 @@ export async function callAgent(
   prompt: string,
   dispatch: React.Dispatch<Action>,
   abortController?: AbortController,
-  pdfAttachment?: PdfAttachment,
+  attachment?: ChatAttachment,
 ) {
   console.log(
-    `[callAgent] agentId=${agentId} sessionId=${sessionId}${pdfAttachment ? ` pdf=${pdfAttachment.file.name}` : ""}`,
+    `[callAgent] agentId=${agentId} sessionId=${sessionId}${attachment ? ` file=${attachment.file.name}` : ""}`,
   );
-  const requestBody = await buildRequestBody(sessionId, prompt, pdfAttachment);
+  const requestBody = await buildRequestBody(sessionId, prompt, attachment);
   await streamAgentResponse(
     `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/agents/${encodeURIComponent(agentId)}/stream`,
     requestBody,
@@ -234,10 +275,10 @@ export async function callContactAgent(
   prompt: string,
   dispatch: React.Dispatch<Action>,
   abortController?: AbortController,
-  pdfAttachment?: PdfAttachment,
+  attachment?: ChatAttachment,
 ) {
   console.log(`[callContactAgent] sessionId=${sessionId}`);
-  const requestBody = await buildRequestBody(sessionId, prompt, pdfAttachment);
+  const requestBody = await buildRequestBody(sessionId, prompt, attachment);
   await streamAgentResponse(
     `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/contact-chat/${encodeURIComponent(sessionId)}/stream`,
     requestBody,

@@ -13,6 +13,7 @@ export enum ServiceName {
   AWS_SES = "AWS_SES",
   GOOGLE_OAUTH = "GOOGLE_OAUTH",
   GOOGLE_GMAIL_SMTP = "GOOGLE_GMAIL_SMTP",
+  GOOGLE_CLOUD_STORAGE = "GOOGLE_CLOUD_STORAGE",
 }
 
 // Auth mechanism / format of the stored secret
@@ -24,6 +25,7 @@ export enum AuthType {
   OAUTH_TOKEN = "oauth_token",
   SECRET_KEY = "secret_key",
   CERTIFICATE = "certificate",
+  SERVICE_ACCOUNT = "service_account",
   OTHER = "other",
 }
 
@@ -179,6 +181,7 @@ export function formatServiceName(serviceName: ServiceName | string): string {
     [ServiceName.AWS_SES]: "AWS SES",
     [ServiceName.GOOGLE_OAUTH]: "Google OAuth",
     [ServiceName.GOOGLE_GMAIL_SMTP]: "Google Gmail (SMTP)",
+    [ServiceName.GOOGLE_CLOUD_STORAGE]: "Google Cloud Storage",
   };
   return displayNames[serviceName] || String(serviceName);
 }

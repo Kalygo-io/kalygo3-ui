@@ -9,9 +9,14 @@ import {
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import { nanoid } from "@/shared/utils";
 import { callAgent, callContactAgent } from "@/services/callAgent";
+import type { ChatAttachment } from "@/services/callAgent";
+import { uploadChatFile, GcsCredentialMissingError } from "@/services/uploadChatFile";
+import { errorToast } from "@/shared/toasts/errorToast";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { StopIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
-import { ArrowsPointingOutIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowsPointingOutIcon, XMarkIcon, PaperClipIcon } from "@heroicons/react/24/outline";
+
+const ACCEPTED_FILE_TYPES = ".pdf,.png,.jpg,.jpeg,.txt,.csv,.md";
 
 export function PromptForm({
   input,
@@ -25,7 +30,10 @@ export function PromptForm({
   const { formRef, onKeyDown } = useEnterSubmit();
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const expandedRef = React.useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = React.useState(false);
+  const [attachedFile, setAttachedFile] = React.useState<File | null>(null);
+  const [uploading, setUploading] = React.useState(false);
 
   const dispatch = React.useContext(ChatDispatchContext);
   const chatState = React.useContext(ChatContext);
@@ -60,14 +68,41 @@ export function PromptForm({
       onSubmit={async (e: any) => {
         const humanMessageId = nanoid();
         const prompt = input.trim();
+        const fileToSend = attachedFile;
         try {
           e.preventDefault();
 
+          if ((!prompt && !fileToSend) || isRequestInFlight || uploading) return;
           setInput("");
-          if (!prompt || isRequestInFlight) return;
 
           if (!dispatch) {
             throw new Error("ChatDispatchContext is not available");
+          }
+
+          // Step 1: persist the attachment to the account's GCS bucket first.
+          // A missing-credential 400 aborts the send with a clear prompt.
+          let attachment: ChatAttachment | undefined;
+          if (fileToSend) {
+            setUploading(true);
+            try {
+              const ref = await uploadChatFile(fileToSend, sessionId);
+              attachment = {
+                file: fileToSend,
+                gcsBucket: ref.gcs_bucket,
+                gcsFilePath: ref.gcs_file_path,
+              };
+            } catch (uploadError: any) {
+              setUploading(false);
+              setInput(prompt); // restore the prompt so the user can retry
+              if (uploadError instanceof GcsCredentialMissingError) {
+                errorToast(uploadError.message);
+              } else {
+                errorToast(uploadError?.message || "Failed to upload file");
+              }
+              return;
+            }
+            setUploading(false);
+            setAttachedFile(null);
           }
 
           // Abort any existing request
@@ -83,7 +118,7 @@ export function PromptForm({
             type: "ADD_MESSAGE",
             payload: {
               id: humanMessageId,
-              content: prompt,
+              content: fileToSend ? `${prompt}\n\n📎 ${fileToSend.name}`.trim() : prompt,
               role: "human",
               error: null,
             },
@@ -97,13 +132,13 @@ export function PromptForm({
           // Contact-scoped chat streams via the dedicated endpoint (the agent
           // is server-fixed; no agentId). Otherwise stream the selected agent.
           if (chatState.contactId != null) {
-            await callContactAgent(sessionId, prompt, dispatch, abortController);
+            await callContactAgent(sessionId, prompt, dispatch, abortController, attachment);
           } else {
             const agentId = chatState.agentId;
             if (!agentId) {
               throw new Error("Agent ID is required");
             }
-            await callAgent(agentId, sessionId, prompt, dispatch, abortController);
+            await callAgent(agentId, sessionId, prompt, dispatch, abortController, attachment);
           }
 
           dispatch({
@@ -134,6 +169,36 @@ export function PromptForm({
         }
       }}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={ACCEPTED_FILE_TYPES}
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0] ?? null;
+          setAttachedFile(file);
+          // Reset so selecting the same file again re-triggers onChange.
+          e.target.value = "";
+        }}
+      />
+
+      {attachedFile && (
+        <div className="mb-2 flex items-center gap-2 w-fit max-w-full rounded-md bg-gray-700/70 border border-gray-600 px-2 py-1 text-sm text-gray-200">
+          <PaperClipIcon className="h-4 w-4 flex-shrink-0 text-gray-400" />
+          <span className="truncate max-w-[16rem]">{attachedFile.name}</span>
+          {uploading && <span className="text-xs text-gray-400">uploading…</span>}
+          <button
+            type="button"
+            onClick={() => setAttachedFile(null)}
+            disabled={uploading}
+            className="flex-shrink-0 text-gray-400 hover:text-white disabled:opacity-50"
+            title="Remove attachment"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background">
         <ResizableTextarea
           ref={inputRef}
@@ -155,6 +220,15 @@ export function PromptForm({
         <div className="absolute bottom-2 right-2 flex items-center space-x-1">
           <button
             type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isRequestInFlight || uploading}
+            className="flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="Attach a file"
+          >
+            <PaperClipIcon className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => setExpanded(true)}
             className="flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
             title="Expand editor"
@@ -173,7 +247,7 @@ export function PromptForm({
           ) : (
             <button
               type="submit"
-              disabled={!input.trim() || isRequestInFlight}
+              disabled={(!input.trim() && !attachedFile) || isRequestInFlight || uploading}
               className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white transition-colors"
               title="Send message"
             >

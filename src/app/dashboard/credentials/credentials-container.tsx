@@ -330,9 +330,12 @@ function CreateCredentialForm({
   const [googleFromEmail, setGoogleFromEmail] = useState("");
   const [googleAppPassword, setGoogleAppPassword] = useState("");
   const [showGoogleAppPassword, setShowGoogleAppPassword] = useState(false);
+  const [gcsServiceAccountJson, setGcsServiceAccountJson] = useState("");
+  const [gcsBucketName, setGcsBucketName] = useState("");
 
   const isAwsSes = serviceName === ServiceName.AWS_SES;
   const isGoogleGmailSmtp = serviceName === ServiceName.GOOGLE_GMAIL_SMTP;
+  const isGcs = serviceName === ServiceName.GOOGLE_CLOUD_STORAGE;
   const isAccessKeyPair = authType === AuthType.AWS_ACCESS_KEY_PAIR;
 
   const handleServiceNameChange = (value: ServiceName | "") => {
@@ -341,6 +344,8 @@ function CreateCredentialForm({
       setAuthType(AuthType.AWS_ACCESS_KEY_PAIR);
     } else if (value === ServiceName.GOOGLE_GMAIL_SMTP) {
       setAuthType(AuthType.API_KEY);
+    } else if (value === ServiceName.GOOGLE_CLOUD_STORAGE) {
+      setAuthType(AuthType.SERVICE_ACCOUNT);
     }
   };
 
@@ -377,6 +382,19 @@ function CreateCredentialForm({
         from_email: googleFromEmail.trim(),
         app_password: googleAppPassword.trim(),
       };
+    } else if (isGcs) {
+      if (!gcsServiceAccountJson.trim() || !gcsBucketName.trim()) {
+        errorToast("Please provide both the service-account JSON and a bucket name");
+        return;
+      }
+      let parsedSa: Record<string, unknown>;
+      try {
+        parsedSa = JSON.parse(gcsServiceAccountJson);
+      } catch {
+        errorToast("The service-account JSON is not valid JSON");
+        return;
+      }
+      credentialData = { service_account_json: parsedSa };
     } else if (isAccessKeyPair) {
       if (!keyId.trim() || !secretValue.trim()) {
         errorToast("Please fill in both the Key ID and Secret Key");
@@ -395,6 +413,8 @@ function CreateCredentialForm({
     const metadata: CredentialMetadata = {};
     if (environment) metadata.environment = environment;
     if (notes.trim()) metadata.notes = notes.trim();
+    // Bucket name is non-secret and resolved server-side from metadata.
+    if (isGcs) metadata.bucket_name = gcsBucketName.trim();
 
     try {
       setSubmitting(true);
@@ -414,6 +434,8 @@ function CreateCredentialForm({
       setSesFromEmail("");
       setGoogleFromEmail("");
       setGoogleAppPassword("");
+      setGcsServiceAccountJson("");
+      setGcsBucketName("");
       setEnvironment("");
       setNotes("");
     } catch {
@@ -484,7 +506,7 @@ function CreateCredentialForm({
           </div>
 
           {/* 3. Auth Type — hidden for services that auto-set it */}
-          {!isAwsSes && !isGoogleGmailSmtp && (
+          {!isAwsSes && !isGoogleGmailSmtp && !isGcs && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Credential Type *
@@ -605,8 +627,46 @@ function CreateCredentialForm({
             </div>
           )}
 
-          {/* 4c. Generic single-value input */}
-          {!isAccessKeyPair && !isGoogleGmailSmtp && (
+          {/* 4c. Google Cloud Storage fields */}
+          {isGcs && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Bucket Name *
+                </label>
+                <input
+                  type="text"
+                  value={gcsBucketName}
+                  onChange={(e) => setGcsBucketName(e.target.value)}
+                  placeholder="my-account-bucket"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  required
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  Files (chat attachments and knowledge-base documents) are stored in this bucket.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Service Account JSON *
+                </label>
+                <textarea
+                  value={gcsServiceAccountJson}
+                  onChange={(e) => setGcsServiceAccountJson(e.target.value)}
+                  placeholder='{ "type": "service_account", "project_id": "…", "private_key": "…", … }'
+                  rows={6}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+                  required
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  Paste the JSON key for a service account with read/write access to the bucket. Stored encrypted.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 4d. Generic single-value input */}
+          {!isAccessKeyPair && !isGoogleGmailSmtp && !isGcs && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 {formatCredentialType(authType)} Value *
@@ -716,6 +776,7 @@ function EditCredentialModal({
   const isAccessKeyPair = credential.auth_type === AuthType.AWS_ACCESS_KEY_PAIR;
   const isAwsSes = credential.credential_type === ServiceName.AWS_SES;
   const isGoogleGmailSmtp = credential.credential_type === ServiceName.GOOGLE_GMAIL_SMTP;
+  const isGcs = credential.credential_type === ServiceName.GOOGLE_CLOUD_STORAGE;
 
   const existingKeyId = isAwsSes
     ? (credential.credential_data?.aws_access_key_id as string) || ""
@@ -733,6 +794,14 @@ function EditCredentialModal({
   const [googleFromEmail, setGoogleFromEmail] = useState((credential.credential_data?.from_email as string) || "");
   const [googleAppPassword, setGoogleAppPassword] = useState((credential.credential_data?.app_password as string) || "");
   const [showGoogleAppPassword, setShowGoogleAppPassword] = useState(false);
+  const [gcsServiceAccountJson, setGcsServiceAccountJson] = useState(
+    credential.credential_data?.service_account_json
+      ? JSON.stringify(credential.credential_data.service_account_json, null, 2)
+      : ""
+  );
+  const [gcsBucketName, setGcsBucketName] = useState(
+    (credential.credential_metadata?.bucket_name as string) || ""
+  );
   const [environment, setEnvironment] = useState<"production" | "staging" | "development" | "">(
     credential.credential_metadata?.environment || ""
   );
@@ -764,6 +833,19 @@ function EditCredentialModal({
         from_email: googleFromEmail.trim(),
         app_password: googleAppPassword.trim(),
       };
+    } else if (isGcs) {
+      if (!gcsServiceAccountJson.trim() || !gcsBucketName.trim()) {
+        errorToast("Please provide both the service-account JSON and a bucket name");
+        return;
+      }
+      let parsedSa: Record<string, unknown>;
+      try {
+        parsedSa = JSON.parse(gcsServiceAccountJson);
+      } catch {
+        errorToast("The service-account JSON is not valid JSON");
+        return;
+      }
+      credentialData = { service_account_json: parsedSa };
     } else if (isAccessKeyPair) {
       if (!keyId.trim() || !secretValue.trim()) {
         errorToast("Please fill in both the Key ID and Secret Key");
@@ -782,6 +864,7 @@ function EditCredentialModal({
     const metadata: CredentialMetadata = {};
     if (environment) metadata.environment = environment;
     if (notes.trim()) metadata.notes = notes.trim();
+    if (isGcs) metadata.bucket_name = gcsBucketName.trim();
 
     try {
       setSubmitting(true);
@@ -946,8 +1029,38 @@ function EditCredentialModal({
             </div>
           )}
 
+          {/* Google Cloud Storage */}
+          {isGcs && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Bucket Name</label>
+                <input
+                  type="text"
+                  value={gcsBucketName}
+                  onChange={(e) => setGcsBucketName(e.target.value)}
+                  placeholder="my-account-bucket"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  Files (chat attachments and knowledge-base documents) are stored in this bucket.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Service Account JSON</label>
+                <textarea
+                  value={gcsServiceAccountJson}
+                  onChange={(e) => setGcsServiceAccountJson(e.target.value)}
+                  placeholder='{ "type": "service_account", "project_id": "…", "private_key": "…", … }'
+                  rows={6}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+                />
+                <p className="text-gray-500 text-xs mt-1">Stored encrypted. Paste a new key to replace it.</p>
+              </div>
+            </div>
+          )}
+
           {/* Single-value field */}
-          {!isAccessKeyPair && !isGoogleGmailSmtp && (
+          {!isAccessKeyPair && !isGoogleGmailSmtp && !isGcs && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 {formatCredentialType(credential.auth_type)} Value
