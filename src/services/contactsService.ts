@@ -1,4 +1,5 @@
 import { getAiApiBaseUrl, handleResponse } from "./lib/api";
+import type { Company } from "./companiesService";
 
 const API_BASE_URL = getAiApiBaseUrl();
 
@@ -118,6 +119,23 @@ export interface ContactListResponse {
   limit: number;
   offset: number;
   has_more: boolean;
+}
+
+/** A company a contact is associated with, including the join metadata. */
+export interface ContactCompany {
+  id: number;
+  company_id: number;
+  contact_id: number;
+  account_id: number;
+  /** Optional role/title the contact holds at this company, e.g. "CTO". */
+  title?: string;
+  added_at: string;
+  company: Company;
+}
+
+export interface AddCompanyToContactRequest {
+  company_id: number;
+  title?: string;
 }
 
 const CONTACTS_MAX_PAGE = 500; // matches the backend Query(le=500) cap
@@ -336,6 +354,48 @@ class ContactsService {
   ): Promise<void> {
     const response = await fetch(
       `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/${entryId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+    return handleResponse<void>(response);
+  }
+
+  // ── Companies (reverse association) ──────────────────────────────────────
+
+  async listCompanies(contactId: number): Promise<ContactCompany[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/companies/`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+    return handleResponse<ContactCompany[]>(response);
+  }
+
+  async addCompany(
+    contactId: number,
+    data: AddCompanyToContactRequest
+  ): Promise<ContactCompany> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/companies/`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+    return handleResponse<ContactCompany>(response);
+  }
+
+  async removeCompany(contactId: number, companyId: number): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/contacts/${contactId}/companies/${companyId}`,
       {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },

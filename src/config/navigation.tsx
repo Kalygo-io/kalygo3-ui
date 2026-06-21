@@ -27,6 +27,11 @@ export const navigation: NavigationItem[] = [
     enabled: true,
   },
   {
+    name: "Companies",
+    href: "/dashboard/companies",
+    enabled: true,
+  },
+  {
     name: "Deals",
     href: "/dashboard/deals",
     enabled: true,
