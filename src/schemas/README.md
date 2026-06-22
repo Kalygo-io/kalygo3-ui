@@ -100,60 +100,7 @@ const message: ChatMessageV2 = {
 };
 ```
 
-### Rendering Tool Calls in Components
-
-```typescript
-import { VectorSearchResults } from "@/components/agent-chat/vector-search-results";
-import { MetadataCard, QACard, DocumentCard } from "@/components/agent-chat/metadata-cards";
-
-// Render entire tool call
-if (toolCall.toolType === "vectorSearch") {
-  return <VectorSearchResults toolCall={toolCall} />;
-}
-
-// Render individual result cards
-if ('q' in result.metadata && 'a' in result.metadata) {
-  return <QACard {...result.metadata} />;
-} else {
-  return <DocumentCard {...result.metadata} />;
-}
-
-// Auto-detect and render appropriate card
-return <MetadataCard metadata={result.metadata} score={result.score} />;
-```
-
 ## Components
-
-### `VectorSearchResults`
-
-Displays a complete tool call with all results in an expandable format.
-
-**Props:**
-- `toolCall: VectorSearchToolCall | VectorSearchWithRerankingToolCall`
-
-### `MetadataCard`
-
-Auto-detects metadata type and renders the appropriate card.
-
-**Props:**
-- `metadata: TextDocumentMetadata | QaMetadata`
-- `score?: number`
-
-### `QACard`
-
-Displays Q&A pair metadata with question and answer.
-
-**Props:**
-- All fields from `QaMetadata`
-- `score?: number` (optional)
-
-### `DocumentCard`
-
-Displays document chunk metadata with chunking information.
-
-**Props:**
-- All fields from `TextDocumentMetadata`
-- `score?: number` (optional)
 
 ### `ToolCallsDrawer`
 
@@ -164,22 +111,6 @@ Comprehensive drawer for viewing all tool calls and their details.
 - `onClose: () => void`
 - `toolCalls?: ToolCall[] | (VectorSearchToolCall | VectorSearchWithRerankingToolCall)[]`
 - `retrievalCalls?: RetrievalCall[]` (legacy support)
-
-## Type Guards
-
-Use these type guards to distinguish between metadata types:
-
-```typescript
-import { isTextDocumentMetadata, isQaMetadata } from "@/components/agent-chat/metadata-cards";
-
-if (isQaMetadata(metadata)) {
-  // metadata is QaMetadata
-  console.log(metadata.q, metadata.a);
-} else if (isTextDocumentMetadata(metadata)) {
-  // metadata is TextDocumentMetadata
-  console.log(metadata.chunkNumber, metadata.totalChunks);
-}
-```
 
 ## Schema Validation
 

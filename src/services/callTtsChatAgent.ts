@@ -21,13 +21,6 @@ export async function callTtsChatAgent(
   callbacks?: TtsChatCallbacks,
   voiceId?: string
 ): Promise<void> {
-  console.log(
-    "Starting TTS Chat call with agentId:",
-    agentId,
-    "sessionId:",
-    sessionId
-  );
-
   const aiMessageId = nanoid();
   let accContent = "";
   let accumulatedToolCalls: any[] = [];
@@ -80,7 +73,6 @@ export async function callTtsChatAgent(
       const { done, value } = await reader.read();
 
       if (done) {
-        console.log("TTS Chat stream complete");
         break;
       }
 
@@ -107,8 +99,6 @@ export async function callTtsChatAgent(
                   },
                 });
               } else if (event.event === "on_tool_start") {
-                console.log("[TTS Chat] Tool start - raw event:", JSON.stringify(event));
-                
                 // Extract tool information - check ALL possible locations
                 const toolName =
                   event.name ||
@@ -138,8 +128,6 @@ export async function callTtsChatAgent(
                   event.data?.tool_type ||
                   "unknown";
 
-                console.log("[TTS Chat] Tool start - extracted:", { toolName, toolType, toolInput });
-
                 currentToolCall = {
                   toolType,
                   toolName,
@@ -150,8 +138,6 @@ export async function callTtsChatAgent(
 
                 dispatch({ type: "SET_CURRENT_TOOL", payload: toolName });
               } else if (event.event === "on_tool_end") {
-                console.log("[TTS Chat] Tool end - raw event:", JSON.stringify(event));
-                
                 // Extract tool output - check ALL possible locations
                 // The agent API may return results in various structures
                 let toolOutput: any = null;
@@ -186,17 +172,13 @@ export async function callTtsChatAgent(
                   toolOutput = {};
                 }
 
-                console.log("[TTS Chat] Tool end - extracted output:", toolOutput);
-
                 if (currentToolCall) {
                   const completedToolCall = {
                     ...currentToolCall,
                     output: typeof toolOutput === "object" ? toolOutput : { result: toolOutput },
                     endTime: Date.now(),
                   };
-                  
-                  console.log("[TTS Chat] Completed tool call:", completedToolCall);
-                  
+
                   accumulatedToolCalls = [...accumulatedToolCalls, completedToolCall];
                   dispatch({
                     type: "EDIT_MESSAGE",
@@ -209,8 +191,6 @@ export async function callTtsChatAgent(
                 }
                 dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
               } else if (event.event === "on_chain_end") {
-                console.log("[TTS Chat] Chain end - raw event:", event);
-                
                 // Final content
                 if (event.data && typeof event.data === "string") {
                   dispatch({
@@ -229,11 +209,8 @@ export async function callTtsChatAgent(
                   event.data?.toolCalls ||
                   event.data?.tool_calls ||
                   null;
-                
-                console.log("[TTS Chat] Chain end - toolCalls found:", toolCallsFromChainEnd ? toolCallsFromChainEnd.length : 0);
-                
+
                 if (toolCallsFromChainEnd && Array.isArray(toolCallsFromChainEnd) && toolCallsFromChainEnd.length > 0) {
-                  console.log("[TTS Chat] Chain end - using toolCalls from chain_end event:", toolCallsFromChainEnd);
                   dispatch({
                     type: "EDIT_MESSAGE",
                     payload: {
@@ -243,7 +220,6 @@ export async function callTtsChatAgent(
                   });
                 } else if (accumulatedToolCalls.length > 0) {
                   // Fall back to accumulated tool calls from on_tool_start/on_tool_end
-                  console.log("[TTS Chat] Chain end - using accumulated tool calls:", accumulatedToolCalls);
                   dispatch({
                     type: "EDIT_MESSAGE",
                     payload: {
@@ -256,7 +232,6 @@ export async function callTtsChatAgent(
                 // Check for legacy retrieval_calls
                 const retrievalCalls = event.retrieval_calls || event.data?.retrieval_calls;
                 if (retrievalCalls && Array.isArray(retrievalCalls) && retrievalCalls.length > 0) {
-                  console.log("[TTS Chat] Chain end - retrieval_calls found:", retrievalCalls);
                   dispatch({
                     type: "EDIT_MESSAGE",
                     payload: {
@@ -282,18 +257,13 @@ export async function callTtsChatAgent(
               // Handle audio chunks
               if (!audioStarted) {
                 audioStarted = true;
-                console.log("[TTS Client] First audio chunk received, calling onAudioStart");
                 callbacks?.onAudioStart?.();
                 dispatch({ type: "SET_TTS_LOADING", payload: true });
               }
-              const dataLen = typeof event.data === "string" ? event.data.length : 0;
-              console.log(`[TTS Client] Audio chunk received (${dataLen} base64 chars), calling onAudioChunk`);
               callbacks?.onAudioChunk?.(event.data);
             } else if (event.type === "text_done") {
-              console.log("[TTS Client] text_done received");
               dispatch({ type: "SET_COMPLETION_LOADING", payload: false });
             } else if (event.type === "audio_done") {
-              console.log("[TTS Client] audio_done received, calling onAudioEnd");
               callbacks?.onAudioEnd?.();
               dispatch({ type: "SET_TTS_LOADING", payload: false });
             } else if (event.type === "error") {
@@ -321,7 +291,6 @@ export async function callTtsChatAgent(
     dispatch({ type: "SET_TTS_LOADING", payload: false });
 
     if (error instanceof Error && error.name === "AbortError") {
-      console.log("TTS Chat request aborted");
       return;
     }
 

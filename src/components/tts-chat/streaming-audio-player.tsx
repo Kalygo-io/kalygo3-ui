@@ -76,7 +76,6 @@ export function StreamingAudioPlayer({
       isAppendingRef.current = true;
       try {
         sourceBuffer.appendBuffer(chunk);
-        console.log(`[Audio] Appended chunk: ${chunk.length} bytes. Queue remaining: ${queueRef.current.length}`);
       } catch (e) {
         console.error("[Audio] Error appending buffer:", e);
         isAppendingRef.current = false;
@@ -107,16 +106,13 @@ export function StreamingAudioPlayer({
         playCheckIntervalRef.current = null;
       }
 
-      console.log(`[Audio] Buffer ready (force=${force}): start=${start.toFixed(3)}s, end=${end.toFixed(3)}s, duration=${duration.toFixed(2)}s`);
       
       // Seek to the start of the buffered range
       audio.currentTime = start;
       
       // Wait a moment then play
       setTimeout(() => {
-        console.log(`[Audio] Playing from currentTime=${audio.currentTime}`);
         audio.play().then(() => {
-          console.log(`[Audio] Playback started at currentTime=${audio.currentTime}`);
           onPlayingChange(true);
           setHasStartedPlaying(true);
         }).catch((e) => {
@@ -128,7 +124,6 @@ export function StreamingAudioPlayer({
 
   // Internal reset - clears all state synchronously
   const internalReset = useCallback(() => {
-    console.log("[Audio] Internal reset");
 
     if (playCheckIntervalRef.current) {
       clearInterval(playCheckIntervalRef.current);
@@ -159,7 +154,6 @@ export function StreamingAudioPlayer({
     ) {
       try {
         mediaSourceRef.current.removeSourceBuffer(sourceBufferRef.current);
-        console.log("[Audio] Removed SourceBuffer from MediaSource");
       } catch (e) {
         // May fail if already removed or in bad state
       }
@@ -203,7 +197,6 @@ export function StreamingAudioPlayer({
     const audio = audioRef.current;
     if (!audio || mediaSourceRef.current) return;
 
-    console.log("[Audio] Initializing MediaSource");
 
     const currentStreamId = streamIdRef.current;
     const mediaSource = new MediaSource();
@@ -214,11 +207,9 @@ export function StreamingAudioPlayer({
     mediaSource.addEventListener("sourceopen", () => {
       // Guard against stale callbacks from old streams
       if (streamIdRef.current !== currentStreamId) {
-        console.log("[Audio] Ignoring sourceopen from old stream");
         return;
       }
 
-      console.log("[Audio] MediaSource opened");
 
       const mimeType = 'audio/mpeg';
       if (!MediaSource.isTypeSupported(mimeType)) {
@@ -250,7 +241,6 @@ export function StreamingAudioPlayer({
           });
 
           isBufferReadyRef.current = true;
-          console.log(`[Audio] SourceBuffer ready (attempt ${attempt + 1}). Queued chunks waiting: ${queueRef.current.length}`);
 
           if (!playCheckIntervalRef.current) {
             playCheckIntervalRef.current = setInterval(checkAndTriggerPlay, 100);
@@ -293,7 +283,6 @@ export function StreamingAudioPlayer({
       setChunkCount(c => c + 1);
       setTotalBytes(totalBytesRef.current);
 
-      console.log(`[Audio] Chunk received: ${bytes.length} bytes. Total queued: ${queueRef.current.length}`);
 
       // Initialize MediaSource on first chunk
       if (!mediaSourceRef.current) {
@@ -311,7 +300,6 @@ export function StreamingAudioPlayer({
 
   // Public reset - called when a new stream starts
   const reset = useCallback(() => {
-    console.log("[Audio] Reset requested");
     internalReset();
   }, [internalReset]);
 
@@ -321,7 +309,6 @@ export function StreamingAudioPlayer({
   // This effect retries initialization after the component renders.
   useEffect(() => {
     if (chunkCount > 0 && !mediaSourceRef.current && audioRef.current) {
-      console.log("[Audio] Deferred MediaSource init (audio element now available, queued chunks:", queueRef.current.length, ")");
       initMediaSource();
     }
   }, [chunkCount, initMediaSource]);
@@ -339,7 +326,6 @@ export function StreamingAudioPlayer({
         if (queueRef.current.length === 0 && !sourceBuffer.updating && !isAppendingRef.current && mediaSource.readyState === "open") {
           // Force play if we have audio but never hit the buffer threshold
           if (!hasTriggeredPlayRef.current) {
-            console.log("[Audio] Stream ended before buffer threshold — force playing");
             checkAndTriggerPlay(true);
           }
 
@@ -349,7 +335,6 @@ export function StreamingAudioPlayer({
           // next stream starts, and initMediaSource() has retry logic
           // as a safety net for browser GC lag.
           try {
-            console.log("[Audio] Ending MediaSource stream");
             mediaSource.endOfStream();
           } catch (e) {
             console.warn("[Audio] Error ending stream:", e);

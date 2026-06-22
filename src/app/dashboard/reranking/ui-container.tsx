@@ -109,35 +109,6 @@ export function RerankingDemoContainer() {
       const firstStageResults = responseData.initial_similarity_results || [];
       const rerankedResults = responseData.reranked_results || [];
 
-      console.log("API Response:", {
-        firstStageCount: firstStageResults.length,
-        rerankedCount: rerankedResults.length,
-        appliedTopKForSimilarity,
-        appliedTopKForRerank,
-        firstStageResults: firstStageResults.slice(0, 3), // Log first 3 for debugging
-        rerankedResults: rerankedResults.slice(0, 3), // Log first 3 for debugging
-      });
-
-      // Check if reranking actually reordered the results
-      const firstStageChunkIds = firstStageResults.map(
-        (r: RerankingResult) => r.metadata.chunkId
-      );
-      const rerankedChunkIds = rerankedResults.map(
-        (r: RerankingResult) => r.metadata.chunkId
-      );
-      const isReordered =
-        JSON.stringify(firstStageChunkIds.slice(0, 5)) !==
-        JSON.stringify(rerankedChunkIds.slice(0, 5));
-
-      console.log("Reranking Analysis:", {
-        firstStageChunkIds: firstStageChunkIds.slice(0, 5),
-        rerankedChunkIds: rerankedChunkIds.slice(0, 5),
-        isReordered,
-        sameOrder: !isReordered
-          ? "⚠️ Reranking returned same order - this may indicate a backend issue"
-          : "✅ Reranking returned different order",
-      });
-
       return {
         firstStage: firstStageResults,
         reranked: rerankedResults,
@@ -167,7 +138,6 @@ export function RerankingDemoContainer() {
     setSubmittedQuery("");
     // Or clear all queries
     // queryClient.clear();
-    console.log("Cache cleared for reranking queries");
   };
 
   const toggleDrawer = () => {

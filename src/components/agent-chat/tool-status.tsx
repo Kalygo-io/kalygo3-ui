@@ -7,8 +7,6 @@ interface P extends React.ComponentProps<"div"> {
 }
 
 export function ToolStatus(P: P) {
-  console.log("P", P);
-
   return (
     <div
       className={cn(
