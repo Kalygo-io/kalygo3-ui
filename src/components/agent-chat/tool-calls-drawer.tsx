@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import { WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { RetrievalCall } from "@/ts/types/Message";
+import { getOriginalDocumentUrl } from "@/services/uploadChatFile";
+import { errorToast } from "@/shared/toasts/errorToast";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -270,6 +272,7 @@ function VectorResultsList({ results }: { results: any[] }) {
 
 function VectorResult({ result, number }: { result: any; number: number }) {
   const [open, setOpen] = useState(false);
+  const [loadingDoc, setLoadingDoc] = useState(false);
   const meta = result.metadata ?? {};
   const score =
     typeof result.score === "number"
@@ -277,6 +280,25 @@ function VectorResult({ result, number }: { result: any; number: number }) {
       : null;
   const isQA = "q" in meta && "a" in meta;
   const content: string = meta.content || result.content || "";
+
+  // The original source document this result points back to (set during
+  // ingestion). storage_path is bucket-relative; the bucket is resolved
+  // server-side from the account's credential. Falls back to the pre-rename
+  // gcs_file_path key for vectors ingested before the metadata rename.
+  const storagePath: string | undefined = meta.storage_path || meta.gcs_file_path;
+
+  const handleViewOriginal = async () => {
+    if (!storagePath || loadingDoc) return;
+    setLoadingDoc(true);
+    try {
+      const url = await getOriginalDocumentUrl(storagePath);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      errorToast(e?.message || "Could not open the original document");
+    } finally {
+      setLoadingDoc(false);
+    }
+  };
 
   return (
     <div className="bg-gray-900/50 border border-gray-700/50 rounded p-2.5 space-y-1.5">
@@ -314,14 +336,26 @@ function VectorResult({ result, number }: { result: any; number: number }) {
         </p>
       ) : null}
 
-      {(isQA || content) && (
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-        >
-          {open ? "▲ Collapse" : "▶ Expand"}
-        </button>
-      )}
+      <div className="flex items-center gap-3">
+        {(isQA || content) && (
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            {open ? "▲ Collapse" : "▶ Expand"}
+          </button>
+        )}
+        {storagePath && (
+          <button
+            onClick={handleViewOriginal}
+            disabled={loadingDoc}
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Open the original source document"
+          >
+            {loadingDoc ? "Opening…" : "↗ View original"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

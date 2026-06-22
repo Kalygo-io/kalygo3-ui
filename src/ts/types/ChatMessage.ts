@@ -120,6 +120,18 @@ export interface TextDocumentMetadata {
    */
   totalChunks: number;
   /**
+   * Object storage provider holding the original source document (e.g., 'gcs')
+   */
+  storage_provider?: string;
+  /**
+   * Storage bucket containing the original source document
+   */
+  storage_bucket?: string;
+  /**
+   * Path / object key of the original source document within the bucket
+   */
+  storage_path?: string;
+  /**
    * Custom YAML front matter fields from the source file (e.g., file_video_title, file_video_url)
    *
    * This interface was referenced by `TextDocumentMetadata`'s JSON-Schema definition
@@ -171,6 +183,18 @@ export interface QaMetadata {
    * Last edit timestamp from CSV (optional)
    */
   last_edited_at?: string;
+  /**
+   * Object storage provider holding the original source document (e.g., 'gcs')
+   */
+  storage_provider?: string;
+  /**
+   * Storage bucket containing the original source document
+   */
+  storage_bucket?: string;
+  /**
+   * Path / object key of the original source document within the bucket
+   */
+  storage_path?: string;
 }
 /**
  * Tool call for vector search with re-ranking
