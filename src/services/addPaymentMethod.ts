@@ -1,3 +1,5 @@
+import { apiPost, getAuthApiBaseUrl } from "./lib/api";
+
 export interface AddPaymentMethodRequest {
   payment_method_id: string;
 }
@@ -16,28 +18,11 @@ export interface AddPaymentMethodResponse {
 export async function addPaymentMethod(
   paymentMethodId: string
 ): Promise<AddPaymentMethodResponse> {
-  const resp = await fetch(
-    `${process.env.NEXT_PUBLIC_AUTH_API_URL}/api/payments/payment-methods`,
+  return apiPost<AddPaymentMethodResponse>(
+    "/api/payments/payment-methods",
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        payment_method_id: paymentMethodId,
-      }),
-    }
+      payment_method_id: paymentMethodId,
+    },
+    { baseUrl: getAuthApiBaseUrl() }
   );
-
-  if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({ error: "Unknown error" }));
-    const errorMessage = errorData.detail || errorData.error || `HTTP ${resp.status}`;
-    console.error("Failed to add payment method:", resp.status, errorMessage);
-    throw new Error(`Failed to add payment method: ${errorMessage}`);
-  }
-
-  const data = await resp.json();
-  return data;
 }
-

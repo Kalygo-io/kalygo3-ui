@@ -1,6 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
-
-const API_BASE_URL = getAiApiBaseUrl();
+import { apiGet, apiPost, apiPut, apiDelete } from "./lib/api";
 
 // Enum identifying which service/provider a credential belongs to
 export enum ServiceName {
@@ -93,76 +91,32 @@ export interface UpdateCredentialRequest {
 
 class CredentialService {
   async listCredentials(): Promise<Credential[]> {
-    const response = await fetch(`${API_BASE_URL}/api/credentials/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<Credential[]>(response);
+    return apiGet<Credential[]>(`/api/credentials/`);
   }
 
   async getCredential(credentialId: number): Promise<CredentialDetail> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/credentials/${credentialId}/full`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
-    );
-    return handleResponse<CredentialDetail>(response);
+    return apiGet<CredentialDetail>(`/api/credentials/${credentialId}/full`);
   }
 
   async getCredentialByService(
     serviceName: ServiceName | string,
   ): Promise<CredentialDetail> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/credentials/service/${serviceName}`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
-    );
-    return handleResponse<CredentialDetail>(response);
+    return apiGet<CredentialDetail>(`/api/credentials/service/${serviceName}`);
   }
 
   async createCredential(data: CreateCredentialRequest): Promise<Credential> {
-    const response = await fetch(`${API_BASE_URL}/api/credentials/flexible`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Credential>(response);
+    return apiPost<Credential>(`/api/credentials/flexible`, data);
   }
 
   async updateCredential(
     credentialId: number,
     data: UpdateCredentialRequest,
   ): Promise<Credential> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/credentials/${credentialId}/full`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      },
-    );
-    return handleResponse<Credential>(response);
+    return apiPut<Credential>(`/api/credentials/${credentialId}/full`, data);
   }
 
   async deleteCredential(credentialId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/credentials/${credentialId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
-    );
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/credentials/${credentialId}`);
   }
 }
 

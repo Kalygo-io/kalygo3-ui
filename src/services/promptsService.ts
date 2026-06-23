@@ -1,6 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
-
-const API_BASE_URL = getAiApiBaseUrl();
+import { apiGet, apiPost, apiPut, apiDelete } from "./lib/api";
 
 // ============================================================================
 // Types
@@ -34,59 +32,23 @@ export interface UpdatePromptRequest {
 
 class PromptsService {
   async listPrompts(): Promise<Prompt[]> {
-    const response = await fetch(`${API_BASE_URL}/api/prompts/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<Prompt[]>(response);
+    return apiGet<Prompt[]>(`/api/prompts/`);
   }
 
   async getPrompt(promptId: number): Promise<Prompt> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/prompts/${encodeURIComponent(promptId)}`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
-    );
-    return handleResponse<Prompt>(response);
+    return apiGet<Prompt>(`/api/prompts/${encodeURIComponent(promptId)}`);
   }
 
   async createPrompt(data: CreatePromptRequest): Promise<Prompt> {
-    const response = await fetch(`${API_BASE_URL}/api/prompts/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Prompt>(response);
+    return apiPost<Prompt>(`/api/prompts/`, data);
   }
 
   async updatePrompt(promptId: number, data: UpdatePromptRequest): Promise<Prompt> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/prompts/${encodeURIComponent(promptId)}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }
-    );
-    return handleResponse<Prompt>(response);
+    return apiPut<Prompt>(`/api/prompts/${encodeURIComponent(promptId)}`, data);
   }
 
   async deletePrompt(promptId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/prompts/${encodeURIComponent(promptId)}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
-    );
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/prompts/${encodeURIComponent(promptId)}`);
   }
 }
 

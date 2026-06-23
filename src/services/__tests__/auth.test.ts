@@ -31,9 +31,7 @@ describe("validateToken", () => {
   it("throws when the API returns a non-ok response", async () => {
     fetchSpy.mockResolvedValue({ ok: false, status: 401, text: () => Promise.resolve("Unauthorized") });
 
-    await expect(validateToken("bad-token")).rejects.toThrow(
-      "Failed to validate token",
-    );
+    await expect(validateToken("bad-token")).rejects.toThrow("Unauthorized");
   });
 
   it("does not throw on a 200 response", async () => {
@@ -65,7 +63,8 @@ describe("requestLoginCode", () => {
   it("throws with the API detail message on failure", async () => {
     fetchSpy.mockResolvedValue({
       ok: false,
-      json: () => Promise.resolve({ detail: "Rate limited" }),
+      status: 429,
+      text: () => Promise.resolve(JSON.stringify({ detail: "Rate limited" })),
     });
 
     await expect(requestLoginCode("user@example.com")).rejects.toThrow(
@@ -73,14 +72,15 @@ describe("requestLoginCode", () => {
     );
   });
 
-  it("falls back to a generic message when body has no detail", async () => {
+  it("falls back to a generic message when body is empty", async () => {
     fetchSpy.mockResolvedValue({
       ok: false,
-      json: () => Promise.reject(new Error("parse error")),
+      status: 500,
+      text: () => Promise.resolve(""),
     });
 
     await expect(requestLoginCode("user@example.com")).rejects.toThrow(
-      "Failed to send code",
+      "Request failed: 500",
     );
   });
 });

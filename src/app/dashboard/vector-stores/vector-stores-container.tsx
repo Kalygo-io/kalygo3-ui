@@ -10,6 +10,7 @@ import {
   CreateNamespaceRequest,
 } from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
+import { PageLoading } from "@/components/shared/common/page-loading";
 import { successToast } from "@/shared/toasts/successToast";
 import {
   PlusIcon,
@@ -111,9 +112,7 @@ export function VectorStoresContainer() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading indexes...</div>
-      </div>
+      <PageLoading label="Loading indexes..." />
     );
   }
 

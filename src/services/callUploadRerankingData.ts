@@ -1,3 +1,5 @@
+import { apiPost } from "./lib/api";
+
 export interface UploadResponse {
   filename: string;
   total_chunks_created: number;
@@ -16,21 +18,10 @@ export async function callUploadRerankingData(
     const formData = new FormData();
     formData.append("file", file);
 
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/reranking/upload-single`,
-      {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      }
+    return await apiPost<UploadResponse>(
+      "/api/reranking/upload-single",
+      formData
     );
-
-    if (!resp.ok) {
-      throw new Error(`HTTP error! status: ${resp.status}`);
-    }
-
-    const data = await resp.json();
-    return data;
   } catch (error) {
     console.error("Error uploading file:", error);
     throw error;

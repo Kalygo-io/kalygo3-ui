@@ -1,4 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
+import { apiGet, apiPost, apiPatch, apiDelete } from "./lib/api";
 
 // ============================================================================
 // Types
@@ -43,48 +43,26 @@ export interface UpdateEmailTemplatePayload {
 // ============================================================================
 
 class EmailTemplatesService {
-  private get base(): string {
-    return `${getAiApiBaseUrl()}/api/email-templates`;
-  }
-
   async list(search?: string): Promise<EmailTemplate[]> {
-    const url = new URL(`${this.base}/`);
-    if (search) url.searchParams.set("search", search);
-    const res = await fetch(url.toString(), { credentials: "include" });
-    return handleResponse<EmailTemplate[]>(res);
+    return apiGet<EmailTemplate[]>(`/api/email-templates/`, {
+      query: { search: search || undefined },
+    });
   }
 
   async get(id: number): Promise<EmailTemplate> {
-    const res = await fetch(`${this.base}/${id}`, { credentials: "include" });
-    return handleResponse<EmailTemplate>(res);
+    return apiGet<EmailTemplate>(`/api/email-templates/${id}`);
   }
 
   async create(payload: CreateEmailTemplatePayload): Promise<EmailTemplate> {
-    const res = await fetch(`${this.base}/`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return handleResponse<EmailTemplate>(res);
+    return apiPost<EmailTemplate>(`/api/email-templates/`, payload);
   }
 
   async update(id: number, payload: UpdateEmailTemplatePayload): Promise<EmailTemplate> {
-    const res = await fetch(`${this.base}/${id}`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return handleResponse<EmailTemplate>(res);
+    return apiPatch<EmailTemplate>(`/api/email-templates/${id}`, payload);
   }
 
   async delete(id: number): Promise<void> {
-    const res = await fetch(`${this.base}/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    return handleResponse<void>(res);
+    return apiDelete<void>(`/api/email-templates/${id}`);
   }
 }
 

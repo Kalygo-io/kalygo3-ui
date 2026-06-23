@@ -9,6 +9,9 @@ import {
 } from "@/services/accessGroupsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   ArrowLeftIcon,
   TrashIcon,
@@ -22,6 +25,7 @@ import {
 
 export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [group, setGroup] = useState<AccessGroup | null>(null);
   const [members, setMembers] = useState<AccessGroupMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,18 +95,17 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
   const handleDelete = async () => {
     if (!numericGroupId || !group) return;
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${group.name}"? This will remove all members and revoke all agent grants for this group.`,
-    );
-    if (!confirmed) return;
-
+    setDeleting(true);
     try {
-      setDeleting(true);
-      await accessGroupsService.deleteGroup(numericGroupId);
-      successToast(`Group "${group.name}" deleted successfully`);
-      router.push("/dashboard/groups");
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete group");
+      await confirmDelete(
+        `Are you sure you want to delete "${group.name}"? This will remove all members and revoke all agent grants for this group.`,
+        () => accessGroupsService.deleteGroup(numericGroupId),
+        {
+          successMessage: `Group "${group.name}" deleted successfully`,
+          errorMessage: "Failed to delete group",
+          onSuccess: () => router.push("/dashboard/groups"),
+        },
+      );
     } finally {
       setDeleting(false);
     }
@@ -131,37 +134,24 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
   const handleRemoveMember = async (member: AccessGroupMember) => {
     if (!numericGroupId) return;
 
-    const confirmed = window.confirm(
+    await confirmDelete(
       `Remove ${member.email || `account #${member.account_id}`} from this group?`,
+      () => accessGroupsService.removeMember(numericGroupId, member.account_id),
+      {
+        successMessage: "Member removed",
+        errorMessage: "Failed to remove member",
+        onSuccess: () =>
+          setMembers((prev) => prev.filter((m) => m.id !== member.id)),
+      },
     );
-    if (!confirmed) return;
-
-    try {
-      await accessGroupsService.removeMember(
-        numericGroupId,
-        member.account_id,
-      );
-      setMembers((prev) => prev.filter((m) => m.id !== member.id));
-      successToast("Member removed");
-    } catch (error: any) {
-      errorToast(error.message || "Failed to remove member");
-    }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading group details...</div>
-      </div>
-    );
+    return <PageLoading label="Loading group details..." />;
   }
 
   if (!group) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Group not found</div>
-      </div>
-    );
+    return <PageLoading label="Group not found" />;
   }
 
   return (
@@ -337,21 +327,22 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
 
         {/* Members List */}
         {members.length === 0 ? (
-          <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-8 text-center">
-            <UserGroupIcon className="h-10 w-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm mb-4">
-              No members yet. Add members to share agents with them.
-            </p>
-            {!showAddMember && (
-              <button
-                onClick={() => setShowAddMember(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Add Your First Member
-              </button>
-            )}
-          </div>
+          <EmptyState
+            size="sm"
+            icon={UserGroupIcon}
+            title="No members yet. Add members to share agents with them."
+            action={
+              !showAddMember && (
+                <button
+                  onClick={() => setShowAddMember(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add Your First Member
+                </button>
+              )
+            }
+          />
         ) : (
           <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">

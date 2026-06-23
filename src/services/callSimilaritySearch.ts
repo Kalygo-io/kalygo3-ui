@@ -1,3 +1,5 @@
+import { apiPost } from "./lib/api";
+
 export interface SimilaritySearchResultMetadata {
   prompt_id: number;
   account_id: number;
@@ -30,25 +32,9 @@ export async function callSimilaritySearch(
 ): Promise<SimilaritySearchResponse> {
   const { query, top_k = 5, similarity_threshold = 0, namespace } = params;
 
-  const url = new URL(
-    `${process.env.NEXT_PUBLIC_AI_API_URL}/api/similarity-search/search`
+  return apiPost<SimilaritySearchResponse>(
+    `/api/similarity-search/search`,
+    { query, top_k, similarity_threshold },
+    { query: { namespace } },
   );
-  if (namespace) {
-    url.searchParams.set("namespace", namespace);
-  }
-
-  const resp = await fetch(url.toString(), {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query, top_k, similarity_threshold }),
-  });
-
-  if (!resp.ok) {
-    throw new Error(`HTTP error status: ${resp.status}`);
-  }
-
-  return resp.json();
 }

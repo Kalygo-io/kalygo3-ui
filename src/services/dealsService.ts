@@ -1,6 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
-
-const API_BASE_URL = getAiApiBaseUrl();
+import { apiGet, apiPost, apiPut, apiDelete } from "./lib/api";
 
 // ============================================================================
 // Types
@@ -83,12 +81,6 @@ class DealsService {
     limit?: number;
     offset?: number;
   }): Promise<DealListResponse> {
-    const url = new URL(`${API_BASE_URL}/api/deals/`);
-    if (typeof params?.contactId === "number")
-      url.searchParams.set("contact_id", String(params.contactId));
-    if (params?.stage) url.searchParams.set("stage", params.stage);
-    if (params?.search) url.searchParams.set("search", params.search);
-
     const limit =
       typeof params?.limit === "number" && !isNaN(params.limit)
         ? Math.max(1, Math.min(DEALS_MAX_PAGE, params.limit))
@@ -97,15 +89,17 @@ class DealsService {
       typeof params?.offset === "number" && !isNaN(params.offset)
         ? Math.max(0, params.offset)
         : 0;
-    url.searchParams.set("limit", String(limit));
-    url.searchParams.set("offset", String(offset));
 
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+    return apiGet<DealListResponse>(`/api/deals/`, {
+      query: {
+        contact_id:
+          typeof params?.contactId === "number" ? params.contactId : undefined,
+        stage: params?.stage || undefined,
+        search: params?.search || undefined,
+        limit,
+        offset,
+      },
     });
-    return handleResponse<DealListResponse>(response);
   }
 
   /** All deals across the account (paged through to completion). */
@@ -142,41 +136,19 @@ class DealsService {
   }
 
   async getDeal(dealId: number): Promise<Deal> {
-    const response = await fetch(`${API_BASE_URL}/api/deals/${dealId}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<Deal>(response);
+    return apiGet<Deal>(`/api/deals/${dealId}`);
   }
 
   async createDeal(data: CreateDealRequest): Promise<Deal> {
-    const response = await fetch(`${API_BASE_URL}/api/deals/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Deal>(response);
+    return apiPost<Deal>(`/api/deals/`, data);
   }
 
   async updateDeal(dealId: number, data: UpdateDealRequest): Promise<Deal> {
-    const response = await fetch(`${API_BASE_URL}/api/deals/${dealId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Deal>(response);
+    return apiPut<Deal>(`/api/deals/${dealId}`, data);
   }
 
   async deleteDeal(dealId: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/deals/${dealId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/deals/${dealId}`);
   }
 }
 

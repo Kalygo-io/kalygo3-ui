@@ -18,6 +18,7 @@ import {
   TemplateVariable,
   CreateEmailTemplatePayload,
 } from "@/services/emailTemplatesService";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 
 // ── Default starter template ──────────────────────────────────────────────────
 const STARTER_HTML = `<!DOCTYPE html>
@@ -141,6 +142,7 @@ function VariableRow({
 
 // ── Main container ─────────────────────────────────────────────────────────────
 export function EmailTemplatesContainer() {
+  const confirmDelete = useConfirmDelete();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -245,13 +247,15 @@ export function EmailTemplatesContainer() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this template? This cannot be undone.")) return;
-    try {
-      await emailTemplatesService.delete(id);
-      setTemplates((prev) => prev.filter((t) => t.id !== id));
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Delete failed");
-    }
+    await confirmDelete(
+      "Delete this template? This cannot be undone.",
+      () => emailTemplatesService.delete(id),
+      {
+        errorMessage: "Delete failed",
+        onSuccess: () =>
+          setTemplates((prev) => prev.filter((t) => t.id !== id)),
+      },
+    );
   };
 
   const addVariable = () =>

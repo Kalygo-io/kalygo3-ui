@@ -10,6 +10,8 @@ import {
 } from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
+import { PageLoading } from "@/components/shared/common/page-loading";
 import {
   PlusIcon,
   ArrowLeftIcon,
@@ -25,6 +27,7 @@ import { IngestionLogs } from "@/components/vector-stores/ingestion-logs";
 
 export function IndexDetailsContainer({ indexName }: { indexName: string }) {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [index, setIndex] = useState<Index | null>(null);
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,26 +100,19 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
 
   const handleDeleteNamespace = async (namespaceName: string) => {
     const displayName = namespaceName || "(default)";
-    const confirmed = window.confirm(
+    await confirmDelete(
       `Are you sure you want to delete all vectors in namespace "${displayName}"? This action cannot be undone.`,
+      () => vectorStoresService.deleteNamespaceVectors(indexName, namespaceName),
+      {
+        successMessage: `Namespace "${displayName}" vectors deleted successfully`,
+        errorMessage: "Failed to delete namespace vectors",
+        onSuccess: () => loadNamespaces(),
+      },
     );
-    if (!confirmed) return;
-
-    try {
-      await vectorStoresService.deleteNamespaceVectors(indexName, namespaceName);
-      successToast(`Namespace "${displayName}" vectors deleted successfully`);
-      await loadNamespaces();
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete namespace vectors");
-    }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading index details...</div>
-      </div>
-    );
+    return <PageLoading label="Loading index details..." />;
   }
 
   if (!index) {

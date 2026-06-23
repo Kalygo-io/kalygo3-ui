@@ -18,6 +18,9 @@ import {
 } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   TrashIcon,
   PencilIcon,
@@ -45,6 +48,7 @@ function getCredentialTypeIcon(authType: AuthType | string) {
 }
 
 export function CredentialsContainer() {
+  const confirmDelete = useConfirmDelete();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -113,14 +117,15 @@ export function CredentialsContainer() {
   };
 
   const handleDelete = async (credentialId: number) => {
-    if (!confirm("Are you sure you want to delete this credential?")) return;
-    try {
-      await credentialService.deleteCredential(credentialId);
-      successToast("Credential deleted successfully");
-      loadCredentials();
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete credential");
-    }
+    await confirmDelete(
+      "Are you sure you want to delete this credential?",
+      () => credentialService.deleteCredential(credentialId),
+      {
+        successMessage: "Credential deleted successfully",
+        errorMessage: "Failed to delete credential",
+        onSuccess: () => loadCredentials(),
+      },
+    );
   };
 
   const handleViewCredential = async (credentialId: number) => {
@@ -138,11 +143,7 @@ export function CredentialsContainer() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading credentials...</div>
-      </div>
-    );
+    return <PageLoading label="Loading credentials..." />;
   }
 
   return (
@@ -179,19 +180,19 @@ export function CredentialsContainer() {
       )}
 
       {credentials.length === 0 ? (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
-          <KeyIcon className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-          <p className="text-gray-400 text-lg mb-4">No credentials found</p>
-          <p className="text-gray-500 text-sm mb-6">
-            Get started by adding your first credential (API key, connection string, etc.)
-          </p>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-          >
-            Add Credential
-          </button>
-        </div>
+        <EmptyState
+          icon={KeyIcon}
+          title="No credentials found"
+          description="Get started by adding your first credential (API key, connection string, etc.)"
+          action={
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+            >
+              Add Credential
+            </button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {credentials.map((credential) => (

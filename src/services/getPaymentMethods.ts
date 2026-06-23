@@ -1,3 +1,5 @@
+import { apiGet, getAuthApiBaseUrl } from "./lib/api";
+
 export interface PaymentMethod {
   id: string;
   type: string;
@@ -19,27 +21,10 @@ export interface PaymentMethod {
  * and forwards the request with Bearer token authentication
  */
 export async function getPaymentMethods(): Promise<PaymentMethod[]> {
-  const resp = await fetch(
-    `${process.env.NEXT_PUBLIC_AUTH_API_URL}/api/payments/payment-methods`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    }
-  );
-
-  if (!resp.ok) {
-    const errorData = await resp
-      .json()
-      .catch(() => ({ error: "Unknown error" }));
-    const errorMessage = errorData.error || `HTTP ${resp.status}`;
-    console.error("Failed to get payment methods:", resp.status, errorMessage);
-    throw new Error(`Failed to get payment methods: ${errorMessage}`);
-  }
-
-  const data = await resp.json();
+  const data = await apiGet<{
+    payment_methods?: PaymentMethod[];
+    stripe_customer_id?: string;
+  }>("/api/payments/payment-methods", { baseUrl: getAuthApiBaseUrl() });
   // Backend returns { payment_methods: [...], stripe_customer_id: "..." }
   return data.payment_methods || [];
 }

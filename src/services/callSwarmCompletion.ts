@@ -4,11 +4,10 @@
  */
 import { nanoid } from "@/shared/utils";
 import type { Message } from "@/ts/types/Message";
+import { getAiApiBaseUrl } from "./lib/api";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_COMPLETION_API_URL ||
-  process.env.NEXT_PUBLIC_AI_API_URL ||
-  "http://127.0.0.1:4000";
+  process.env.NEXT_PUBLIC_COMPLETION_API_URL || getAiApiBaseUrl();
 const PATH =
   process.env.NEXT_PUBLIC_SWARM_COMPLETION_PATH ||
   "/api/swarms/langgraph/completion";

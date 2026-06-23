@@ -24,7 +24,7 @@ describe("getCurrentUser", () => {
   });
 
   it("throws with API error message on failure", async () => {
-    fetchSpy.mockResolvedValue({ ok: false, status: 401, json: () => Promise.resolve({ error: "Token expired" }) });
+    fetchSpy.mockResolvedValue({ ok: false, status: 401, text: () => Promise.resolve(JSON.stringify({ detail: "Token expired" })) });
     await expect(getCurrentUser()).rejects.toThrow("Token expired");
   });
 });
@@ -56,8 +56,8 @@ describe("requestPasswordReset", () => {
   });
 
   it("throws on failure", async () => {
-    fetchSpy.mockResolvedValue({ ok: false, status: 500 });
-    await expect(requestPasswordReset("a@b.com")).rejects.toThrow("An error occurred");
+    fetchSpy.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve("") });
+    await expect(requestPasswordReset("a@b.com")).rejects.toThrow("Request failed: 500");
   });
 });
 
@@ -75,7 +75,7 @@ describe("resetPassword", () => {
   });
 
   it("throws on failure", async () => {
-    fetchSpy.mockResolvedValue({ ok: false, status: 400 });
-    await expect(resetPassword(1, "bad", "pw")).rejects.toThrow("An error occurred");
+    fetchSpy.mockResolvedValue({ ok: false, status: 400, text: () => Promise.resolve("") });
+    await expect(resetPassword(1, "bad", "pw")).rejects.toThrow("Request failed: 400");
   });
 });

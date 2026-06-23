@@ -1,7 +1,5 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "./lib/api";
 import { Contact } from "./contactsService";
-
-const API_BASE_URL = getAiApiBaseUrl();
 
 // ============================================================================
 // Types
@@ -103,9 +101,6 @@ class CompaniesService {
     limit?: number;
     offset?: number;
   }): Promise<CompanyListResponse> {
-    const url = new URL(`${API_BASE_URL}/api/companies/`);
-    if (params?.search) url.searchParams.set("search", params.search);
-
     const limit =
       typeof params?.limit === "number" && !isNaN(params.limit)
         ? Math.max(1, Math.min(COMPANIES_MAX_PAGE, params.limit))
@@ -114,99 +109,56 @@ class CompaniesService {
       typeof params?.offset === "number" && !isNaN(params.offset)
         ? Math.max(0, params.offset)
         : 0;
-    url.searchParams.set("limit", String(limit));
-    url.searchParams.set("offset", String(offset));
 
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+    return apiGet<CompanyListResponse>(`/api/companies/`, {
+      query: {
+        search: params?.search || undefined,
+        limit,
+        offset,
+      },
     });
-    return handleResponse<CompanyListResponse>(response);
   }
 
   async getCompany(companyId: number): Promise<CompanyDetail> {
-    const response = await fetch(`${API_BASE_URL}/api/companies/${companyId}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<CompanyDetail>(response);
+    return apiGet<CompanyDetail>(`/api/companies/${companyId}`);
   }
 
   async createCompany(data: CreateCompanyRequest): Promise<Company> {
-    const response = await fetch(`${API_BASE_URL}/api/companies/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Company>(response);
+    return apiPost<Company>(`/api/companies/`, data);
   }
 
   async updateCompany(companyId: number, data: UpdateCompanyRequest): Promise<Company> {
-    const response = await fetch(`${API_BASE_URL}/api/companies/${companyId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Company>(response);
+    return apiPut<Company>(`/api/companies/${companyId}`, data);
   }
 
   async deleteCompany(companyId: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/companies/${companyId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/companies/${companyId}`);
   }
 
   // ── Associated contacts ──────────────────────────────────────────────────
 
   async listContacts(companyId: number): Promise<CompanyContact[]> {
-    const response = await fetch(`${API_BASE_URL}/api/companies/${companyId}/contacts/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<CompanyContact[]>(response);
+    return apiGet<CompanyContact[]>(`/api/companies/${companyId}/contacts/`);
   }
 
   async addContact(companyId: number, data: AddContactToCompanyRequest): Promise<CompanyContact> {
-    const response = await fetch(`${API_BASE_URL}/api/companies/${companyId}/contacts/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<CompanyContact>(response);
+    return apiPost<CompanyContact>(`/api/companies/${companyId}/contacts/`, data);
   }
 
   async bulkAddContacts(
     companyId: number,
     data: BulkAddContactsToCompanyRequest
   ): Promise<BulkAddResult> {
-    const response = await fetch(`${API_BASE_URL}/api/companies/${companyId}/contacts/bulk`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<BulkAddResult>(response);
+    return apiPost<BulkAddResult>(
+      `/api/companies/${companyId}/contacts/bulk`,
+      data
+    );
   }
 
   async removeContact(companyId: number, contactId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/companies/${companyId}/contacts/${contactId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
+    return apiDelete<void>(
+      `/api/companies/${companyId}/contacts/${contactId}`
     );
-    return handleResponse<void>(response);
   }
 }
 

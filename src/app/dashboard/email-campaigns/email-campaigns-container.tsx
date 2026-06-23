@@ -24,6 +24,7 @@ import {
   contactListsService,
   ContactList,
 } from "@/services/contactListsService";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 
 const STATUSES = ["draft", "active", "paused", "completed"] as const;
 type CampaignStatus = (typeof STATUSES)[number];
@@ -47,6 +48,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function EmailCampaignsContainer() {
+  const confirmDelete = useConfirmDelete();
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -172,13 +174,15 @@ export function EmailCampaignsContainer() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this campaign? This cannot be undone.")) return;
-    try {
-      await emailCampaignsService.delete(id);
-      setCampaigns((prev) => prev.filter((c) => c.id !== id));
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Delete failed");
-    }
+    await confirmDelete(
+      "Delete this campaign? This cannot be undone.",
+      () => emailCampaignsService.delete(id),
+      {
+        errorMessage: "Delete failed",
+        onSuccess: () =>
+          setCampaigns((prev) => prev.filter((c) => c.id !== id)),
+      },
+    );
   };
 
   const isFormOpen = isNew || editing !== null;

@@ -16,6 +16,8 @@ import {
 } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   ArrowLeftIcon,
   TrashIcon,
@@ -32,6 +34,7 @@ import { ELEVENLABS_VOICES } from "@/shared/app-settings";
 
 export function AgentDetailsV4({ agentId }: { agentId?: string }) {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -160,21 +163,17 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
   const handleDelete = async () => {
     if (!agentId || !agent) return;
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${agent.name}"? This action cannot be undone.`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
+    setDeleting(true);
     try {
-      setDeleting(true);
-      await agentsService.deleteAgent(agentId);
-      successToast(`Agent "${agent.name}" deleted successfully`);
-      router.push("/dashboard/agents");
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete agent");
+      await confirmDelete(
+        `Are you sure you want to delete "${agent.name}"? This action cannot be undone.`,
+        () => agentsService.deleteAgent(agentId),
+        {
+          successMessage: `Agent "${agent.name}" deleted successfully`,
+          errorMessage: "Failed to delete agent",
+          onSuccess: () => router.push("/dashboard/agents"),
+        },
+      );
     } finally {
       setDeleting(false);
     }
@@ -268,19 +267,11 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading agent details...</div>
-      </div>
-    );
+    return <PageLoading label="Loading agent details..." />;
   }
 
   if (!agent) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Agent not found</div>
-      </div>
-    );
+    return <PageLoading label="Agent not found" />;
   }
 
   const editingTool = editingToolIndex !== null 

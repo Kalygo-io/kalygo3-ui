@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { agentsService, Agent, getAgentModelConfig, TOOL_TYPE_METADATA } from "@/services/agentsService";
 import { errorToast } from "@/shared/toasts/errorToast";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
 import { ArrowRightIcon, PlusIcon, WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 
 export function AgentsContainer() {
@@ -36,11 +38,7 @@ export function AgentsContainer() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading agents...</div>
-      </div>
-    );
+    return <PageLoading label="Loading agents..." />;
   }
 
   return (
@@ -57,19 +55,19 @@ export function AgentsContainer() {
       </div>
 
       {agents.length === 0 ? (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
-          <p className="text-gray-400 text-lg mb-4">No agents found</p>
-          <p className="text-gray-500 text-sm mb-6">
-            You don&apos;t have any agents yet. Create one to get started.
-          </p>
-          <button
-            onClick={handleCreate}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Create Agent
-          </button>
-        </div>
+        <EmptyState
+          title="No agents found"
+          description="You don't have any agents yet. Create one to get started."
+          action={
+            <button
+              onClick={handleCreate}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create Agent
+            </button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.map((agent) => (

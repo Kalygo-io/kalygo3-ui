@@ -1,6 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
-
-const API_BASE_URL = getAiApiBaseUrl();
+import { apiGet, apiPost, apiPut, apiDelete } from "./lib/api";
 
 // ============================================================================
 // Types
@@ -79,93 +77,51 @@ export interface BulkAddResult {
 
 class ContactListsService {
   async listContactLists(): Promise<ContactList[]> {
-    const response = await fetch(`${API_BASE_URL}/api/contact-lists/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<ContactList[]>(response);
+    return apiGet<ContactList[]>(`/api/contact-lists/`);
   }
 
   async getContactList(listId: number): Promise<ContactListDetail> {
-    const response = await fetch(`${API_BASE_URL}/api/contact-lists/${listId}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<ContactListDetail>(response);
+    return apiGet<ContactListDetail>(`/api/contact-lists/${listId}`);
   }
 
   async createContactList(data: CreateContactListRequest): Promise<ContactList> {
-    const response = await fetch(`${API_BASE_URL}/api/contact-lists/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<ContactList>(response);
+    return apiPost<ContactList>(`/api/contact-lists/`, data);
   }
 
   async updateContactList(listId: number, data: UpdateContactListRequest): Promise<ContactList> {
-    const response = await fetch(`${API_BASE_URL}/api/contact-lists/${listId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<ContactList>(response);
+    return apiPut<ContactList>(`/api/contact-lists/${listId}`, data);
   }
 
   async deleteContactList(listId: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/contact-lists/${listId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/contact-lists/${listId}`);
   }
 
   // ── Members ────────────────────────────────────────────────────────────────
 
   async listMembers(listId: number): Promise<ContactListMember[]> {
-    const response = await fetch(`${API_BASE_URL}/api/contact-lists/${listId}/members/`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<ContactListMember[]>(response);
+    return apiGet<ContactListMember[]>(
+      `/api/contact-lists/${listId}/members/`
+    );
   }
 
   async addMember(listId: number, data: AddContactToListRequest): Promise<ContactListMember> {
-    const response = await fetch(`${API_BASE_URL}/api/contact-lists/${listId}/members/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<ContactListMember>(response);
+    return apiPost<ContactListMember>(
+      `/api/contact-lists/${listId}/members/`,
+      data
+    );
   }
 
   async bulkAddMembers(listId: number, data: BulkAddContactsToListRequest): Promise<BulkAddResult> {
-    const response = await fetch(`${API_BASE_URL}/api/contact-lists/${listId}/members/bulk`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<BulkAddResult>(response);
+    return apiPost<BulkAddResult>(
+      `/api/contact-lists/${listId}/members/bulk`,
+      data
+    );
   }
 
   async removeMember(listId: number, contactId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contact-lists/${listId}/members/${contactId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
+    return apiDelete<void>(
+      `/api/contact-lists/${listId}/members/${contactId}`
     );
-    return handleResponse<void>(response);
   }
 }
 

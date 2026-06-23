@@ -1,4 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "./lib/api";
 
 // ============================================================================
 // Tool Types
@@ -258,63 +258,25 @@ export function getAgentElevenLabsVoiceId(agent: Agent): string | undefined {
 // Service
 // ============================================================================
 
-const API_BASE_URL = getAiApiBaseUrl();
-
 class AgentsService {
   async listAgents(): Promise<Agent[]> {
-    const response = await fetch(`${API_BASE_URL}/api/agents`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<Agent[]>(response);
+    return apiGet<Agent[]>(`/api/agents`);
   }
 
   async getAgent(agentId: string): Promise<Agent> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/agents/${encodeURIComponent(agentId)}`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
-    );
-    return handleResponse<Agent>(response);
+    return apiGet<Agent>(`/api/agents/${encodeURIComponent(agentId)}`);
   }
 
   async createAgent(data: CreateAgentRequest): Promise<Agent> {
-    const response = await fetch(`${API_BASE_URL}/api/agents`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Agent>(response);
+    return apiPost<Agent>(`/api/agents`, data);
   }
 
   async updateAgent(agentId: string, data: UpdateAgentRequest): Promise<Agent> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/agents/${encodeURIComponent(agentId)}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      },
-    );
-    return handleResponse<Agent>(response);
+    return apiPut<Agent>(`/api/agents/${encodeURIComponent(agentId)}`, data);
   }
 
   async deleteAgent(agentId: string): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/agents/${encodeURIComponent(agentId)}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
-    );
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/agents/${encodeURIComponent(agentId)}`);
   }
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
 import { promptsService, Prompt } from "@/services/promptsService";
+import { PageLoading } from "@/components/shared/common/page-loading";
 import { ArrowLeftIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 
 export function EditPromptContainer({ promptId }: { promptId: string }) {
@@ -74,17 +75,13 @@ export function EditPromptContainer({ promptId }: { promptId: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading prompt...</div>
-      </div>
+      <PageLoading label="Loading prompt..." />
     );
   }
 
   if (!prompt) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Prompt not found</div>
-      </div>
+      <PageLoading label="Prompt not found" />
     );
   }
 

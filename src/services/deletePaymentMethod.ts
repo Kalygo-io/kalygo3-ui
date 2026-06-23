@@ -1,3 +1,5 @@
+import { apiDelete, getAuthApiBaseUrl } from "./lib/api";
+
 export interface DeletePaymentMethodResponse {
   success: boolean;
   message: string;
@@ -11,25 +13,9 @@ export interface DeletePaymentMethodResponse {
 export async function deletePaymentMethod(
   paymentMethodId: string
 ): Promise<DeletePaymentMethodResponse> {
-  const resp = await fetch(
-    `${process.env.NEXT_PUBLIC_AUTH_API_URL}/api/payments/payment-methods/${paymentMethodId}`,
-    {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    }
+  return apiDelete<DeletePaymentMethodResponse>(
+    `/api/payments/payment-methods/${paymentMethodId}`,
+    undefined,
+    { baseUrl: getAuthApiBaseUrl() }
   );
-
-  if (!resp.ok) {
-    const errorData = await resp.json().catch(() => ({ error: "Unknown error" }));
-    const errorMessage = errorData.detail || errorData.error || `HTTP ${resp.status}`;
-    console.error("Failed to delete payment method:", resp.status, errorMessage);
-    throw new Error(`Failed to delete payment method: ${errorMessage}`);
-  }
-
-  const data = await resp.json();
-  return data;
 }
-

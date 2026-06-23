@@ -1,6 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
-
-const API_BASE_URL = getAiApiBaseUrl();
+import { apiGet, apiDelete } from "./lib/api";
 
 // ============================================================================
 // Types
@@ -66,51 +64,38 @@ export interface EmailEventStatsParams {
 
 class EmailEventsService {
   async listEvents(params?: ListEmailEventsParams): Promise<EmailEvent[]> {
-    const url = new URL(`${API_BASE_URL}/api/email-events/`);
-    if (params?.event_type) url.searchParams.set("event_type", params.event_type);
-    if (params?.primary_recipient) url.searchParams.set("primary_recipient", params.primary_recipient);
-    if (params?.message_id) url.searchParams.set("message_id", params.message_id);
-    if (params?.provider) url.searchParams.set("provider", params.provider);
-    if (params?.campaign_id != null) url.searchParams.set("campaign_id", String(params.campaign_id));
-    if (params?.tool_approval_id != null) url.searchParams.set("tool_approval_id", String(params.tool_approval_id));
-    if (params?.credential_id != null) url.searchParams.set("credential_id", String(params.credential_id));
-    if (params?.sender_domain) url.searchParams.set("sender_domain", params.sender_domain);
-    if (params?.from_date) url.searchParams.set("from_date", params.from_date);
-    if (params?.to_date) url.searchParams.set("to_date", params.to_date);
-    if (params?.limit != null) url.searchParams.set("limit", String(params.limit));
-    if (params?.offset != null) url.searchParams.set("offset", String(params.offset));
-
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+    return apiGet<EmailEvent[]>(`/api/email-events/`, {
+      query: {
+        event_type: params?.event_type || undefined,
+        primary_recipient: params?.primary_recipient || undefined,
+        message_id: params?.message_id || undefined,
+        provider: params?.provider || undefined,
+        campaign_id: params?.campaign_id ?? undefined,
+        tool_approval_id: params?.tool_approval_id ?? undefined,
+        credential_id: params?.credential_id ?? undefined,
+        sender_domain: params?.sender_domain || undefined,
+        from_date: params?.from_date || undefined,
+        to_date: params?.to_date || undefined,
+        limit: params?.limit ?? undefined,
+        offset: params?.offset ?? undefined,
+      },
     });
-    return handleResponse<EmailEvent[]>(response);
   }
 
   async getStats(params?: EmailEventStatsParams): Promise<EmailEventStats> {
-    const url = new URL(`${API_BASE_URL}/api/email-events/stats`);
-    if (params?.campaign_id != null) url.searchParams.set("campaign_id", String(params.campaign_id));
-    if (params?.tool_approval_id != null) url.searchParams.set("tool_approval_id", String(params.tool_approval_id));
-    if (params?.credential_id != null) url.searchParams.set("credential_id", String(params.credential_id));
-    if (params?.from_date) url.searchParams.set("from_date", params.from_date);
-    if (params?.to_date) url.searchParams.set("to_date", params.to_date);
-
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+    return apiGet<EmailEventStats>(`/api/email-events/stats`, {
+      query: {
+        campaign_id: params?.campaign_id ?? undefined,
+        tool_approval_id: params?.tool_approval_id ?? undefined,
+        credential_id: params?.credential_id ?? undefined,
+        from_date: params?.from_date || undefined,
+        to_date: params?.to_date || undefined,
+      },
     });
-    return handleResponse<EmailEventStats>(response);
   }
 
   async deleteEvent(eventId: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/email-events/${eventId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/email-events/${eventId}`);
   }
 }
 

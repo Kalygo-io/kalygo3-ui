@@ -1,6 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
-
-const API_BASE_URL = getAiApiBaseUrl();
+import { apiGet, apiPost, apiDelete } from "./lib/api";
 
 export interface Index {
   name: string;
@@ -86,47 +84,24 @@ export interface IngestionLogsFilterOptions {
 
 class VectorStoresService {
   async listIndexes(): Promise<Index[]> {
-    const response = await fetch(`${API_BASE_URL}/api/vector-stores/indexes`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<Index[]>(response);
+    return apiGet<Index[]>(`/api/vector-stores/indexes`);
   }
 
   async listNamespaces(indexName: string): Promise<Namespace[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
+    return apiGet<Namespace[]>(
+      `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`
     );
-    return handleResponse<Namespace[]>(response);
   }
 
   async createIndex(data: CreateIndexRequest): Promise<Index> {
-    const response = await fetch(`${API_BASE_URL}/api/vector-stores/indexes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Index>(response);
+    return apiPost<Index>(`/api/vector-stores/indexes`, data);
   }
 
   async createNamespace(indexName: string, data: CreateNamespaceRequest): Promise<Namespace> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }
+    return apiPost<Namespace>(
+      `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`,
+      data
     );
-    return handleResponse<Namespace>(response);
   }
 
   async uploadTextFile(
@@ -143,12 +118,7 @@ class VectorStoresService {
     if (comment) formData.append("comment", comment);
     if (batchNumber) formData.append("batch_number", batchNumber);
 
-    const response = await fetch(`${API_BASE_URL}/api/vector-stores/upload-text`, {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    });
-    return handleResponse<UploadResponse>(response);
+    return apiPost<UploadResponse>(`/api/vector-stores/upload-text`, formData);
   }
 
   async uploadCsvFile(
@@ -165,40 +135,19 @@ class VectorStoresService {
     if (comment) formData.append("comment", comment);
     if (batchNumber) formData.append("batch_number", batchNumber);
 
-    const response = await fetch(`${API_BASE_URL}/api/vector-stores/upload-csv`, {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    });
-    return handleResponse<UploadResponse>(response);
+    return apiPost<UploadResponse>(`/api/vector-stores/upload-csv`, formData);
   }
 
   async deleteNamespaceVectors(indexName: string, namespace: string): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces/${encodeURIComponent(namespace)}/vectors`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
+    return apiDelete<void>(
+      `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces/${encodeURIComponent(namespace)}/vectors`
     );
-    return handleResponse<void>(response);
   }
 
   async getIngestionLogs(
     indexName: string,
     options: IngestionLogsFilterOptions = {}
   ): Promise<IngestionLogsListResponse> {
-    const params = new URLSearchParams();
-    params.append("index_name", indexName);
-    if (options.namespace) params.append("namespace", options.namespace);
-    if (options.operation_type) params.append("operation_type", options.operation_type);
-    if (options.status) params.append("status", options.status);
-    if (options.provider) params.append("provider", options.provider);
-    if (options.batch_number) params.append("batch_number", options.batch_number);
-    if (options.start_date) params.append("start_date", options.start_date);
-    if (options.end_date) params.append("end_date", options.end_date);
-
     const limit =
       typeof options.limit === "number" && !isNaN(options.limit)
         ? Math.max(1, Math.min(500, options.limit))
@@ -207,19 +156,24 @@ class VectorStoresService {
       typeof options.offset === "number" && !isNaN(options.offset)
         ? Math.max(0, options.offset)
         : 0;
-    params.append("limit", limit.toString());
-    params.append("offset", offset.toString());
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/vector-stores/ingestion-logs?${params.toString()}`,
+    const data = await apiGet<IngestionLogsListResponse>(
+      `/api/vector-stores/ingestion-logs`,
       {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        query: {
+          index_name: indexName,
+          namespace: options.namespace || undefined,
+          operation_type: options.operation_type || undefined,
+          status: options.status || undefined,
+          provider: options.provider || undefined,
+          batch_number: options.batch_number || undefined,
+          start_date: options.start_date || undefined,
+          end_date: options.end_date || undefined,
+          limit,
+          offset,
+        },
       }
     );
-
-    const data = await handleResponse<IngestionLogsListResponse>(response);
 
     if (!data || typeof data !== "object" || !Array.isArray(data.logs)) {
       throw new Error("Invalid response format: logs is not an array");

@@ -10,6 +10,9 @@ import {
   CreateContactListRequest,
   UpdateContactListRequest,
 } from "@/services/contactListsService";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   PlusIcon,
   QueueListIcon,
@@ -23,6 +26,7 @@ import {
 
 export function ContactListsContainer() {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [lists, setLists] = useState<ContactList[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -45,25 +49,20 @@ export function ContactListsContainer() {
   };
 
   const handleDelete = async (list: ContactList) => {
-    const confirmed = window.confirm(
-      `Delete "${list.name}"? This will remove the list but will not delete the contacts themselves.`
+    await confirmDelete(
+      `Delete "${list.name}"? This will remove the list but will not delete the contacts themselves.`,
+      () => contactListsService.deleteContactList(list.id),
+      {
+        successMessage: `"${list.name}" deleted`,
+        errorMessage: "Failed to delete contact list",
+        onSuccess: () =>
+          setLists((prev) => prev.filter((l) => l.id !== list.id)),
+      }
     );
-    if (!confirmed) return;
-    try {
-      await contactListsService.deleteContactList(list.id);
-      setLists((prev) => prev.filter((l) => l.id !== list.id));
-      successToast(`"${list.name}" deleted`);
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete contact list");
-    }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading contact lists...</div>
-      </div>
-    );
+    return <PageLoading label="Loading contact lists..." />;
   }
 
   return (
@@ -87,20 +86,20 @@ export function ContactListsContainer() {
 
       {/* Grid / Empty state */}
       {lists.length === 0 ? (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
-          <QueueListIcon className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400 text-lg mb-2">No contact lists yet</p>
-          <p className="text-gray-500 text-sm mb-6">
-            Create a list to segment your contacts for targeted outreach.
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Create Your First List
-          </button>
-        </div>
+        <EmptyState
+          icon={QueueListIcon}
+          title="No contact lists yet"
+          description="Create a list to segment your contacts for targeted outreach."
+          action={
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create Your First List
+            </button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {lists.map((list) => (

@@ -7,6 +7,9 @@ import {
   AccessGroup,
 } from "@/services/accessGroupsService";
 import { errorToast } from "@/shared/toasts/errorToast";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   ArrowRightIcon,
   PlusIcon,
@@ -16,6 +19,7 @@ import {
 
 export function GroupsContainer() {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [groups, setGroups] = useState<AccessGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,25 +49,19 @@ export function GroupsContainer() {
 
   const handleDelete = async (group: AccessGroup, e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmed = window.confirm(
+    await confirmDelete(
       `Are you sure you want to delete "${group.name}"? This will remove all members and revoke all agent grants for this group.`,
+      () => accessGroupsService.deleteGroup(group.id),
+      {
+        errorMessage: "Failed to delete group",
+        onSuccess: () =>
+          setGroups((prev) => prev.filter((g) => g.id !== group.id)),
+      },
     );
-    if (!confirmed) return;
-
-    try {
-      await accessGroupsService.deleteGroup(group.id);
-      setGroups((prev) => prev.filter((g) => g.id !== group.id));
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete group");
-    }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading access groups...</div>
-      </div>
-    );
+    return <PageLoading label="Loading access groups..." />;
   }
 
   return (
@@ -87,20 +85,20 @@ export function GroupsContainer() {
 
       {/* Groups List */}
       {groups.length === 0 ? (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
-          <UserGroupIcon className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400 text-lg mb-2">No access groups yet</p>
-          <p className="text-gray-500 text-sm mb-6">
-            Create a group to start sharing agents with other accounts.
-          </p>
-          <button
-            onClick={handleCreate}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Create Your First Group
-          </button>
-        </div>
+        <EmptyState
+          icon={UserGroupIcon}
+          title="No access groups yet"
+          description="Create a group to start sharing agents with other accounts."
+          action={
+            <button
+              onClick={handleCreate}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create Your First Group
+            </button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {groups.map((group) => (

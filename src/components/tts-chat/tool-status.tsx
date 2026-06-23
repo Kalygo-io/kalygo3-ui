@@ -1,24 +1,19 @@
 "use client";
 
-import { cn } from "@/shared/utils";
+import { ToolStatus } from "@/components/shared/chat/tool-status";
 
-interface ToolStatusProps extends React.ComponentProps<"div"> {
+interface ToolStatusProps {
   currentTool: string;
+  className?: string;
 }
 
-export function ToolStatus({ currentTool, className, ...props }: ToolStatusProps) {
-  if (!currentTool) return null;
-
+export function TtsToolStatus({ currentTool, className }: ToolStatusProps) {
   return (
-    <div
-      className={cn(
-        "flex items-center justify-center gap-2 text-sm font-medium text-purple-400 mt-2",
-        className
-      )}
-      {...props}
-    >
-      <span className="animate-pulse">🔧</span>
-      <span>Using tool: {currentTool}</span>
-    </div>
+    <ToolStatus
+      currentTool={currentTool}
+      accent="purple"
+      variant="label"
+      className={className}
+    />
   );
 }

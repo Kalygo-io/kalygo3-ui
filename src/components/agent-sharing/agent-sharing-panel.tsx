@@ -8,6 +8,7 @@ import {
 } from "@/services/accessGroupsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   TrashIcon,
   PlusIcon,
@@ -20,6 +21,7 @@ interface AgentSharingPanelProps {
 }
 
 export function AgentSharingPanel({ agentId }: AgentSharingPanelProps) {
+  const confirmDelete = useConfirmDelete();
   const [grants, setGrants] = useState<AgentAccessGrant[]>([]);
   const [myGroups, setMyGroups] = useState<AccessGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,21 +73,16 @@ export function AgentSharingPanel({ agentId }: AgentSharingPanelProps) {
 
   const handleRevoke = async (grant: AgentAccessGrant) => {
     const groupName = grant.access_group_name || `Group #${grant.access_group_id}`;
-    const confirmed = window.confirm(
+    await confirmDelete(
       `Revoke access for "${groupName}"? Members of this group will no longer be able to use this agent.`,
+      () => accessGroupsService.revokeAgentAccess(agentId, grant.access_group_id),
+      {
+        successMessage: "Access revoked",
+        errorMessage: "Failed to revoke access",
+        onSuccess: () =>
+          setGrants((prev) => prev.filter((g) => g.id !== grant.id)),
+      },
     );
-    if (!confirmed) return;
-
-    try {
-      await accessGroupsService.revokeAgentAccess(
-        agentId,
-        grant.access_group_id,
-      );
-      setGrants((prev) => prev.filter((g) => g.id !== grant.id));
-      successToast("Access revoked");
-    } catch (error: any) {
-      errorToast(error.message || "Failed to revoke access");
-    }
   };
 
   // Groups that don't already have a grant

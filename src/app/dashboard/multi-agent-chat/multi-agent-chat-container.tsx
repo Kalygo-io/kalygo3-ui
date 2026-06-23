@@ -18,7 +18,7 @@ import { PaperAirplaneIcon, StopIcon } from "@heroicons/react/24/solid";
 import { CustomizeCrewPanel } from "@/components/hierarchical/customize-crew-panel";
 import { HierarchicalDrawer } from "@/components/hierarchical/drawer";
 import { EmptyScreen } from "@/components/shared/chat/empty-screen";
-import { ChatList } from "@/components/shared/chat/chat-list";
+import { ChatList } from "@/components/shared/chat/multi-agent-chat-list";
 import { ResizableTextarea } from "@/components/shared/resizable-textarea";
 import { useEnterSubmit } from "@/shared/hooks/use-enter-submit";
 import type { Message } from "@/ts/types/Message";

@@ -1,4 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
+import { apiGet, apiPost, apiPatch, apiDelete } from "./lib/api";
 
 // ============================================================================
 // Types
@@ -38,49 +38,26 @@ export interface UpdateEmailCampaignPayload {
 // ============================================================================
 
 class EmailCampaignsService {
-  private get base(): string {
-    return `${getAiApiBaseUrl()}/api/email-campaigns`;
-  }
-
   async list(search?: string, status?: string): Promise<EmailCampaign[]> {
-    const url = new URL(`${this.base}/`);
-    if (search) url.searchParams.set("search", search);
-    if (status) url.searchParams.set("status", status);
-    const res = await fetch(url.toString(), { credentials: "include" });
-    return handleResponse<EmailCampaign[]>(res);
+    return apiGet<EmailCampaign[]>(`/api/email-campaigns/`, {
+      query: { search: search || undefined, status: status || undefined },
+    });
   }
 
   async get(id: number): Promise<EmailCampaign> {
-    const res = await fetch(`${this.base}/${id}`, { credentials: "include" });
-    return handleResponse<EmailCampaign>(res);
+    return apiGet<EmailCampaign>(`/api/email-campaigns/${id}`);
   }
 
   async create(payload: CreateEmailCampaignPayload): Promise<EmailCampaign> {
-    const res = await fetch(`${this.base}/`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return handleResponse<EmailCampaign>(res);
+    return apiPost<EmailCampaign>(`/api/email-campaigns/`, payload);
   }
 
   async update(id: number, payload: UpdateEmailCampaignPayload): Promise<EmailCampaign> {
-    const res = await fetch(`${this.base}/${id}`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return handleResponse<EmailCampaign>(res);
+    return apiPatch<EmailCampaign>(`/api/email-campaigns/${id}`, payload);
   }
 
   async delete(id: number): Promise<void> {
-    const res = await fetch(`${this.base}/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    return handleResponse<void>(res);
+    return apiDelete<void>(`/api/email-campaigns/${id}`);
   }
 }
 

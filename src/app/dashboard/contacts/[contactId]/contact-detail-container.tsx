@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   contactsService,
   Contact,
@@ -77,6 +80,7 @@ const SOURCE_OPTIONS = [
 
 export function ContactDetailContainer({ contactId }: { contactId: number }) {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -208,63 +212,64 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
   };
 
   const handleDeleteEvent = async (event: ContactEvent) => {
-    const confirmed = window.confirm(`Delete event "${event.title}"?`);
-    if (!confirmed || !contact) return;
-    try {
-      await contactsService.deleteEvent(contact.id, event.id);
-      setContact((prev) =>
-        prev ? { ...prev, events: (prev.events ?? []).filter((e) => e.id !== event.id) } : prev
-      );
-      successToast("Event deleted");
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete event");
-    }
+    if (!contact) return;
+    await confirmDelete(
+      `Delete event "${event.title}"?`,
+      () => contactsService.deleteEvent(contact.id, event.id),
+      {
+        successMessage: "Event deleted",
+        errorMessage: "Failed to delete event",
+        onSuccess: () =>
+          setContact((prev) =>
+            prev
+              ? { ...prev, events: (prev.events ?? []).filter((e) => e.id !== event.id) }
+              : prev
+          ),
+      }
+    );
   };
 
   const handleDeleteCareerEntry = async (entry: CareerTimelineEntry) => {
-    const confirmed = window.confirm(`Delete "${entry.title}"?`);
-    if (!confirmed || !contact) return;
-    try {
-      await contactsService.deleteCareerTimelineEntry(contact.id, entry.id);
-      setCareerEntries((prev) => prev.filter((e) => e.id !== entry.id));
-      successToast("Entry deleted");
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete entry");
-    }
+    if (!contact) return;
+    await confirmDelete(
+      `Delete "${entry.title}"?`,
+      () => contactsService.deleteCareerTimelineEntry(contact.id, entry.id),
+      {
+        successMessage: "Entry deleted",
+        errorMessage: "Failed to delete entry",
+        onSuccess: () => setCareerEntries((prev) => prev.filter((e) => e.id !== entry.id)),
+      }
+    );
   };
 
   const handleDeleteDeal = async (deal: Deal) => {
-    const confirmed = window.confirm(`Delete deal "${deal.title}"?`);
-    if (!confirmed || !contact) return;
-    try {
-      await dealsService.deleteDeal(deal.id);
-      setDeals((prev) => prev.filter((d) => d.id !== deal.id));
-      successToast("Deal deleted");
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete deal");
-    }
+    if (!contact) return;
+    await confirmDelete(
+      `Delete deal "${deal.title}"?`,
+      () => dealsService.deleteDeal(deal.id),
+      {
+        successMessage: "Deal deleted",
+        errorMessage: "Failed to delete deal",
+        onSuccess: () => setDeals((prev) => prev.filter((d) => d.id !== deal.id)),
+      }
+    );
   };
 
   const handleRemoveCompany = async (membership: ContactCompany) => {
-    const confirmed = window.confirm(
-      `Remove this contact from "${membership.company.name}"?`
+    if (!contact) return;
+    await confirmDelete(
+      `Remove this contact from "${membership.company.name}"?`,
+      () => contactsService.removeCompany(contact.id, membership.company_id),
+      {
+        successMessage: `Removed from "${membership.company.name}"`,
+        errorMessage: "Failed to remove company",
+        onSuccess: () => setCompanies((prev) => prev.filter((m) => m.id !== membership.id)),
+      }
     );
-    if (!confirmed || !contact) return;
-    try {
-      await contactsService.removeCompany(contact.id, membership.company_id);
-      setCompanies((prev) => prev.filter((m) => m.id !== membership.id));
-      successToast(`Removed from "${membership.company.name}"`);
-    } catch (error: any) {
-      errorToast(error.message || "Failed to remove company");
-    }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading contact…</div>
-      </div>
-    );
+    return <PageLoading label="Loading contact..." />;
   }
 
   if (!contact) return null;
@@ -435,20 +440,21 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         </div>
 
         {companies.length === 0 ? (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
-            <BuildingOffice2Icon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 mb-2">Not linked to any companies yet</p>
-            <p className="text-gray-500 text-sm mb-5">
-              Associate this contact with the companies they work with.
-            </p>
-            <button
-              onClick={() => setShowCompanyModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Link First Company
-            </button>
-          </div>
+          <EmptyState
+            size="sm"
+            icon={BuildingOffice2Icon}
+            title="Not linked to any companies yet"
+            description="Associate this contact with the companies they work with."
+            action={
+              <button
+                onClick={() => setShowCompanyModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Link First Company
+              </button>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {companies.map((membership) => (
@@ -518,20 +524,21 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         </div>
 
         {careerEntries.length === 0 ? (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
-            <BriefcaseIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 mb-2">No career history yet</p>
-            <p className="text-gray-500 text-sm mb-5">
-              Track roles, positions, and career milestones for this contact.
-            </p>
-            <button
-              onClick={() => setShowCareerModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Add First Entry
-            </button>
-          </div>
+          <EmptyState
+            size="sm"
+            icon={BriefcaseIcon}
+            title="No career history yet"
+            description="Track roles, positions, and career milestones for this contact."
+            action={
+              <button
+                onClick={() => setShowCareerModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Add First Entry
+              </button>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {careerEntries.map((entry) => {
@@ -602,20 +609,21 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         </div>
 
         {deals.length === 0 ? (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
-            <CurrencyDollarIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 mb-2">No deals yet</p>
-            <p className="text-gray-500 text-sm mb-5">
-              Track sales opportunities associated with this contact.
-            </p>
-            <button
-              onClick={() => setShowDealModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Add First Deal
-            </button>
-          </div>
+          <EmptyState
+            size="sm"
+            icon={CurrencyDollarIcon}
+            title="No deals yet"
+            description="Track sales opportunities associated with this contact."
+            action={
+              <button
+                onClick={() => setShowDealModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Add First Deal
+              </button>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {deals.map((deal) => {
@@ -715,20 +723,21 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         </div>
 
         {events.length === 0 ? (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
-            <ChatBubbleLeftEllipsisIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 mb-2">No events logged yet</p>
-            <p className="text-gray-500 text-sm mb-5">
-              Log calls, emails, meetings, and notes to track your interactions.
-            </p>
-            <button
-              onClick={() => setShowEventModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Log First Event
-            </button>
-          </div>
+          <EmptyState
+            size="sm"
+            icon={ChatBubbleLeftEllipsisIcon}
+            title="No events logged yet"
+            description="Log calls, emails, meetings, and notes to track your interactions."
+            action={
+              <button
+                onClick={() => setShowEventModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2 text-sm"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Log First Event
+              </button>
+            }
+          />
         ) : (
           <div className="relative">
             {/* Timeline line */}

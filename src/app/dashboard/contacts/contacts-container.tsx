@@ -10,6 +10,11 @@ import {
   CreateContactRequest,
 } from "@/services/contactsService";
 import { ContactFormModal } from "@/components/contacts/contact-form-modal";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { PaginationFooter } from "@/components/shared/common/pagination-footer";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
+import { useDebouncedValue } from "@/shared/hooks/use-debounced-value";
 import {
   PlusIcon,
   UserIcon,
@@ -19,8 +24,6 @@ import {
   XMarkIcon,
   EnvelopeIcon,
   PhoneIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
@@ -29,20 +32,17 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 export function ContactsContainer() {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
   // Debounce the search box so each keystroke does not hit the server.
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => clearTimeout(t);
-  }, [search]);
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
 
   // Any new filter / page-size resets to the first page.
   useEffect(() => {
@@ -75,32 +75,24 @@ export function ContactsContainer() {
   }, [loadPage]);
 
   const handleDeleteContact = async (contact: Contact) => {
-    const confirmed = window.confirm(
-      `Delete "${contact.name}"? This will also delete all associated events and cannot be undone.`
+    await confirmDelete(
+      `Delete "${contact.name}"? This will also delete all associated events and cannot be undone.`,
+      () => contactsService.deleteContact(contact.id),
+      {
+        successMessage: `"${contact.name}" deleted`,
+        errorMessage: "Failed to delete contact",
+        // Counts/offsets shifted server-side — refetch the current page.
+        onSuccess: () => loadPage(),
+      },
     );
-    if (!confirmed) return;
-    try {
-      await contactsService.deleteContact(contact.id);
-      successToast(`"${contact.name}" deleted`);
-      // Counts/offsets shifted server-side — refetch the current page.
-      await loadPage();
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete contact");
-    }
   };
 
   // ── Server-side pagination math ──────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const startRow = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endRow = Math.min(currentPage * pageSize, total);
 
   if (loading && contacts.length === 0 && total === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading contacts...</div>
-      </div>
-    );
+    return <PageLoading label="Loading contacts..." />;
   }
 
   return (
@@ -147,16 +139,18 @@ export function ContactsContainer() {
 
       {/* Table / Empty state */}
       {total === 0 ? (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
-          <UserIcon className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400 text-lg mb-2">
-            {debouncedSearch ? "No contacts match your search" : "No contacts yet"}
-          </p>
-          {!debouncedSearch && (
-            <>
-              <p className="text-gray-500 text-sm mb-6">
-                Add your first contact to start building your CRM.
-              </p>
+        <EmptyState
+          icon={UserIcon}
+          title={
+            debouncedSearch ? "No contacts match your search" : "No contacts yet"
+          }
+          description={
+            !debouncedSearch
+              ? "Add your first contact to start building your CRM."
+              : undefined
+          }
+          action={
+            !debouncedSearch ? (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
@@ -164,9 +158,9 @@ export function ContactsContainer() {
                 <PlusIcon className="h-5 w-5" />
                 Add Your First Contact
               </button>
-            </>
-          )}
-        </div>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl overflow-hidden">
           <div
@@ -251,101 +245,16 @@ export function ContactsContainer() {
           </div>
 
           {/* Pagination footer */}
-          <div className="px-6 py-3 border-t border-gray-700/50 flex items-center justify-between gap-4 flex-wrap">
-            <span className="text-xs text-gray-500">
-              {startRow}–{endRow} of {total.toLocaleString()}
-              {loading && " · loading…"}
-            </span>
-            <div className="flex items-center gap-4">
-              {/* Rows per page */}
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span>Rows</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {PAGE_SIZE_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Page navigation */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage(1)}
-                  disabled={currentPage === 1}
-                  className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="First page"
-                >
-                  «
-                </button>
-                <button
-                  onClick={() => setPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Previous page"
-                >
-                  <ChevronLeftIcon className="h-4 w-4" />
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(
-                    (p) =>
-                      p === 1 ||
-                      p === totalPages ||
-                      Math.abs(p - currentPage) <= 1
-                  )
-                  .reduce<(number | "…")[]>((acc, p, i, arr) => {
-                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((p, i) =>
-                    p === "…" ? (
-                      <span
-                        key={`ellipsis-${i}`}
-                        className="px-2 py-1 text-xs text-gray-600"
-                      >
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p as number)}
-                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                          currentPage === p
-                            ? "bg-blue-600 text-white"
-                            : "text-gray-400 hover:text-white hover:bg-gray-700"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    )
-                  )}
-
-                <button
-                  onClick={() => setPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Next page"
-                >
-                  <ChevronRightIcon className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Last page"
-                >
-                  »
-                </button>
-              </div>
-            </div>
-          </div>
+          <PaginationFooter
+            page={currentPage}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            loading={loading}
+          />
         </div>
       )}
 

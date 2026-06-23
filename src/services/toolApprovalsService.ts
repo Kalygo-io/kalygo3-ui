@@ -1,3 +1,5 @@
+import { apiGet, apiPost } from "./lib/api";
+
 export interface ToolApprovalPreview {
   to_email: string;
   subject: string;
@@ -19,66 +21,37 @@ export interface PendingToolApproval {
 
 class ToolApprovalsService {
   async listToolApprovals(status = "pending"): Promise<PendingToolApproval[]> {
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/tool-approvals/?status=${status}`,
-      { credentials: "include" },
-    );
-    if (!resp.ok) throw new Error(`Failed to list tool approvals: ${resp.status}`);
-    return resp.json();
+    return apiGet<PendingToolApproval[]>(`/api/tool-approvals/`, {
+      query: { status },
+    });
   }
 
   async approveToolApproval(
     approvalId: number,
     overrides?: { to_email?: string; subject?: string; body?: string },
   ): Promise<{ id: number; status: string; message: string }> {
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/tool-approvals/${approvalId}/approve`,
-      {
-        method: "POST",
-        credentials: "include",
-        headers: overrides ? { "Content-Type": "application/json" } : undefined,
-        body: overrides ? JSON.stringify(overrides) : undefined,
-      },
+    return apiPost<{ id: number; status: string; message: string }>(
+      `/api/tool-approvals/${approvalId}/approve`,
+      overrides,
     );
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      throw new Error(body.detail || `Failed to approve: ${resp.status}`);
-    }
-    return resp.json();
   }
 
   async previewToolApproval(
     approvalId: number,
     overrides?: { subject?: string; html_body?: string },
   ): Promise<{ id: number; status: string; message: string }> {
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/tool-approvals/${approvalId}/preview`,
-      {
-        method: "POST",
-        credentials: "include",
-        headers: overrides ? { "Content-Type": "application/json" } : undefined,
-        body: overrides ? JSON.stringify(overrides) : undefined,
-      },
+    return apiPost<{ id: number; status: string; message: string }>(
+      `/api/tool-approvals/${approvalId}/preview`,
+      overrides,
     );
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      throw new Error(body.detail || `Failed to send preview: ${resp.status}`);
-    }
-    return resp.json();
   }
 
   async rejectToolApproval(
     approvalId: number,
   ): Promise<{ id: number; status: string; message: string }> {
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/tool-approvals/${approvalId}/reject`,
-      { method: "POST", credentials: "include" },
+    return apiPost<{ id: number; status: string; message: string }>(
+      `/api/tool-approvals/${approvalId}/reject`,
     );
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      throw new Error(body.detail || `Failed to reject: ${resp.status}`);
-    }
-    return resp.json();
   }
 }
 

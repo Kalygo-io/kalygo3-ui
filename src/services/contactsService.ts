@@ -1,7 +1,5 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "./lib/api";
 import type { Company } from "./companiesService";
-
-const API_BASE_URL = getAiApiBaseUrl();
 
 // ============================================================================
 // Types
@@ -158,10 +156,6 @@ class ContactsService {
     limit?: number;
     offset?: number;
   }): Promise<ContactListResponse> {
-    const url = new URL(`${API_BASE_URL}/api/contacts/`);
-    if (params?.status) url.searchParams.set("status", params.status);
-    if (params?.search) url.searchParams.set("search", params.search);
-
     const limit =
       typeof params?.limit === "number" && !isNaN(params.limit)
         ? Math.max(1, Math.min(CONTACTS_MAX_PAGE, params.limit))
@@ -170,15 +164,15 @@ class ContactsService {
       typeof params?.offset === "number" && !isNaN(params.offset)
         ? Math.max(0, params.offset)
         : 0;
-    url.searchParams.set("limit", String(limit));
-    url.searchParams.set("offset", String(offset));
 
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
+    return apiGet<ContactListResponse>(`/api/contacts/`, {
+      query: {
+        status: params?.status || undefined,
+        search: params?.search || undefined,
+        limit,
+        offset,
+      },
     });
-    return handleResponse<ContactListResponse>(response);
   }
 
   /**
@@ -205,71 +199,32 @@ class ContactsService {
   }
 
   async getContact(contactId: number): Promise<Contact> {
-    const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<Contact>(response);
+    return apiGet<Contact>(`/api/contacts/${contactId}`);
   }
 
   async createContact(data: CreateContactRequest): Promise<Contact> {
-    const response = await fetch(`${API_BASE_URL}/api/contacts/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Contact>(response);
+    return apiPost<Contact>(`/api/contacts/`, data);
   }
 
   async updateContact(contactId: number, data: UpdateContactRequest): Promise<Contact> {
-    const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Contact>(response);
+    return apiPut<Contact>(`/api/contacts/${contactId}`, data);
   }
 
   async deleteContact(contactId: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/contacts/${contactId}`);
   }
 
   // ── Events ────────────────────────────────────────────────────────────────
 
   async listEvents(contactId: number): Promise<ContactEvent[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/events/`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
-    );
-    return handleResponse<ContactEvent[]>(response);
+    return apiGet<ContactEvent[]>(`/api/contacts/${contactId}/events/`);
   }
 
   async createEvent(
     contactId: number,
     data: CreateContactEventRequest
   ): Promise<ContactEvent> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/events/`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }
-    );
-    return handleResponse<ContactEvent>(response);
+    return apiPost<ContactEvent>(`/api/contacts/${contactId}/events/`, data);
   }
 
   async updateEvent(
@@ -277,58 +232,32 @@ class ContactsService {
     eventId: number,
     data: UpdateContactEventRequest
   ): Promise<ContactEvent> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/events/${eventId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }
+    return apiPut<ContactEvent>(
+      `/api/contacts/${contactId}/events/${eventId}`,
+      data
     );
-    return handleResponse<ContactEvent>(response);
   }
 
   async deleteEvent(contactId: number, eventId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/events/${eventId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
-    );
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/contacts/${contactId}/events/${eventId}`);
   }
 
   // ── Career Timeline ──────────────────────────────────────────────────────
 
   async listCareerTimeline(contactId: number): Promise<CareerTimelineEntry[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
+    return apiGet<CareerTimelineEntry[]>(
+      `/api/contacts/${contactId}/career-timeline/`
     );
-    return handleResponse<CareerTimelineEntry[]>(response);
   }
 
   async createCareerTimelineEntry(
     contactId: number,
     data: CreateCareerTimelineRequest
   ): Promise<CareerTimelineEntry> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }
+    return apiPost<CareerTimelineEntry>(
+      `/api/contacts/${contactId}/career-timeline/`,
+      data
     );
-    return handleResponse<CareerTimelineEntry>(response);
   }
 
   async updateCareerTimelineEntry(
@@ -336,73 +265,41 @@ class ContactsService {
     entryId: number,
     data: UpdateCareerTimelineRequest
   ): Promise<CareerTimelineEntry> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/${entryId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }
+    return apiPut<CareerTimelineEntry>(
+      `/api/contacts/${contactId}/career-timeline/${entryId}`,
+      data
     );
-    return handleResponse<CareerTimelineEntry>(response);
   }
 
   async deleteCareerTimelineEntry(
     contactId: number,
     entryId: number
   ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/career-timeline/${entryId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
+    return apiDelete<void>(
+      `/api/contacts/${contactId}/career-timeline/${entryId}`
     );
-    return handleResponse<void>(response);
   }
 
   // ── Companies (reverse association) ──────────────────────────────────────
 
   async listCompanies(contactId: number): Promise<ContactCompany[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/companies/`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
-    );
-    return handleResponse<ContactCompany[]>(response);
+    return apiGet<ContactCompany[]>(`/api/contacts/${contactId}/companies/`);
   }
 
   async addCompany(
     contactId: number,
     data: AddCompanyToContactRequest
   ): Promise<ContactCompany> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/companies/`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }
+    return apiPost<ContactCompany>(
+      `/api/contacts/${contactId}/companies/`,
+      data
     );
-    return handleResponse<ContactCompany>(response);
   }
 
   async removeCompany(contactId: number, companyId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/contacts/${contactId}/companies/${companyId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      }
+    return apiDelete<void>(
+      `/api/contacts/${contactId}/companies/${companyId}`
     );
-    return handleResponse<void>(response);
   }
 }
 

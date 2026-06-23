@@ -11,6 +11,9 @@ import {
   UpdateContactListRequest,
 } from "@/services/contactListsService";
 import { contactsService, Contact } from "@/services/contactsService";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -27,6 +30,7 @@ import {
 
 export function ContactListDetailContainer({ listId }: { listId: number }) {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [list, setList] = useState<ContactListDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -50,21 +54,23 @@ export function ContactListDetailContainer({ listId }: { listId: number }) {
   };
 
   const handleRemoveMember = async (member: ContactListMember) => {
-    const confirmed = window.confirm(
-      `Remove "${member.contact.name}" from this list?`
+    await confirmDelete(
+      `Remove "${member.contact.name}" from this list?`,
+      () => contactListsService.removeMember(listId, member.contact_id),
+      {
+        successMessage: `"${member.contact.name}" removed from list`,
+        errorMessage: "Failed to remove member",
+        onSuccess: () =>
+          setList((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  members: prev.members.filter((m) => m.id !== member.id),
+                }
+              : prev
+          ),
+      }
     );
-    if (!confirmed) return;
-    try {
-      await contactListsService.removeMember(listId, member.contact_id);
-      setList((prev) =>
-        prev
-          ? { ...prev, members: prev.members.filter((m) => m.id !== member.id) }
-          : prev
-      );
-      successToast(`"${member.contact.name}" removed from list`);
-    } catch (error: any) {
-      errorToast(error.message || "Failed to remove member");
-    }
   };
 
   const filteredMembers = useMemo(() => {
@@ -80,11 +86,7 @@ export function ContactListDetailContainer({ listId }: { listId: number }) {
   }, [list, memberSearch]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading list...</div>
-      </div>
-    );
+    return <PageLoading label="Loading list..." />;
   }
 
   if (!list) {
@@ -175,21 +177,22 @@ export function ContactListDetailContainer({ listId }: { listId: number }) {
         </div>
 
         {list.members.length === 0 ? (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
-            <UsersIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 mb-2">No contacts in this list yet</p>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
-            >
-              <UserPlusIcon className="h-4 w-4" />
-              Add Contacts
-            </button>
-          </div>
+          <EmptyState
+            size="sm"
+            icon={UsersIcon}
+            title="No contacts in this list yet"
+            action={
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
+              >
+                <UserPlusIcon className="h-4 w-4" />
+                Add Contacts
+              </button>
+            }
+          />
         ) : filteredMembers.length === 0 ? (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
-            <p className="text-gray-400">No members match your search</p>
-          </div>
+          <EmptyState size="sm" title="No members match your search" />
         ) : (
           <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl overflow-hidden">
             <table className="w-full">

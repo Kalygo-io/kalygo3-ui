@@ -1,3 +1,7 @@
+import { apiGet, apiPut, getAuthApiBaseUrl } from "./lib/api";
+
+const AUTH = { baseUrl: getAuthApiBaseUrl() };
+
 export interface Account {
   id: number;
   email: string;
@@ -11,48 +15,9 @@ export interface UpdateAccountRequest {
 }
 
 export async function getAccount(): Promise<Account> {
-  const resp = await fetch(
-    `${process.env.NEXT_PUBLIC_AUTH_API_URL}/api/accounts/me`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    }
-  );
-
-  if (!resp.ok) {
-    const errorData = await resp
-      .json()
-      .catch(() => ({ error: "Unknown error" }));
-    const errorMessage = errorData.error || `HTTP ${resp.status}`;
-    throw new Error(`Failed to get account: ${errorMessage}`);
-  }
-
-  return resp.json();
+  return apiGet<Account>("/api/accounts/me", AUTH);
 }
 
 export async function updateAccount(data: UpdateAccountRequest): Promise<Account> {
-  const resp = await fetch(
-    `${process.env.NEXT_PUBLIC_AUTH_API_URL}/api/accounts/me`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify(data),
-    }
-  );
-
-  if (!resp.ok) {
-    const errorData = await resp
-      .json()
-      .catch(() => ({ error: "Unknown error" }));
-    const errorMessage = errorData.error || `HTTP ${resp.status}`;
-    throw new Error(`Failed to update account: ${errorMessage}`);
-  }
-
-  return resp.json();
+  return apiPut<Account>("/api/accounts/me", data, AUTH);
 }

@@ -13,13 +13,14 @@ import {
 import { Chat as AgentChat } from "@/components/agent-chat/chat";
 import { agentsService, Agent } from "@/services/agentsService";
 import { chatSessionService } from "@/services/chatSessionService";
-import { errorToast, successToast } from "@/shared/toasts";
+import { errorToast } from "@/shared/toasts";
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { clearSessionMessages } from "@/services/clearSessionMessages";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import { cn } from "@/shared/utils";
 
 interface AgentChatSessionPageProps {
@@ -28,6 +29,7 @@ interface AgentChatSessionPageProps {
 
 export function AgentChatSessionPage({ sessionId }: AgentChatSessionPageProps) {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [chat, dispatch] = useReducer(chatReducer, {
     ...initialState,
     sessionId: sessionId,
@@ -110,30 +112,27 @@ export function AgentChatSessionPage({ sessionId }: AgentChatSessionPageProps) {
 
     if (isResetting) return;
 
-    // Confirm with user
-    if (
-      !confirm(
-        "Are you sure you want to clear all messages in this chat session? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
     setIsResetting(true);
     try {
-      // Clear messages from API
-      await clearSessionMessages(chat.sessionId);
-
-      // Clear messages from UI state
-      dispatch({ type: "SET_MESSAGES", payload: [] });
-
-      successToast("Chat session cleared successfully");
-    } catch (error) {
-      console.error("Error clearing session messages:", error);
-      errorToast(
-        `Failed to clear chat session: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
+      await confirmDelete(
+        "Are you sure you want to clear all messages in this chat session? This action cannot be undone.",
+        async () => {
+          // Clear messages from API
+          try {
+            await clearSessionMessages(chat.sessionId!);
+          } catch (error) {
+            console.error("Error clearing session messages:", error);
+            throw error;
+          }
+        },
+        {
+          successMessage: "Chat session cleared successfully",
+          errorMessage: "Failed to clear chat session",
+          onSuccess: () => {
+            // Clear messages from UI state
+            dispatch({ type: "SET_MESSAGES", payload: [] });
+          },
+        },
       );
     } finally {
       setIsResetting(false);

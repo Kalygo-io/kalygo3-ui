@@ -1,5 +1,6 @@
 import { Message } from "@/ts/types/Message";
 import { v4 as uuid } from "uuid";
+import { apiGet, apiPost, apiDelete } from "./lib/api";
 
 export interface ChatSession {
   id: number;
@@ -27,32 +28,18 @@ class ChatSessionService {
     offset: number = 0,
     contactId?: number,
   ): Promise<ChatSession[]> {
-    const params = new URLSearchParams();
-    params.append("limit", limit.toString());
-    params.append("offset", offset.toString());
     // Contact-bound sessions are excluded by the backend unless contact_id is
     // explicitly requested (keeps them out of global chat history).
-    if (contactId != null) {
-      params.append("contact_id", contactId.toString());
-    }
-
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions?${params.toString()}`,
+    const sessionsData = await apiGet<any[]>(
+      `/api/chat-sessions/sessions`,
       {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        query: {
+          limit,
+          offset,
+          contact_id: contactId != null ? contactId : undefined,
+        },
       },
     );
-
-    if (!resp.ok) {
-      const errorText = await resp.text();
-      throw new Error(
-        `Failed to get sessions: ${resp.status} - ${errorText}`,
-      );
-    }
-
-    const sessionsData = await resp.json();
 
     const sessions: ChatSession[] = sessionsData.map((sessionData: any) => ({
       id: sessionData.id,
@@ -75,24 +62,15 @@ class ChatSessionService {
   }
 
   async getSession(id: string): Promise<ChatSession | null> {
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions/${id}`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
-    );
-
-    if (!resp.ok) {
-      if (resp.status === 404) {
-        return null;
-      }
-      const errorText = await resp.text();
-      throw new Error(`Failed to get session: ${resp.status} - ${errorText}`);
+    let sessionData: any;
+    try {
+      sessionData = await apiGet<any>(
+        `/api/chat-sessions/sessions/${id}`,
+      );
+    } catch {
+      // A missing session (404) resolves to null so callers can branch on it.
+      return null;
     }
-
-    const sessionData = await resp.json();
 
     const session: ChatSession = {
       id: sessionData.id,
@@ -115,25 +93,7 @@ class ChatSessionService {
       title: title,
     };
 
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sessionData),
-        credentials: "include",
-      },
-    );
-
-    if (!resp.ok) {
-      const errorText = await resp.text();
-      throw new Error(
-        `Failed to create session: ${resp.status} - ${errorText}`,
-      );
-    }
-
-    const session: ChatSession = await resp.json();
-    return session;
+    return apiPost<ChatSession>(`/api/chat-sessions/sessions`, sessionData);
   }
 
   /**
@@ -147,24 +107,7 @@ class ChatSessionService {
   ): Promise<ChatSession> {
     const body: ChatSessionCreate = { contactId, title };
 
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        credentials: "include",
-      },
-    );
-
-    if (!resp.ok) {
-      const errorText = await resp.text();
-      throw new Error(
-        `Failed to create contact session: ${resp.status} - ${errorText}`,
-      );
-    }
-
-    return (await resp.json()) as ChatSession;
+    return apiPost<ChatSession>(`/api/chat-sessions/sessions`, body);
   }
 
   /**
@@ -178,24 +121,9 @@ class ChatSessionService {
   }
 
   async deleteSession(sessionId: string): Promise<void> {
-    const resp = await fetch(
-      `${process.env.NEXT_PUBLIC_AI_API_URL}/api/chat-sessions/sessions/${sessionId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
+    return apiDelete<void>(
+      `/api/chat-sessions/sessions/${sessionId}`,
     );
-
-    if (!resp.ok) {
-      if (resp.status === 404) {
-        throw new Error("Session not found");
-      }
-      const errorText = await resp.text();
-      throw new Error(
-        `Failed to delete session: ${resp.status} - ${errorText}`,
-      );
-    }
   }
 
   private generateId(): string {

@@ -1,16 +1,10 @@
-export async function validateToken(token: string) {
-  const url = `${process.env.NEXT_PUBLIC_AUTH_API_URL}/api/auth/validate-token`;
+import { apiGet, getAuthApiBaseUrl } from "./lib/api";
 
-  const resp = await fetch(url, {
-    method: "GET",
+export async function validateToken(token: string) {
+  await apiGet<void>("/api/auth/validate-token", {
+    baseUrl: getAuthApiBaseUrl(),
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
-
-  if (!resp.ok) {
-    const body = await resp.text().catch(() => "<unreadable>");
-    console.error("[validateToken] failed:", resp.status, body);
-    throw new Error("Failed to validate token");
-  }
 }

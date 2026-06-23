@@ -23,24 +23,24 @@ describe("getAccount", () => {
     );
   });
 
-  it("throws on error with API message", async () => {
+  it("throws with the API detail message on failure", async () => {
     fetchSpy.mockResolvedValue({
       ok: false,
       status: 401,
-      json: () => Promise.resolve({ error: "Unauthorized" }),
+      text: () => Promise.resolve(JSON.stringify({ detail: "Unauthorized" })),
     });
 
-    await expect(getAccount()).rejects.toThrow("Failed to get account: Unauthorized");
+    await expect(getAccount()).rejects.toThrow("Unauthorized");
   });
 
-  it("falls back to HTTP status when error body parse fails", async () => {
+  it("falls back to HTTP status when the error body is empty", async () => {
     fetchSpy.mockResolvedValue({
       ok: false,
       status: 500,
-      json: () => Promise.reject(new Error("parse error")),
+      text: () => Promise.resolve(""),
     });
 
-    await expect(getAccount()).rejects.toThrow("Failed to get account: Unknown error");
+    await expect(getAccount()).rejects.toThrow("Request failed: 500");
   });
 });
 

@@ -9,6 +9,7 @@ import {
 } from "@/services/apiKeysService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   KeyIcon,
   PlusIcon,
@@ -22,6 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 export function ApiKeysContainer() {
+  const confirmDelete = useConfirmDelete();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -81,24 +83,22 @@ export function ApiKeysContainer() {
   };
 
   const handleDelete = async (id: number) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this API key? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setDeletingId(id);
-      await apiKeysService.deleteApiKey(id);
-      successToast("API key deleted successfully");
-      await loadApiKeys();
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete API key");
-    } finally {
-      setDeletingId(null);
-    }
+    await confirmDelete(
+      "Are you sure you want to delete this API key? This action cannot be undone.",
+      async () => {
+        setDeletingId(id);
+        try {
+          await apiKeysService.deleteApiKey(id);
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      {
+        successMessage: "API key deleted successfully",
+        errorMessage: "Failed to delete API key",
+        onSuccess: () => loadApiKeys(),
+      },
+    );
   };
 
   const copyToClipboard = async (text: string, id: number) => {

@@ -1,6 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
-
-const API_BASE_URL = getAiApiBaseUrl();
+import { apiGet, apiPost, apiDelete } from "./lib/api";
 
 export enum ApiKeyStatus {
   ACTIVE = "active",
@@ -22,34 +20,17 @@ export interface CreateApiKeyRequest {
 
 class ApiKeysService {
   async listApiKeys(): Promise<ApiKey[]> {
-    const response = await fetch(`${API_BASE_URL}/api/api-keys`, {
-      method: "GET",
-      headers: { Accept: "*/*" },
-      credentials: "include",
-    });
-    return handleResponse<ApiKey[]>(response);
+    return apiGet<ApiKey[]>(`/api/api-keys`, { headers: { Accept: "*/*" } });
   }
 
   async createApiKey(data: CreateApiKeyRequest): Promise<ApiKey> {
-    const response = await fetch(`${API_BASE_URL}/api/api-keys`, {
-      method: "POST",
-      headers: { Accept: "*/*", "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<ApiKey>(response);
+    return apiPost<ApiKey>(`/api/api-keys`, data, { headers: { Accept: "*/*" } });
   }
 
   async deleteApiKey(apiKeyId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/api-keys/${encodeURIComponent(apiKeyId)}`,
-      {
-        method: "DELETE",
-        headers: { Accept: "*/*" },
-        credentials: "include",
-      }
-    );
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/api-keys/${encodeURIComponent(apiKeyId)}`, undefined, {
+      headers: { Accept: "*/*" },
+    });
   }
 }
 

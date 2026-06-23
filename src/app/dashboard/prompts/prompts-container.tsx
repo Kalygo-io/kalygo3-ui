@@ -12,6 +12,9 @@ import {
   SimilaritySearchResult,
 } from "@/services/callSimilaritySearch";
 import { ContextualAside } from "@/components/similarity-search/contextual-aside";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
 import {
   PlusIcon,
   DocumentTextIcon,
@@ -32,6 +35,7 @@ const SEARCH_THRESHOLD = 0.1;
 export function PromptsContainer() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const confirmDelete = useConfirmDelete();
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
@@ -122,20 +126,20 @@ export function PromptsContainer() {
   };
 
   const handleDeletePrompt = async (promptId: number, promptName: string) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${promptName}"? This action cannot be undone.`
+    await confirmDelete(
+      `Are you sure you want to delete "${promptName}"? This action cannot be undone.`,
+      () => promptsService.deletePrompt(promptId),
+      {
+        successMessage: `Prompt "${promptName}" deleted successfully`,
+        errorMessage: "Failed to delete prompt",
+        onSuccess: () => {
+          setPrompts(prompts.filter((p) => p.id !== promptId));
+          if (isSearchMode) {
+            queryClient.invalidateQueries({ queryKey: ["similarity-search"] });
+          }
+        },
+      },
     );
-    if (!confirmed) return;
-    try {
-      await promptsService.deletePrompt(promptId);
-      setPrompts(prompts.filter((p) => p.id !== promptId));
-      if (isSearchMode) {
-        queryClient.invalidateQueries({ queryKey: ["similarity-search"] });
-      }
-      successToast(`Prompt "${promptName}" deleted successfully`);
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete prompt");
-    }
   };
 
   const handleCopyPrompt = async (content: string) => {
@@ -173,11 +177,7 @@ export function PromptsContainer() {
   });
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading prompts...</div>
-      </div>
-    );
+    return <PageLoading label="Loading prompts..." />;
   }
 
   return (
@@ -385,21 +385,20 @@ export function PromptsContainer() {
           ) : (
             <>
               {prompts.length === 0 ? (
-                <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
-                  <DocumentTextIcon className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400 text-lg mb-2">No prompts found</p>
-                  <p className="text-gray-500 text-sm mb-6">
-                    Create your first prompt template to get started. Prompts help you
-                    standardize and reuse your AI interactions.
-                  </p>
-                  <button
-                    onClick={handleCreatePrompt}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
-                  >
-                    <PlusIcon className="h-5 w-5" />
-                    Create Your First Prompt
-                  </button>
-                </div>
+                <EmptyState
+                  icon={DocumentTextIcon}
+                  title="No prompts found"
+                  description="Create your first prompt template to get started. Prompts help you standardize and reuse your AI interactions."
+                  action={
+                    <button
+                      onClick={handleCreatePrompt}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 inline-flex items-center gap-2"
+                    >
+                      <PlusIcon className="h-5 w-5" />
+                      Create Your First Prompt
+                    </button>
+                  }
+                />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {prompts.map((prompt) => (

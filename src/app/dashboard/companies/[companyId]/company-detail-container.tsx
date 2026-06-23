@@ -12,6 +12,9 @@ import {
 } from "@/services/companiesService";
 import { contactsService, Contact } from "@/services/contactsService";
 import { CompanyFormModal } from "../companies-container";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -29,6 +32,7 @@ import {
 
 export function CompanyDetailContainer({ companyId }: { companyId: number }) {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -53,21 +57,25 @@ export function CompanyDetailContainer({ companyId }: { companyId: number }) {
   };
 
   const handleRemoveContact = async (membership: CompanyContact) => {
-    const confirmed = window.confirm(
-      `Remove "${membership.contact.name}" from ${company?.name}?`
+    await confirmDelete(
+      `Remove "${membership.contact.name}" from ${company?.name}?`,
+      () => companiesService.removeContact(companyId, membership.contact_id),
+      {
+        successMessage: `"${membership.contact.name}" removed from company`,
+        errorMessage: "Failed to remove contact",
+        onSuccess: () =>
+          setCompany((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  contacts: prev.contacts.filter(
+                    (m) => m.id !== membership.id
+                  ),
+                }
+              : prev
+          ),
+      }
     );
-    if (!confirmed) return;
-    try {
-      await companiesService.removeContact(companyId, membership.contact_id);
-      setCompany((prev) =>
-        prev
-          ? { ...prev, contacts: prev.contacts.filter((m) => m.id !== membership.id) }
-          : prev
-      );
-      successToast(`"${membership.contact.name}" removed from company`);
-    } catch (error: any) {
-      errorToast(error.message || "Failed to remove contact");
-    }
   };
 
   const filteredContacts = useMemo(() => {
@@ -83,11 +91,7 @@ export function CompanyDetailContainer({ companyId }: { companyId: number }) {
   }, [company, contactSearch]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-400">Loading company...</div>
-      </div>
-    );
+    return <PageLoading label="Loading company..." />;
   }
 
   if (!company) {
@@ -216,21 +220,22 @@ export function CompanyDetailContainer({ companyId }: { companyId: number }) {
         </div>
 
         {company.contacts.length === 0 ? (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
-            <UsersIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 mb-2">No contacts at this company yet</p>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
-            >
-              <UserPlusIcon className="h-4 w-4" />
-              Add Contacts
-            </button>
-          </div>
+          <EmptyState
+            size="sm"
+            icon={UsersIcon}
+            title="No contacts at this company yet"
+            action={
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
+              >
+                <UserPlusIcon className="h-4 w-4" />
+                Add Contacts
+              </button>
+            }
+          />
         ) : filteredContacts.length === 0 ? (
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-10 text-center">
-            <p className="text-gray-400">No contacts match your search</p>
-          </div>
+          <EmptyState size="sm" title="No contacts match your search" />
         ) : (
           <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl overflow-hidden">
             <table className="w-full">

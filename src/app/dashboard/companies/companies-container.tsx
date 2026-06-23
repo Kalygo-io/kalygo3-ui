@@ -10,6 +10,11 @@ import {
   CreateCompanyRequest,
   UpdateCompanyRequest,
 } from "@/services/companiesService";
+import { PageLoading } from "@/components/shared/common/page-loading";
+import { EmptyState } from "@/components/shared/common/empty-state";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
+import { useDebouncedValue } from "@/shared/hooks/use-debounced-value";
+import { PaginationFooter } from "@/components/shared/common/pagination-footer";
 import {
   PlusIcon,
   BuildingOffice2Icon,
@@ -27,6 +32,7 @@ const PAGE_SIZE = 50;
 
 export function CompaniesContainer() {
   const router = useRouter();
+  const confirmDelete = useConfirmDelete();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -34,6 +40,7 @@ export function CompaniesContainer() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editCompany, setEditCompany] = useState<Company | null>(null);
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const loadCompanies = useCallback(
     async (opts: { search: string; offset: number }) => {
@@ -57,12 +64,9 @@ export function CompaniesContainer() {
 
   // Debounced search; reset to the first page whenever the term changes.
   useEffect(() => {
-    const handle = setTimeout(() => {
-      setOffset(0);
-      loadCompanies({ search, offset: 0 });
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [search, loadCompanies]);
+    setOffset(0);
+    loadCompanies({ search: debouncedSearch, offset: 0 });
+  }, [debouncedSearch, loadCompanies]);
 
   const goToPage = (newOffset: number) => {
     setOffset(newOffset);
@@ -70,22 +74,22 @@ export function CompaniesContainer() {
   };
 
   const handleDelete = async (company: Company) => {
-    const confirmed = window.confirm(
-      `Delete "${company.name}"? This removes the company but will not delete the contacts associated with it.`
+    await confirmDelete(
+      `Delete "${company.name}"? This removes the company but will not delete the contacts associated with it.`,
+      () => companiesService.deleteCompany(company.id),
+      {
+        successMessage: `"${company.name}" deleted`,
+        errorMessage: "Failed to delete company",
+        onSuccess: () => {
+          setCompanies((prev) => prev.filter((c) => c.id !== company.id));
+          setTotal((t) => Math.max(0, t - 1));
+        },
+      }
     );
-    if (!confirmed) return;
-    try {
-      await companiesService.deleteCompany(company.id);
-      setCompanies((prev) => prev.filter((c) => c.id !== company.id));
-      setTotal((t) => Math.max(0, t - 1));
-      successToast(`"${company.name}" deleted`);
-    } catch (error: any) {
-      errorToast(error.message || "Failed to delete company");
-    }
   };
 
-  const hasPrev = offset > 0;
-  const hasNext = offset + PAGE_SIZE < total;
+  const page = Math.floor(offset / PAGE_SIZE) + 1;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -120,20 +124,18 @@ export function CompaniesContainer() {
 
       {/* Grid / Empty / Loading */}
       {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="text-gray-400">Loading companies...</div>
-        </div>
+        <PageLoading label="Loading companies..." className="min-h-[300px]" />
       ) : companies.length === 0 ? (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
-          <BuildingOffice2Icon className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400 text-lg mb-2">
-            {search ? "No companies match your search" : "No companies yet"}
-          </p>
-          {!search && (
-            <>
-              <p className="text-gray-500 text-sm mb-6">
-                Create a company to group the contacts who work there.
-              </p>
+        <EmptyState
+          icon={BuildingOffice2Icon}
+          title={search ? "No companies match your search" : "No companies yet"}
+          description={
+            search
+              ? undefined
+              : "Create a company to group the contacts who work there."
+          }
+          action={
+            search ? undefined : (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
@@ -141,9 +143,9 @@ export function CompaniesContainer() {
                 <PlusIcon className="h-5 w-5" />
                 Create Your First Company
               </button>
-            </>
-          )}
-        </div>
+            )
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {companies.map((company) => (
@@ -211,27 +213,14 @@ export function CompaniesContainer() {
 
       {/* Pagination */}
       {!loading && total > PAGE_SIZE && (
-        <div className="flex items-center justify-between">
-          <p className="text-gray-500 text-sm">
-            Showing {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => goToPage(Math.max(0, offset - PAGE_SIZE))}
-              disabled={!hasPrev}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => goToPage(offset + PAGE_SIZE)}
-              disabled={!hasNext}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <PaginationFooter
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPageChange={(p) => goToPage((p - 1) * PAGE_SIZE)}
+          loading={loading}
+        />
       )}
 
       {/* Create modal */}

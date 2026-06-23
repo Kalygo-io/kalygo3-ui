@@ -17,6 +17,7 @@ import { errorReporter } from "@/shared/errorReporter";
 import { Spinner } from "@/components/shared/common/spinner";
 import { successToast } from "@/shared/toasts";
 import { StripePaymentForm } from "@/components/shared/stripe-payment-form";
+import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 
 // Initialize Stripe
 const stripePromise = loadStripe(
@@ -24,6 +25,7 @@ const stripePromise = loadStripe(
 );
 
 export function SettingsContainer() {
+  const confirmDelete = useConfirmDelete();
   const [email, setEmail] = useState<string>("");
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,21 +86,18 @@ export function SettingsContainer() {
   }, []);
 
   const handleDeleteCard = async (paymentMethodId: string) => {
-    if (!confirm("Are you sure you want to delete this payment method?")) {
-      return;
-    }
-    try {
-      await deletePaymentMethod(paymentMethodId);
-
-      // Remove from local state
-      setPaymentMethods(
-        paymentMethods.filter((pm) => pm.id !== paymentMethodId),
-      );
-
-      successToast("Payment method deleted successfully");
-    } catch (err) {
-      errorReporter(err);
-    }
+    await confirmDelete(
+      "Are you sure you want to delete this payment method?",
+      () => deletePaymentMethod(paymentMethodId),
+      {
+        successMessage: "Payment method deleted successfully",
+        onSuccess: () =>
+          // Remove from local state
+          setPaymentMethods(
+            paymentMethods.filter((pm) => pm.id !== paymentMethodId),
+          ),
+      },
+    );
   };
 
   const getCardBrandIcon = (brand: string) => {

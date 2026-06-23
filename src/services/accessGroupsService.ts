@@ -1,6 +1,4 @@
-import { getAiApiBaseUrl, handleResponse } from "./lib/api";
-
-const API_BASE_URL = getAiApiBaseUrl();
+import { apiGet, apiPost, apiPatch, apiDelete } from "./lib/api";
 
 // ============================================================================
 // Types
@@ -57,62 +55,26 @@ class AccessGroupsService {
   // ------------------------------------------------------------------
 
   async listGroups(): Promise<AccessGroup[]> {
-    const response = await fetch(`${API_BASE_URL}/api/access-groups`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    return handleResponse<AccessGroup[]>(response);
+    return apiGet<AccessGroup[]>(`/api/access-groups`);
   }
 
   async getGroup(groupId: number): Promise<AccessGroup> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/access-groups/${groupId}`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
-    );
-    return handleResponse<AccessGroup>(response);
+    return apiGet<AccessGroup>(`/api/access-groups/${groupId}`);
   }
 
   async createGroup(data: CreateAccessGroupRequest): Promise<AccessGroup> {
-    const response = await fetch(`${API_BASE_URL}/api/access-groups`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-    return handleResponse<AccessGroup>(response);
+    return apiPost<AccessGroup>(`/api/access-groups`, data);
   }
 
   async updateGroup(
     groupId: number,
     data: UpdateAccessGroupRequest,
   ): Promise<AccessGroup> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/access-groups/${groupId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      },
-    );
-    return handleResponse<AccessGroup>(response);
+    return apiPatch<AccessGroup>(`/api/access-groups/${groupId}`, data);
   }
 
   async deleteGroup(groupId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/access-groups/${groupId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
-    );
-    return handleResponse<void>(response);
+    return apiDelete<void>(`/api/access-groups/${groupId}`);
   }
 
   // ------------------------------------------------------------------
@@ -120,43 +82,25 @@ class AccessGroupsService {
   // ------------------------------------------------------------------
 
   async listMembers(groupId: number): Promise<AccessGroupMember[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/access-groups/${groupId}/members`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
+    return apiGet<AccessGroupMember[]>(
+      `/api/access-groups/${groupId}/members`,
     );
-    return handleResponse<AccessGroupMember[]>(response);
   }
 
   async addMember(
     groupId: number,
     data: AddMemberRequest,
   ): Promise<AccessGroupMember> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/access-groups/${groupId}/members`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      },
+    return apiPost<AccessGroupMember>(
+      `/api/access-groups/${groupId}/members`,
+      data,
     );
-    return handleResponse<AccessGroupMember>(response);
   }
 
   async removeMember(groupId: number, accountId: number): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/access-groups/${groupId}/members/${accountId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
+    return apiDelete<void>(
+      `/api/access-groups/${groupId}/members/${accountId}`,
     );
-    return handleResponse<void>(response);
   }
 
   // ------------------------------------------------------------------
@@ -164,46 +108,28 @@ class AccessGroupsService {
   // ------------------------------------------------------------------
 
   async listAgentGrants(agentId: string): Promise<AgentAccessGrant[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/agents/${encodeURIComponent(agentId)}/access-grants`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
+    return apiGet<AgentAccessGrant[]>(
+      `/api/agents/${encodeURIComponent(agentId)}/access-grants`,
     );
-    return handleResponse<AgentAccessGrant[]>(response);
   }
 
   async grantAgentAccess(
     agentId: string,
     data: CreateAgentAccessGrantRequest,
   ): Promise<AgentAccessGrant> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/agents/${encodeURIComponent(agentId)}/access-grants`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      },
+    return apiPost<AgentAccessGrant>(
+      `/api/agents/${encodeURIComponent(agentId)}/access-grants`,
+      data,
     );
-    return handleResponse<AgentAccessGrant>(response);
   }
 
   async revokeAgentAccess(
     agentId: string,
     accessGroupId: number,
   ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/agents/${encodeURIComponent(agentId)}/access-grants/${accessGroupId}`,
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      },
+    return apiDelete<void>(
+      `/api/agents/${encodeURIComponent(agentId)}/access-grants/${accessGroupId}`,
     );
-    return handleResponse<void>(response);
   }
 }
 
