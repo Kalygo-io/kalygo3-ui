@@ -1,9 +1,9 @@
 export type ChatAccent = "blue" | "purple";
 
 /**
- * The small set of color classes that differ between the agent-chat (blue/gray)
- * and tts-chat (purple) variants of the shared chat components. Default accent
- * is "blue" so agent-chat behavior is unchanged.
+ * The small set of color classes that differ between the blue/gray and purple
+ * variants of the shared chat components. Default accent is "blue" so agent-chat
+ * behavior is unchanged.
  */
 export interface ChatAccentClasses {
   /** error-details-drawer "What to do next" help box */

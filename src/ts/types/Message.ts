@@ -3,14 +3,6 @@ export interface Message {
   content: string;
   role: "human" | "ai" | "tool_approval";
   error: ErrorDetails | null;
-  /** For swarm/hierarchical chat: which agent (e.g. Director, worker name) produced this message */
-  agentName?: string;
-  /** When set, this message is a moderator/supervisor decision row: chosenAgent + reason for tooltip */
-  supervisorDecision?: { chosenAgent: string; reason: string };
-  /** When set, this message marks why the swarm ended the current turn chain */
-  turnStopDecision?: { done: boolean; reason: string };
-  parallelGroupId?: string;
-  blocks?: Message[];
   rerankedMatches?: RerankedMatch[];
   kb_search_query?: string;
   retrievalCalls?: RetrievalCall[]; // Legacy - kept for backward compatibility
