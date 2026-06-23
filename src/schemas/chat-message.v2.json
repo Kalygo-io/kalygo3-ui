@@ -12,10 +12,7 @@
   "properties": {
     "role": {
       "type": "string",
-      "enum": [
-        "human",
-        "ai"
-      ],
+      "enum": ["human", "ai"],
       "description": "The role of the message sender (human or AI)."
     },
     "content": {
@@ -27,15 +24,12 @@
       "description": "Array of tool calls made during the generation of this message. Only present for AI messages. Each tool call has a different schema depending on the tool type.",
       "items": {
         "oneOf": [
-          {
-            "$ref": "#/$defs/vectorSearchToolCall"
-          },
-          {
-            "$ref": "#/$defs/vectorSearchWithRerankingToolCall"
-          },
-          {
-            "$ref": "#/$defs/dbReadToolCall"
-          }
+          { "$ref": "#/$defs/vectorSearchToolCall" },
+          { "$ref": "#/$defs/vectorSearchWithRerankingToolCall" },
+          { "$ref": "#/$defs/dbTableReadToolCall" },
+          { "$ref": "#/$defs/dbTableWriteToolCall" },
+          { "$ref": "#/$defs/sendEmailToolCall" },
+          { "$ref": "#/$defs/customToolCall" }
         ],
         "description": "A tool call. The schema varies by tool type."
       },
@@ -65,9 +59,7 @@
         },
         "input": {
           "type": "object",
-          "required": [
-            "query"
-          ],
+          "required": ["query"],
           "properties": {
             "query": {
               "type": "string",
@@ -81,11 +73,7 @@
         },
         "output": {
           "type": "object",
-          "required": [
-            "results",
-            "namespace",
-            "index"
-          ],
+          "required": ["results", "namespace", "index"],
           "properties": {
             "results": {
               "type": "array",
@@ -128,9 +116,7 @@
         },
         "input": {
           "type": "object",
-          "required": [
-            "query"
-          ],
+          "required": ["query"],
           "properties": {
             "query": {
               "type": "string",
@@ -144,11 +130,7 @@
         },
         "output": {
           "type": "object",
-          "required": [
-            "results",
-            "namespace",
-            "index"
-          ],
+          "required": ["results", "namespace", "index"],
           "properties": {
             "results": {
               "type": "array",
@@ -172,11 +154,7 @@
     "vectorSearchResult": {
       "type": "object",
       "description": "A single result from vector search",
-      "required": [
-        "id",
-        "score",
-        "metadata"
-      ],
+      "required": ["id", "score", "metadata"],
       "properties": {
         "id": {
           "type": "string",
@@ -339,9 +317,9 @@
       },
       "additionalProperties": false
     },
-    "dbReadToolCall": {
+    "dbTableReadToolCall": {
       "type": "object",
-      "description": "Tool call for database read operations (querying structured data)",
+      "description": "Tool call for database read (structured data query)",
       "additionalProperties": false,
       "required": [
         "toolType",
@@ -352,82 +330,181 @@
       "properties": {
         "toolType": {
           "type": "string",
-          "const": "dbRead",
-          "description": "The type of tool (dbRead)"
+          "const": "dbTableRead",
+          "description": "The type of tool (dbTableRead)"
         },
         "toolName": {
           "type": "string",
-          "description": "The specific tool instance name (e.g., 'read_sessions', 'read_usage')"
+          "description": "The specific tool instance name (e.g., 'query_chat_sessions')"
         },
         "input": {
           "type": "object",
-          "required": [
-            "table"
-          ],
           "properties": {
-            "table": {
-              "type": "string",
-              "description": "The database table being queried"
-            },
-            "columns": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "Columns requested (optional)"
-            },
             "filters": {
               "type": "object",
-              "description": "Query filters applied (optional)",
+              "description": "Filters applied to the query",
               "additionalProperties": true
             },
             "limit": {
               "type": "integer",
-              "description": "Maximum rows requested"
+              "description": "Maximum number of results"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Number of results to skip"
             }
           }
         },
         "output": {
           "type": "object",
-          "required": [
-            "rows",
-            "table"
-          ],
+          "required": ["results", "table", "count"],
           "properties": {
-            "rows": {
+            "results": {
               "type": "array",
-              "description": "Query results as array of row objects",
+              "description": "Query results from database",
               "items": {
-                "$ref": "#/$defs/dbReadRow"
+                "type": "object",
+                "required": ["data"],
+                "properties": {
+                  "data": {
+                    "type": "object",
+                    "description": "Row data as key-value pairs",
+                    "additionalProperties": true
+                  }
+                }
               }
             },
             "table": {
               "type": "string",
               "description": "The table that was queried"
             },
-            "rowCount": {
+            "count": {
               "type": "integer",
-              "description": "Total number of rows returned"
-            },
-            "columns": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "Column names in the result set"
+              "description": "Number of results returned"
             }
           }
         }
       }
     },
-    "dbReadRow": {
+    "dbTableWriteToolCall": {
       "type": "object",
-      "description": "A single row from a database query result",
-      "additionalProperties": true,
+      "description": "Tool call for database write (insert record)",
+      "additionalProperties": false,
+      "required": [
+        "toolType",
+        "toolName",
+        "input",
+        "output"
+      ],
       "properties": {
-        "id": {
-          "type": ["integer", "string"],
-          "description": "Row identifier (if present)"
+        "toolType": {
+          "type": "string",
+          "const": "dbTableWrite",
+          "description": "The type of tool (dbTableWrite)"
+        },
+        "toolName": {
+          "type": "string",
+          "description": "The specific tool instance name (e.g., 'create_lead', 'insert_orders')"
+        },
+        "input": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "object",
+              "description": "Data to insert as key-value pairs",
+              "additionalProperties": true
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": ["success", "table"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the insert was successful"
+            },
+            "table": {
+              "type": "string",
+              "description": "The table that was written to"
+            },
+            "inserted": {
+              "type": "object",
+              "description": "The inserted record data",
+              "additionalProperties": true
+            },
+            "message": {
+              "type": "string",
+              "description": "Success or error message"
+            },
+            "error": {
+              "type": "string",
+              "description": "Error message if insert failed"
+            }
+          }
+        }
+      }
+    },
+    "sendEmailToolCall": {
+      "type": "object",
+      "description": "Tool call for sending an email (plain-text or HTML, via SES, Google OAuth, or Google SMTP)",
+      "additionalProperties": false,
+      "required": ["toolType", "toolName", "input", "output"],
+      "properties": {
+        "toolType": {
+          "type": "string",
+          "enum": ["sendTxtEmailWithSes", "sendHtmlEmailWithSes", "sendTxtEmailWithGoogleOAuth", "sendTxtEmailWithGoogleSmtp"],
+          "description": "The email tool variant"
+        },
+        "toolName": {
+          "type": "string",
+          "description": "The tool instance name"
+        },
+        "input": {
+          "type": "object",
+          "properties": {
+            "to": { "type": "string", "description": "Recipient email address" },
+            "subject": { "type": "string", "description": "Email subject line" },
+            "body": { "type": "string", "description": "Plain-text email body" },
+            "html_body": { "type": ["string", "null"], "description": "HTML email body (sendHtmlEmailWithSes)" },
+            "template_id": { "type": "integer", "description": "Email template ID (sendHtmlEmailWithSes)" },
+            "variables": { "type": "object", "description": "Template variables", "additionalProperties": true }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": { "type": "boolean", "description": "Whether the send was successful" },
+            "messageId": { "type": ["string", "null"], "description": "SES/Gmail message ID" },
+            "error": { "type": ["string", "null"], "description": "Error message if send failed" }
+          }
+        }
+      }
+    },
+    "customToolCall": {
+      "type": "object",
+      "description": "Fallback for unrecognized or custom tool calls",
+      "additionalProperties": false,
+      "required": ["toolType", "toolName", "input", "output"],
+      "properties": {
+        "toolType": {
+          "type": "string",
+          "description": "The tool type identifier"
+        },
+        "toolName": {
+          "type": "string",
+          "description": "The tool instance name"
+        },
+        "input": {
+          "type": "object",
+          "description": "Tool input (shape varies)",
+          "additionalProperties": true
+        },
+        "output": {
+          "type": "object",
+          "description": "Tool output (shape varies)",
+          "additionalProperties": true
         }
       }
     }
@@ -508,35 +585,31 @@
     },
     {
       "role": "ai",
-      "content": "I found 3 recent chat sessions in your account...",
+      "content": "Here are your recent chat sessions...",
       "toolCalls": [
         {
-          "toolType": "dbRead",
-          "toolName": "read_chat_sessions",
+          "toolType": "dbTableRead",
+          "toolName": "query_chat_sessions",
           "input": {
-            "table": "chat_app_sessions",
-            "limit": 10
+            "filters": null,
+            "limit": 10,
+            "offset": 0
           },
           "output": {
-            "rows": [
+            "results": [
               {
-                "id": 1,
-                "session_id": "abc-123",
-                "chat_app_id": "agent-chat",
-                "created_at": "2026-01-26T10:30:00Z",
-                "title": "AI School Discussion"
-              },
-              {
-                "id": 2,
-                "session_id": "def-456",
-                "chat_app_id": "agent-chat",
-                "created_at": "2026-01-25T14:20:00Z",
-                "title": "Pricing Questions"
+                "data": {
+                  "id": 1,
+                  "session_id": "f7e18bb1-fb1b-4739-8022-f6a21b83de23",
+                  "agent_id": 1,
+                  "account_id": 123,
+                  "created_at": "2026-01-26T20:00:00Z",
+                  "title": "AI School Chat"
+                }
               }
             ],
-            "table": "chat_app_sessions",
-            "rowCount": 2,
-            "columns": ["id", "session_id", "chat_app_id", "created_at", "title"]
+            "table": "chat_sessions",
+            "count": 1
           }
         }
       ]
