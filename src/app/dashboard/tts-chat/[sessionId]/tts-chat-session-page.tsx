@@ -87,7 +87,6 @@ export function TtsChatSessionPage({
   }, [sessionId, router]);
 
   // Cleanup effect to abort any ongoing requests when component unmounts
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     return () => {
       // Only abort on unmount, not on every state change

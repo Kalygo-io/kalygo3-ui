@@ -1,6 +1,7 @@
 import nextPlugin from "@next/eslint-plugin-next";
 import reactPlugin from "eslint-plugin-react";
 import hooksPlugin from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 import tsParser from "@typescript-eslint/parser";
 
 export default [
@@ -16,6 +17,7 @@ export default [
       "@next/next": nextPlugin,
       react: reactPlugin,
       "react-hooks": hooksPlugin,
+      "@typescript-eslint": tseslint.plugin,
     },
     rules: {
       ...nextPlugin.configs.recommended.rules,
@@ -24,6 +26,16 @@ export default [
       "react/react-in-jsx-scope": "off",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
+      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
     },
     settings: {
       react: {
@@ -45,6 +57,7 @@ export default [
       "react/react-in-jsx-scope": "off",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
+      "no-console": ["warn", { allow: ["warn", "error"] }],
     },
     settings: {
       react: {
