@@ -7,13 +7,11 @@ import {
   CredentialDetail,
   ServiceName,
   AuthType,
-  CredentialType,
   CredentialMetadata,
   CredentialData,
   formatServiceName,
   formatCredentialType,
   getCredentialTypeColor,
-  getCredentialDataKey,
   getCredentialValue,
 } from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -22,10 +20,15 @@ import { PageLoading } from "@/components/shared/common/page-loading";
 import { EmptyState } from "@/components/shared/common/empty-state";
 import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import {
+  CredentialFieldValues,
+  buildCredentialData,
+  getCredentialTypeFlags,
+  EnvironmentValue,
+} from "./credential-utils";
+import { CredentialFields } from "./components/credential-fields";
+import {
   TrashIcon,
   PencilIcon,
-  EyeIcon,
-  EyeSlashIcon,
   KeyIcon,
   LinkIcon,
   ShieldCheckIcon,
@@ -317,27 +320,27 @@ function CreateCredentialForm({
 }) {
   const [serviceName, setServiceName] = useState<ServiceName | "">("");
   const [authType, setAuthType] = useState<AuthType>(AuthType.API_KEY);
-  const [credentialName, setCredentialName] = useState("");
-  const [secretValue, setSecretValue] = useState("");
-  const [showSecret, setShowSecret] = useState(false);
-  const [environment, setEnvironment] = useState<"production" | "staging" | "development" | "">("");
-  const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [values, setValues] = useState<CredentialFieldValues>({
+    credentialName: "",
+    secretValue: "",
+    keyId: "",
+    sesRegion: "",
+    sesFromEmail: "",
+    googleFromEmail: "",
+    googleAppPassword: "",
+    gcsServiceAccountJson: "",
+    gcsBucketName: "",
+    environment: "",
+    notes: "",
+  });
 
-  const [keyId, setKeyId] = useState("");
-  const [showSecretPair, setShowSecretPair] = useState(false);
-  const [sesRegion, setSesRegion] = useState("");
-  const [sesFromEmail, setSesFromEmail] = useState("");
-  const [googleFromEmail, setGoogleFromEmail] = useState("");
-  const [googleAppPassword, setGoogleAppPassword] = useState("");
-  const [showGoogleAppPassword, setShowGoogleAppPassword] = useState(false);
-  const [gcsServiceAccountJson, setGcsServiceAccountJson] = useState("");
-  const [gcsBucketName, setGcsBucketName] = useState("");
+  const setField = <K extends keyof CredentialFieldValues>(
+    field: K,
+    value: CredentialFieldValues[K],
+  ) => setValues((prev) => ({ ...prev, [field]: value }));
 
-  const isAwsSes = serviceName === ServiceName.AWS_SES;
-  const isGoogleGmailSmtp = serviceName === ServiceName.GOOGLE_GMAIL_SMTP;
-  const isGcs = serviceName === ServiceName.GOOGLE_CLOUD_STORAGE;
-  const isAccessKeyPair = authType === AuthType.AWS_ACCESS_KEY_PAIR;
+  const flags = getCredentialTypeFlags(serviceName, authType);
 
   const handleServiceNameChange = (value: ServiceName | "") => {
     setServiceName(value);
@@ -356,112 +359,52 @@ function CreateCredentialForm({
       errorToast("Please select a service");
       return;
     }
-    if (!credentialName.trim()) {
+    if (!values.credentialName.trim()) {
       errorToast("Please enter a name to identify this credential");
       return;
     }
 
-    let credentialData: CredentialData;
-
-    if (isAwsSes) {
-      if (!keyId.trim() || !secretValue.trim() || !sesRegion.trim() || !sesFromEmail.trim()) {
-        errorToast("Please fill in all four AWS SES fields");
-        return;
-      }
-      credentialData = {
-        aws_access_key_id: keyId.trim(),
-        aws_secret_access_key: secretValue.trim(),
-        aws_region: sesRegion.trim(),
-        from_email: sesFromEmail.trim(),
-      };
-    } else if (isGoogleGmailSmtp) {
-      if (!googleFromEmail.trim() || !googleAppPassword.trim()) {
-        errorToast("Please fill in both Gmail SMTP fields");
-        return;
-      }
-      credentialData = {
-        from_email: googleFromEmail.trim(),
-        app_password: googleAppPassword.trim(),
-      };
-    } else if (isGcs) {
-      if (!gcsServiceAccountJson.trim() || !gcsBucketName.trim()) {
-        errorToast("Please provide both the service-account JSON and a bucket name");
-        return;
-      }
-      let parsedSa: Record<string, unknown>;
-      try {
-        parsedSa = JSON.parse(gcsServiceAccountJson);
-      } catch {
-        errorToast("The service-account JSON is not valid JSON");
-        return;
-      }
-      credentialData = { service_account_json: parsedSa };
-    } else if (isAccessKeyPair) {
-      if (!keyId.trim() || !secretValue.trim()) {
-        errorToast("Please fill in both the Key ID and Secret Key");
-        return;
-      }
-      credentialData = { key_id: keyId.trim(), secret_key: secretValue.trim() };
-    } else {
-      if (!secretValue.trim()) {
-        errorToast("Please fill in the credential value");
-        return;
-      }
-      const dataKey = getCredentialDataKey(authType);
-      credentialData = { [dataKey]: secretValue.trim() };
+    const built = buildCredentialData(
+      values,
+      authType,
+      flags,
+      "Please fill in the credential value",
+    );
+    if (built.error) {
+      errorToast(built.error);
+      return;
     }
-
-    const metadata: CredentialMetadata = {};
-    if (environment) metadata.environment = environment;
-    if (notes.trim()) metadata.notes = notes.trim();
-    // Bucket name is non-secret and resolved server-side from metadata.
-    if (isGcs) metadata.bucket_name = gcsBucketName.trim();
 
     try {
       setSubmitting(true);
       await onSubmit(
         serviceName,
         authType,
-        credentialName,
-        credentialData,
-        Object.keys(metadata).length > 0 ? metadata : undefined
+        values.credentialName,
+        built.credentialData!,
+        built.metadata
       );
       setServiceName("");
       setAuthType(AuthType.API_KEY);
-      setCredentialName("");
-      setKeyId("");
-      setSecretValue("");
-      setSesRegion("");
-      setSesFromEmail("");
-      setGoogleFromEmail("");
-      setGoogleAppPassword("");
-      setGcsServiceAccountJson("");
-      setGcsBucketName("");
-      setEnvironment("");
-      setNotes("");
+      setValues({
+        credentialName: "",
+        secretValue: "",
+        keyId: "",
+        sesRegion: "",
+        sesFromEmail: "",
+        googleFromEmail: "",
+        googleAppPassword: "",
+        gcsServiceAccountJson: "",
+        gcsBucketName: "",
+        environment: "",
+        notes: "",
+      });
     } catch {
       // Error handled in parent
     } finally {
       setSubmitting(false);
     }
   };
-
-  const getPlaceholder = () => {
-    switch (authType) {
-      case AuthType.API_KEY: return "Enter your API key";
-      case AuthType.DB_CONNECTION: return "postgresql://user:pass@host:5432/db";
-      case AuthType.CONNECTION_STRING: return "Enter your connection string";
-      case AuthType.OAUTH_TOKEN: return "Enter your OAuth token";
-      case AuthType.SECRET_KEY: return "Enter your secret key";
-      case AuthType.CERTIFICATE: return "Paste your certificate content";
-      default: return "Enter your credential value";
-    }
-  };
-
-  const isMultiline =
-    authType === AuthType.CERTIFICATE ||
-    authType === AuthType.CONNECTION_STRING ||
-    authType === AuthType.DB_CONNECTION;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -488,246 +431,33 @@ function CreateCredentialForm({
             </select>
           </div>
 
-          {/* 2. Credential Name — required; primary identifier */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Credential Name *
-            </label>
-            <input
-              type="text"
-              value={credentialName}
-              onChange={(e) => setCredentialName(e.target.value)}
-              placeholder="e.g., Production, Staging, Client ABC"
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-            <p className="text-gray-500 text-xs mt-1">
-              Used to distinguish multiple credentials of the same service.
-            </p>
-          </div>
-
-          {/* 3. Auth Type — hidden for services that auto-set it */}
-          {!isAwsSes && !isGoogleGmailSmtp && !isGcs && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Credential Type *
-              </label>
-              <select
-                value={authType}
-                onChange={(e) => setAuthType(e.target.value as AuthType)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                {Object.values(AuthType).map((t) => (
-                  <option key={t} value={t}>{formatCredentialType(t)}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* 4a. Access Key Pair fields */}
-          {isAccessKeyPair && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isAwsSes ? "AWS Access Key ID" : "Key ID"} *
-                </label>
-                <input
-                  type="text"
-                  value={keyId}
-                  onChange={(e) => setKeyId(e.target.value)}
-                  placeholder={isAwsSes ? "AKIAIOSFODNN7EXAMPLE" : "Enter your key ID"}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isAwsSes ? "AWS Secret Access Key" : "Secret Key"} *
-                </label>
-                <div className="relative">
-                  <input
-                    type={showSecretPair ? "text" : "password"}
-                    value={secretValue}
-                    onChange={(e) => setSecretValue(e.target.value)}
-                    placeholder={isAwsSes ? "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" : "Enter your secret key"}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+          <CredentialFields
+            values={values}
+            onChange={setField}
+            authType={authType}
+            flags={flags}
+            required
+            betweenNameAndFields={
+              /* Auth Type — hidden for services that auto-set it */
+              !flags.isAwsSes && !flags.isGoogleGmailSmtp && !flags.isGcs ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Credential Type *
+                  </label>
+                  <select
+                    value={authType}
+                    onChange={(e) => setAuthType(e.target.value as AuthType)}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
-                  />
-                  <button type="button" onClick={() => setShowSecretPair(!showSecretPair)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
-                    {showSecretPair ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
+                  >
+                    {Object.values(AuthType).map((t) => (
+                      <option key={t} value={t}>{formatCredentialType(t)}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              {isAwsSes && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">AWS Region *</label>
-                    <input
-                      type="text"
-                      value={sesRegion}
-                      onChange={(e) => setSesRegion(e.target.value)}
-                      placeholder="us-east-1"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">From Email *</label>
-                    <input
-                      type="email"
-                      value={sesFromEmail}
-                      onChange={(e) => setSesFromEmail(e.target.value)}
-                      placeholder="no-reply@yourdomain.com"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    <p className="text-gray-500 text-xs mt-1">Must be a verified sender identity in your AWS SES account.</p>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* 4b. Google Gmail SMTP fields */}
-          {isGoogleGmailSmtp && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">From Email *</label>
-                <input
-                  type="email"
-                  value={googleFromEmail}
-                  onChange={(e) => setGoogleFromEmail(e.target.value)}
-                  placeholder="you@gmail.com"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">App Password *</label>
-                <div className="relative">
-                  <input
-                    type={showGoogleAppPassword ? "text" : "password"}
-                    value={googleAppPassword}
-                    onChange={(e) => setGoogleAppPassword(e.target.value)}
-                    placeholder="xxxx xxxx xxxx xxxx"
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    required
-                  />
-                  <button type="button" onClick={() => setShowGoogleAppPassword(!showGoogleAppPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
-                    {showGoogleAppPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  Generate at{" "}
-                  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
-                    myaccount.google.com/apppasswords
-                  </a>. Requires 2-Step Verification.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* 4c. Google Cloud Storage fields */}
-          {isGcs && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Bucket Name *
-                </label>
-                <input
-                  type="text"
-                  value={gcsBucketName}
-                  onChange={(e) => setGcsBucketName(e.target.value)}
-                  placeholder="my-account-bucket"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  required
-                />
-                <p className="text-gray-500 text-xs mt-1">
-                  Files (chat attachments and knowledge-base documents) are stored in this bucket.
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Service Account JSON *
-                </label>
-                <textarea
-                  value={gcsServiceAccountJson}
-                  onChange={(e) => setGcsServiceAccountJson(e.target.value)}
-                  placeholder='{ "type": "service_account", "project_id": "…", "private_key": "…", … }'
-                  rows={6}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
-                  required
-                />
-                <p className="text-gray-500 text-xs mt-1">
-                  Paste the JSON key for a service account with read/write access to the bucket. Stored encrypted.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* 4d. Generic single-value input */}
-          {!isAccessKeyPair && !isGoogleGmailSmtp && !isGcs && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                {formatCredentialType(authType)} Value *
-              </label>
-              <div className="relative">
-                {isMultiline ? (
-                  <textarea
-                    value={secretValue}
-                    onChange={(e) => setSecretValue(e.target.value)}
-                    placeholder={getPlaceholder()}
-                    rows={4}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    required
-                  />
-                ) : (
-                  <input
-                    type={showSecret ? "text" : "password"}
-                    value={secretValue}
-                    onChange={(e) => setSecretValue(e.target.value)}
-                    placeholder={getPlaceholder()}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                )}
-                {!isMultiline && (
-                  <button type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
-                    {showSecret ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 5. Optional metadata */}
-          <div className="border-t border-gray-700 pt-4 mt-4">
-            <h3 className="text-sm font-medium text-gray-400 mb-3">Optional</h3>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-300 mb-2">Environment</label>
-              <select
-                value={environment}
-                onChange={(e) => setEnvironment(e.target.value as typeof environment)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select environment...</option>
-                <option value="production">Production</option>
-                <option value="staging">Staging</option>
-                <option value="development">Development</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Notes</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes..."
-                rows={2}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-            </div>
-          </div>
+              ) : null
+            }
+          />
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
@@ -774,106 +504,58 @@ function EditCredentialModal({
     metadata?: CredentialMetadata
   ) => Promise<void>;
 }) {
-  const isAccessKeyPair = credential.auth_type === AuthType.AWS_ACCESS_KEY_PAIR;
-  const isAwsSes = credential.credential_type === ServiceName.AWS_SES;
-  const isGoogleGmailSmtp = credential.credential_type === ServiceName.GOOGLE_GMAIL_SMTP;
-  const isGcs = credential.credential_type === ServiceName.GOOGLE_CLOUD_STORAGE;
+  const flags = getCredentialTypeFlags(credential.credential_type, credential.auth_type);
 
-  const existingKeyId = isAwsSes
+  const existingKeyId = flags.isAwsSes
     ? (credential.credential_data?.aws_access_key_id as string) || ""
     : (credential.credential_data?.key_id as string) || "";
-  const existingSecret = isAwsSes
+  const existingSecret = flags.isAwsSes
     ? (credential.credential_data?.aws_secret_access_key as string) || ""
     : getCredentialValue(credential);
 
-  const [credentialName, setCredentialName] = useState(credential.credential_name || "");
-  const [keyId, setKeyId] = useState(existingKeyId);
-  const [secretValue, setSecretValue] = useState(existingSecret);
-  const [showSecretPair, setShowSecretPair] = useState(false);
-  const [sesRegion, setSesRegion] = useState((credential.credential_data?.aws_region as string) || "");
-  const [sesFromEmail, setSesFromEmail] = useState((credential.credential_data?.from_email as string) || "");
-  const [googleFromEmail, setGoogleFromEmail] = useState((credential.credential_data?.from_email as string) || "");
-  const [googleAppPassword, setGoogleAppPassword] = useState((credential.credential_data?.app_password as string) || "");
-  const [showGoogleAppPassword, setShowGoogleAppPassword] = useState(false);
-  const [gcsServiceAccountJson, setGcsServiceAccountJson] = useState(
-    credential.credential_data?.service_account_json
-      ? JSON.stringify(credential.credential_data.service_account_json, null, 2)
-      : ""
-  );
-  const [gcsBucketName, setGcsBucketName] = useState(
-    (credential.credential_metadata?.bucket_name as string) || ""
-  );
-  const [environment, setEnvironment] = useState<"production" | "staging" | "development" | "">(
-    credential.credential_metadata?.environment || ""
-  );
-  const [notes, setNotes] = useState(credential.credential_metadata?.notes || "");
   const [submitting, setSubmitting] = useState(false);
+  const [values, setValues] = useState<CredentialFieldValues>({
+    credentialName: credential.credential_name || "",
+    secretValue: existingSecret,
+    keyId: existingKeyId,
+    sesRegion: (credential.credential_data?.aws_region as string) || "",
+    sesFromEmail: (credential.credential_data?.from_email as string) || "",
+    googleFromEmail: (credential.credential_data?.from_email as string) || "",
+    googleAppPassword: (credential.credential_data?.app_password as string) || "",
+    gcsServiceAccountJson: credential.credential_data?.service_account_json
+      ? JSON.stringify(credential.credential_data.service_account_json, null, 2)
+      : "",
+    gcsBucketName: (credential.credential_metadata?.bucket_name as string) || "",
+    environment: (credential.credential_metadata?.environment as EnvironmentValue) || "",
+    notes: credential.credential_metadata?.notes || "",
+  });
+
+  const setField = <K extends keyof CredentialFieldValues>(
+    field: K,
+    value: CredentialFieldValues[K],
+  ) => setValues((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    let credentialData: CredentialData;
-
-    if (isAwsSes) {
-      if (!keyId.trim() || !secretValue.trim() || !sesRegion.trim() || !sesFromEmail.trim()) {
-        errorToast("Please fill in all four AWS SES fields");
-        return;
-      }
-      credentialData = {
-        aws_access_key_id: keyId.trim(),
-        aws_secret_access_key: secretValue.trim(),
-        aws_region: sesRegion.trim(),
-        from_email: sesFromEmail.trim(),
-      };
-    } else if (isGoogleGmailSmtp) {
-      if (!googleFromEmail.trim() || !googleAppPassword.trim()) {
-        errorToast("Please fill in both Gmail SMTP fields");
-        return;
-      }
-      credentialData = {
-        from_email: googleFromEmail.trim(),
-        app_password: googleAppPassword.trim(),
-      };
-    } else if (isGcs) {
-      if (!gcsServiceAccountJson.trim() || !gcsBucketName.trim()) {
-        errorToast("Please provide both the service-account JSON and a bucket name");
-        return;
-      }
-      let parsedSa: Record<string, unknown>;
-      try {
-        parsedSa = JSON.parse(gcsServiceAccountJson);
-      } catch {
-        errorToast("The service-account JSON is not valid JSON");
-        return;
-      }
-      credentialData = { service_account_json: parsedSa };
-    } else if (isAccessKeyPair) {
-      if (!keyId.trim() || !secretValue.trim()) {
-        errorToast("Please fill in both the Key ID and Secret Key");
-        return;
-      }
-      credentialData = { key_id: keyId.trim(), secret_key: secretValue.trim() };
-    } else {
-      if (!secretValue.trim()) {
-        errorToast("Credential value cannot be empty");
-        return;
-      }
-      const dataKey = getCredentialDataKey(credential.auth_type);
-      credentialData = { [dataKey]: secretValue.trim() };
+    const built = buildCredentialData(
+      values,
+      credential.auth_type,
+      flags,
+      "Credential value cannot be empty",
+    );
+    if (built.error) {
+      errorToast(built.error);
+      return;
     }
-
-    const metadata: CredentialMetadata = {};
-    if (environment) metadata.environment = environment;
-    if (notes.trim()) metadata.notes = notes.trim();
-    if (isGcs) metadata.bucket_name = gcsBucketName.trim();
 
     try {
       setSubmitting(true);
       await onUpdate(
         credential.id,
-        credentialName,
-        credentialData,
-        Object.keys(metadata).length > 0 ? metadata : undefined
+        values.credentialName,
+        built.credentialData!,
+        built.metadata
       );
     } catch {
       // Error handled in parent
@@ -884,10 +566,6 @@ function EditCredentialModal({
 
   const typeColor = getCredentialTypeColor(credential.auth_type);
   const typeIcon = getCredentialTypeIcon(credential.auth_type);
-  const isMultiline =
-    credential.auth_type === AuthType.CERTIFICATE ||
-    credential.auth_type === AuthType.CONNECTION_STRING ||
-    credential.auth_type === AuthType.DB_CONNECTION;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -908,216 +586,27 @@ function EditCredentialModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Credential Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Credential Name *
-            </label>
-            <input
-              type="text"
-              value={credentialName}
-              onChange={(e) => setCredentialName(e.target.value)}
-              placeholder="e.g., Production, Staging, Client ABC"
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-gray-500 text-xs mt-1">Used to distinguish multiple credentials of the same service.</p>
-          </div>
-
-          {/* Service (read-only) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Service</label>
-            <input
-              type="text"
-              value={formatServiceName(credential.credential_type)}
-              disabled
-              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-gray-400 cursor-not-allowed"
-            />
-          </div>
-
-          {/* AWS Access Key Pair */}
-          {isAccessKeyPair && (
-            <div className="space-y-3">
+          <CredentialFields
+            values={values}
+            onChange={setField}
+            authType={credential.auth_type}
+            flags={flags}
+            required={false}
+            showSecret={showSecret}
+            onToggleSecretVisibility={onToggleVisibility}
+            betweenNameAndFields={
+              /* Service (read-only) */
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isAwsSes ? "AWS Access Key ID" : "Key ID"}
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Service</label>
                 <input
                   type="text"
-                  value={keyId}
-                  onChange={(e) => setKeyId(e.target.value)}
-                  placeholder={isAwsSes ? "AKIAIOSFODNN7EXAMPLE" : "Enter your key ID"}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  value={formatServiceName(credential.credential_type)}
+                  disabled
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-gray-400 cursor-not-allowed"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {isAwsSes ? "AWS Secret Access Key" : "Secret Key"}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showSecretPair ? "text" : "password"}
-                    value={secretValue}
-                    onChange={(e) => setSecretValue(e.target.value)}
-                    placeholder={isAwsSes ? "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" : "Enter your secret key"}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  />
-                  <button type="button" onClick={() => setShowSecretPair(!showSecretPair)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
-                    {showSecretPair ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-              {isAwsSes && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">AWS Region</label>
-                    <input
-                      type="text"
-                      value={sesRegion}
-                      onChange={(e) => setSesRegion(e.target.value)}
-                      placeholder="us-east-1"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">From Email</label>
-                    <input
-                      type="email"
-                      value={sesFromEmail}
-                      onChange={(e) => setSesFromEmail(e.target.value)}
-                      placeholder="no-reply@yourdomain.com"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Google Gmail SMTP */}
-          {isGoogleGmailSmtp && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">From Email</label>
-                <input
-                  type="email"
-                  value={googleFromEmail}
-                  onChange={(e) => setGoogleFromEmail(e.target.value)}
-                  placeholder="you@gmail.com"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">App Password</label>
-                <div className="relative">
-                  <input
-                    type={showGoogleAppPassword ? "text" : "password"}
-                    value={googleAppPassword}
-                    onChange={(e) => setGoogleAppPassword(e.target.value)}
-                    placeholder="xxxx xxxx xxxx xxxx"
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  />
-                  <button type="button" onClick={() => setShowGoogleAppPassword(!showGoogleAppPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
-                    {showGoogleAppPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  Generate at{" "}
-                  <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
-                    myaccount.google.com/apppasswords
-                  </a>.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Google Cloud Storage */}
-          {isGcs && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Bucket Name</label>
-                <input
-                  type="text"
-                  value={gcsBucketName}
-                  onChange={(e) => setGcsBucketName(e.target.value)}
-                  placeholder="my-account-bucket"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                />
-                <p className="text-gray-500 text-xs mt-1">
-                  Files (chat attachments and knowledge-base documents) are stored in this bucket.
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Service Account JSON</label>
-                <textarea
-                  value={gcsServiceAccountJson}
-                  onChange={(e) => setGcsServiceAccountJson(e.target.value)}
-                  placeholder='{ "type": "service_account", "project_id": "…", "private_key": "…", … }'
-                  rows={6}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
-                />
-                <p className="text-gray-500 text-xs mt-1">Stored encrypted. Paste a new key to replace it.</p>
-              </div>
-            </div>
-          )}
-
-          {/* Single-value field */}
-          {!isAccessKeyPair && !isGoogleGmailSmtp && !isGcs && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                {formatCredentialType(credential.auth_type)} Value
-              </label>
-              <div className="relative">
-                {isMultiline ? (
-                  <textarea
-                    value={secretValue}
-                    onChange={(e) => setSecretValue(e.target.value)}
-                    rows={4}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  />
-                ) : (
-                  <input
-                    type={showSecret ? "text" : "password"}
-                    value={secretValue}
-                    onChange={(e) => setSecretValue(e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
-                {!isMultiline && (
-                  <button type="button" onClick={onToggleVisibility} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300">
-                    {showSecret ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Optional metadata */}
-          <div className="border-t border-gray-700 pt-4">
-            <h3 className="text-sm font-medium text-gray-400 mb-3">Optional</h3>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-300 mb-2">Environment</label>
-              <select
-                value={environment}
-                onChange={(e) => setEnvironment(e.target.value as typeof environment)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select environment...</option>
-                <option value="production">Production</option>
-                <option value="staging">Staging</option>
-                <option value="development">Development</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Notes</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes..."
-                rows={2}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-            </div>
-          </div>
+            }
+          />
 
           {/* Timestamps */}
           <div className="text-xs text-gray-400 space-y-1 border-t border-gray-700 pt-4">

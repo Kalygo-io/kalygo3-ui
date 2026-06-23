@@ -16,12 +16,14 @@ To generate TypeScript types from the JSON schema:
 npx json-schema-to-typescript src/schemas/chat-message.v2.json > src/ts/types/ChatMessage.ts
 ```
 
-Or add to `package.json` scripts:
+This is already wired up in `package.json` as the `generate:types` script (it
+uses `npx` because the installed package exposes its CLI as the `json2ts`
+binary, not `json-schema-to-typescript`):
 
 ```json
 {
   "scripts": {
-    "generate:types": "json-schema-to-typescript src/schemas/chat-message.v2.json > src/ts/types/ChatMessage.ts"
+    "generate:types": "npx json-schema-to-typescript src/schemas/chat-message.v2.json > src/ts/types/ChatMessage.ts"
   }
 }
 ```
@@ -31,6 +33,13 @@ Then run:
 ```bash
 npm run generate:types
 ```
+
+> Note: the committed `src/ts/types/ChatMessage.ts` is currently AHEAD of
+> `chat-message.v2.json` — it contains additional tool-call types
+> (`dbTableRead`, `dbTableWrite`, `sendTxtEmailWithSes`,
+> `sendHtmlEmailWithSes`, `custom`) that are NOT yet modeled in the schema.
+> Regenerating right now would drop those types. Update the schema to match
+> before regenerating.
 
 #### Schema Structure
 

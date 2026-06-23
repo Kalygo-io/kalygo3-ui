@@ -6,6 +6,25 @@ import { RetrievalCall } from "@/ts/types/Message";
 import { getOriginalDocumentUrl } from "@/services/uploadChatFile";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { ChatAccent } from "@/components/shared/chat/accent";
+import {
+  VectorSearchToolCall,
+  VectorSearchWithRerankingToolCall,
+  VectorSearchResult,
+  DbTableReadToolCall,
+  DbTableWriteToolCall,
+  SendTxtEmailWithSesToolCall,
+  SendHtmlEmailWithSesToolCall,
+  CustomToolCall,
+} from "@/ts/types/ChatMessage";
+import {
+  AnyToolCall,
+  isVectorSearchToolCall,
+  isVectorSearchWithRerankingToolCall,
+  isDbTableReadToolCall,
+  isDbTableWriteToolCall,
+  isQaMetadata,
+  formatScore,
+} from "@/ts/utils/chat-message-helpers";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +40,14 @@ interface ToolCallsDrawerProps {
   /** When true, cards/JSON blocks render expanded by default (tts behavior). */
   defaultExpandAll?: boolean;
 }
+
+/**
+ * A drawer card receives either a generated v2 tool call (when narrowed by
+ * `toolType`) or one of the loosely-typed envelopes the drawer also handles
+ * (`_pending`, `_legacy`, or an unrecognized tool type). The router narrows
+ * to the generated interfaces before handing each card its `call`.
+ */
+type DrawerCall = AnyToolCall | Record<string, any>;
 
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
 
@@ -38,7 +65,7 @@ export function ToolCallsDrawer({
     accent === "purple" ? "text-purple-400" : "text-blue-400";
 
   // Merge: current-format tool calls take precedence; fall back to legacy.
-  const calls: any[] =
+  const calls: DrawerCall[] =
     toolCalls.length > 0
       ? toolCalls
       : retrievalCalls.map((rc) => ({ _legacy: true, ...rc }));
@@ -96,42 +123,49 @@ function ToolCallCard({
   defaultExpandAll,
 }: {
   index: number;
-  call: any;
+  call: DrawerCall;
   defaultExpandAll: boolean;
 }) {
-  if (call._pending) return <PendingCard index={index} call={call} />;
-  if (call._legacy)
+  if ((call as any)._pending) return <PendingCard index={index} call={call} />;
+  if ((call as any)._legacy)
     return (
       <LegacyCard index={index} call={call} defaultExpandAll={defaultExpandAll} />
     );
 
-  switch (call.toolType) {
-    case "vectorSearch":
-    case "vectorSearchWithReranking":
-      return (
-        <VectorSearchCard
-          index={index}
-          call={call}
-          defaultExpandAll={defaultExpandAll}
-        />
-      );
-    case "dbTableRead":
-      return (
-        <DbReadCard index={index} call={call} defaultExpandAll={defaultExpandAll} />
-      );
-    case "dbTableWrite":
-      return (
-        <DbWriteCard
-          index={index}
-          call={call}
-          defaultExpandAll={defaultExpandAll}
-        />
-      );
+  // From here on the call should be a generated v2 tool call. Narrow with the
+  // shared type guards so each card receives its specific generated interface.
+  const tc = call as AnyToolCall;
+
+  if (isVectorSearchToolCall(tc) || isVectorSearchWithRerankingToolCall(tc)) {
+    return (
+      <VectorSearchCard
+        index={index}
+        call={tc}
+        defaultExpandAll={defaultExpandAll}
+      />
+    );
+  }
+  if (isDbTableReadToolCall(tc)) {
+    return (
+      <DbReadCard index={index} call={tc} defaultExpandAll={defaultExpandAll} />
+    );
+  }
+  if (isDbTableWriteToolCall(tc)) {
+    return (
+      <DbWriteCard
+        index={index}
+        call={tc}
+        defaultExpandAll={defaultExpandAll}
+      />
+    );
+  }
+
+  switch ((call as any).toolType) {
     case "sendTxtEmailWithSes":
       return (
         <EmailCard
           index={index}
-          call={call}
+          call={call as SendTxtEmailWithSesToolCall}
           typeLabel="Send Email"
           defaultExpandAll={defaultExpandAll}
         />
@@ -140,14 +174,18 @@ function ToolCallCard({
       return (
         <EmailCard
           index={index}
-          call={call}
+          call={call as SendHtmlEmailWithSesToolCall}
           typeLabel="Send Templated HTML Email"
           defaultExpandAll={defaultExpandAll}
         />
       );
     case "custom":
       return (
-        <CustomCard index={index} call={call} defaultExpandAll={defaultExpandAll} />
+        <CustomCard
+          index={index}
+          call={call as CustomToolCall}
+          defaultExpandAll={defaultExpandAll}
+        />
       );
     default:
       return <GenericCard index={index} call={call} />;
@@ -250,19 +288,20 @@ function SuccessBadge({ success }: { success: boolean | undefined }) {
 
 // ─── Pending (tool is still running) ─────────────────────────────────────────
 
-function PendingCard({ index, call }: { index: number; call: any }) {
+function PendingCard({ index, call }: { index: number; call: DrawerCall }) {
+  const c = call as any;
   return (
     <CardShell
       index={index}
       typeLabel="Running…"
       typeColor="bg-yellow-500/20 text-yellow-400"
-      toolName={call.toolName ?? "unknown_tool"}
+      toolName={c.toolName ?? "unknown_tool"}
       badge={
         <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
       }
     >
-      {call.input && Object.keys(call.input).length > 0 && (
-        <JsonBlock label="Input" data={call.input} defaultOpen />
+      {c.input && Object.keys(c.input).length > 0 && (
+        <JsonBlock label="Input" data={c.input} defaultOpen />
       )}
     </CardShell>
   );
@@ -276,10 +315,10 @@ function VectorSearchCard({
   defaultExpandAll,
 }: {
   index: number;
-  call: any;
+  call: VectorSearchToolCall | VectorSearchWithRerankingToolCall;
   defaultExpandAll: boolean;
 }) {
-  const results: any[] = call.output?.results ?? [];
+  const results: VectorSearchResult[] = call.output?.results ?? [];
   const isRerank = call.toolType === "vectorSearchWithReranking";
 
   return (
@@ -312,7 +351,7 @@ function VectorResultsList({
   results,
   defaultExpandAll,
 }: {
-  results: any[];
+  results: VectorSearchResult[];
   defaultExpandAll: boolean;
 }) {
   const [showAll, setShowAll] = useState(defaultExpandAll);
@@ -352,25 +391,25 @@ function VectorResult({
   number,
   defaultExpandAll,
 }: {
-  result: any;
+  result: VectorSearchResult;
   number: number;
   defaultExpandAll: boolean;
 }) {
   const [open, setOpen] = useState(defaultExpandAll);
   const [loadingDoc, setLoadingDoc] = useState(false);
-  const meta = result.metadata ?? {};
+  const meta = result.metadata ?? ({} as VectorSearchResult["metadata"]);
   const score =
-    typeof result.score === "number"
-      ? `${(result.score * 100).toFixed(1)}%`
-      : null;
-  const isQA = "q" in meta && "a" in meta;
-  const content: string = meta.content || result.content || "";
+    typeof result.score === "number" ? formatScore(result.score) : null;
+  const isQA = isQaMetadata(meta);
+  const content: string =
+    meta.content || (result as any).content || "";
 
   // The original source document this result points back to (set during
   // ingestion). storage_path is bucket-relative; the bucket is resolved
   // server-side from the account's credential. Falls back to the pre-rename
   // gcs_file_path key for vectors ingested before the metadata rename.
-  const storagePath: string | undefined = meta.storage_path || meta.gcs_file_path;
+  const storagePath: string | undefined =
+    meta.storage_path || (meta as any).gcs_file_path;
 
   const handleViewOriginal = async () => {
     if (!storagePath || loadingDoc) return;
@@ -453,10 +492,10 @@ function DbReadCard({
   defaultExpandAll,
 }: {
   index: number;
-  call: any;
+  call: DbTableReadToolCall;
   defaultExpandAll: boolean;
 }) {
-  const rows: any[] = call.output?.rows ?? call.output?.results ?? [];
+  const rows = call.output?.rows ?? (call.output as any)?.results ?? [];
   const table = call.input?.table ?? call.output?.table ?? "";
 
   return (
@@ -493,7 +532,7 @@ function DbWriteCard({
   defaultExpandAll,
 }: {
   index: number;
-  call: any;
+  call: DbTableWriteToolCall;
   defaultExpandAll: boolean;
 }) {
   const table = call.input?.table ?? call.output?.table ?? "";
@@ -535,14 +574,16 @@ function EmailCard({
   defaultExpandAll,
 }: {
   index: number;
-  call: any;
+  call: SendTxtEmailWithSesToolCall | SendHtmlEmailWithSesToolCall;
   typeLabel?: string;
   defaultExpandAll: boolean;
 }) {
-  const htmlBody: string | undefined = call.input?.html_body;
-  const txtBody: string | undefined = call.input?.body;
-  const templateId: number | undefined = call.input?.template_id;
-  const vars: Record<string, string> | undefined = call.input?.variables;
+  const input = call.input as SendHtmlEmailWithSesToolCall["input"] &
+    SendTxtEmailWithSesToolCall["input"];
+  const htmlBody: string | undefined = input?.html_body;
+  const txtBody: string | undefined = input?.body;
+  const templateId: number | undefined = input?.template_id;
+  const vars: Record<string, string> | undefined = input?.variables;
   return (
     <CardShell
       index={index}
@@ -552,8 +593,8 @@ function EmailCard({
       badge={<SuccessBadge success={call.output?.success} />}
     >
       <div className="space-y-1.5">
-        <Row label="To" value={call.input?.to} />
-        <Row label="Subject" value={call.input?.subject} />
+        <Row label="To" value={input?.to} />
+        <Row label="Subject" value={input?.subject} />
         {templateId != null && (
           <Row label="Template ID" value={String(templateId)} />
         )}
@@ -594,7 +635,7 @@ function CustomCard({
   defaultExpandAll,
 }: {
   index: number;
-  call: any;
+  call: CustomToolCall;
   defaultExpandAll: boolean;
 }) {
   return (
@@ -618,10 +659,11 @@ function LegacyCard({
   defaultExpandAll,
 }: {
   index: number;
-  call: any;
+  call: DrawerCall;
   defaultExpandAll: boolean;
 }) {
-  const results: any[] = call.reranked_results ?? call.similarity_results ?? [];
+  const c = call as any;
+  const results: any[] = c.reranked_results ?? c.similarity_results ?? [];
   return (
     <CardShell
       index={index}
@@ -634,8 +676,8 @@ function LegacyCard({
         </span>
       }
     >
-      <Row label="Query" value={call.query} />
-      <Row label="Namespace" value={call.namespace} />
+      <Row label="Query" value={c.query} />
+      <Row label="Namespace" value={c.namespace} />
       {results.length > 0 && (
         <JsonBlock label="Results" data={results} defaultOpen={defaultExpandAll} />
       )}
@@ -645,9 +687,10 @@ function LegacyCard({
 
 // ─── Generic fallback ─────────────────────────────────────────────────────────
 
-function GenericCard({ index, call }: { index: number; call: any }) {
-  const name = call.toolName ?? call.name ?? "Unknown Tool";
-  const type = call.toolType ?? "unknown";
+function GenericCard({ index, call }: { index: number; call: DrawerCall }) {
+  const c = call as any;
+  const name = c.toolName ?? c.name ?? "Unknown Tool";
+  const type = c.toolType ?? "unknown";
   return (
     <CardShell
       index={index}

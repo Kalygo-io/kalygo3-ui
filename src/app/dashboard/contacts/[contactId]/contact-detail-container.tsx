@@ -11,13 +11,10 @@ import {
   contactsService,
   Contact,
   ContactEvent,
-  CreateContactEventRequest,
   UpdateContactRequest,
   CareerTimelineEntry,
-  CreateCareerTimelineRequest,
   ContactCompany,
 } from "@/services/contactsService";
-import { companiesService, Company } from "@/services/companiesService";
 import { dealsService, Deal } from "@/services/dealsService";
 import {
   DealFormModal,
@@ -29,17 +26,11 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  XMarkIcon,
   EnvelopeIcon,
   PhoneIcon,
   TagIcon,
   ClockIcon,
   ChatBubbleLeftEllipsisIcon,
-  PhoneArrowUpRightIcon,
-  VideoCameraIcon,
-  DocumentTextIcon,
-  PaperAirplaneIcon,
-  CheckCircleIcon,
   BriefcaseIcon,
   CalendarDaysIcon,
   SparklesIcon,
@@ -50,27 +41,13 @@ import {
   GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 import { ContactAgentDrawer } from "./contact-agent-drawer";
+import { DetailSection } from "./components/detail-section";
+import { EventFormModal } from "./components/event-form-modal";
+import { CareerTimelineFormModal } from "./components/career-timeline-form-modal";
+import { LinkCompanyModal } from "./components/link-company-modal";
+import { getEventType } from "./components/event-types";
 
-// ── Event type config ─────────────────────────────────────────────────────────
-
-const EVENT_TYPES = [
-  { value: "note", label: "Note", icon: DocumentTextIcon, color: "text-gray-400" },
-  { value: "call", label: "Call", icon: PhoneArrowUpRightIcon, color: "text-green-400" },
-  { value: "email", label: "Email", icon: EnvelopeIcon, color: "text-blue-400" },
-  { value: "meeting", label: "Meeting", icon: VideoCameraIcon, color: "text-purple-400" },
-  { value: "demo", label: "Demo", icon: VideoCameraIcon, color: "text-indigo-400" },
-  { value: "proposal_sent", label: "Proposal Sent", icon: PaperAirplaneIcon, color: "text-amber-400" },
-  { value: "contract_signed", label: "Contract Signed", icon: CheckCircleIcon, color: "text-emerald-400" },
-];
-
-function getEventType(value: string) {
-  return EVENT_TYPES.find((t) => t.value === value) ?? {
-    value,
-    label: value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-    icon: ChatBubbleLeftEllipsisIcon,
-    color: "text-gray-400",
-  };
-}
+// ── Source config ─────────────────────────────────────────────────────────────
 
 const SOURCE_OPTIONS = [
   "website", "referral", "chat_bot", "import", "cold_outreach", "event", "other",
@@ -427,18 +404,11 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
       </div>
 
       {/* Companies */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Companies</h2>
-          <button
-            onClick={() => setShowCompanyModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 text-sm"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Link Company
-          </button>
-        </div>
-
+      <DetailSection
+        title="Companies"
+        addLabel="Link Company"
+        onAdd={() => setShowCompanyModal(true)}
+      >
         {companies.length === 0 ? (
           <EmptyState
             size="sm"
@@ -508,21 +478,14 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
             ))}
           </div>
         )}
-      </div>
+      </DetailSection>
 
       {/* Career Timeline */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Career Timeline</h2>
-          <button
-            onClick={() => setShowCareerModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 text-sm"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add Entry
-          </button>
-        </div>
-
+      <DetailSection
+        title="Career Timeline"
+        addLabel="Add Entry"
+        onAdd={() => setShowCareerModal(true)}
+      >
         {careerEntries.length === 0 ? (
           <EmptyState
             size="sm"
@@ -593,21 +556,14 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
             })}
           </div>
         )}
-      </div>
+      </DetailSection>
 
       {/* Deals */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Deals</h2>
-          <button
-            onClick={() => setShowDealModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 text-sm"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add Deal
-          </button>
-        </div>
-
+      <DetailSection
+        title="Deals"
+        addLabel="Add Deal"
+        onAdd={() => setShowDealModal(true)}
+      >
         {deals.length === 0 ? (
           <EmptyState
             size="sm"
@@ -694,34 +650,27 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
             })}
           </div>
         )}
-      </div>
+      </DetailSection>
 
       {/* Event timeline */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Activity Timeline</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRefreshEvents}
-              disabled={refreshingEvents}
-              title="Refresh activity timeline"
-              aria-label="Refresh activity timeline"
-              className="bg-gray-800 hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed text-gray-300 hover:text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-2 text-sm border border-gray-700"
-            >
-              <ArrowPathIcon
-                className={`h-4 w-4 ${refreshingEvents ? "animate-spin" : ""}`}
-              />
-            </button>
-            <button
-              onClick={() => setShowEventModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 text-sm"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Log Event
-            </button>
-          </div>
-        </div>
-
+      <DetailSection
+        title="Activity Timeline"
+        addLabel="Log Event"
+        onAdd={() => setShowEventModal(true)}
+        extraActions={
+          <button
+            onClick={handleRefreshEvents}
+            disabled={refreshingEvents}
+            title="Refresh activity timeline"
+            aria-label="Refresh activity timeline"
+            className="bg-gray-800 hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed text-gray-300 hover:text-white font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-2 text-sm border border-gray-700"
+          >
+            <ArrowPathIcon
+              className={`h-4 w-4 ${refreshingEvents ? "animate-spin" : ""}`}
+            />
+          </button>
+        }
+      >
         {events.length === 0 ? (
           <EmptyState
             size="sm"
@@ -795,7 +744,7 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
             </div>
           </div>
         )}
-      </div>
+      </DetailSection>
 
       {/* Create event modal */}
       {showEventModal && (
@@ -927,441 +876,6 @@ export function ContactDetailContainer({ contactId }: { contactId: number }) {
         isOpen={showAssistant}
         onClose={() => setShowAssistant(false)}
       />
-    </div>
-  );
-}
-
-// ── Event form modal ──────────────────────────────────────────────────────────
-
-function EventFormModal({
-  initial,
-  onClose,
-  onSave,
-}: {
-  initial?: ContactEvent;
-  onClose: () => void;
-  onSave: (data: CreateContactEventRequest) => Promise<void>;
-}) {
-  const isEdit = !!initial;
-  const [form, setForm] = useState({
-    event_type: initial?.event_type ?? "note",
-    title: initial?.title ?? "",
-    description: initial?.description ?? "",
-    occurred_at: initial?.occurred_at
-      ? new Date(initial.occurred_at).toISOString().slice(0, 16)
-      : new Date().toISOString().slice(0, 16),
-  });
-  const [saving, setSaving] = useState(false);
-
-  const set =
-    (key: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setForm((prev) => ({ ...prev, [key]: e.target.value }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title.trim()) return errorToast("Title is required");
-    setSaving(true);
-    try {
-      await onSave({
-        event_type: form.event_type,
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        occurred_at: new Date(form.occurred_at).toISOString(),
-      });
-    } catch (error: any) {
-      errorToast(error.message || "Failed to save event");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="fixed inset-0 bg-black/70" onClick={onClose} />
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative w-full max-w-md bg-gray-800 border border-gray-700 rounded-xl shadow-2xl">
-          <div className="flex items-center justify-between p-5 border-b border-gray-700">
-            <h2 className="text-lg font-semibold text-white">
-              {isEdit ? "Edit Event" : "Log Event"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Event Type</label>
-              <select
-                value={form.event_type}
-                onChange={set("event_type")}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              >
-                {EVENT_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Title <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                value={form.title}
-                onChange={set("title")}
-                required
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                placeholder="e.g. Discovery call with Jane"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
-              <textarea
-                value={form.description}
-                onChange={set("description")}
-                rows={3}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
-                placeholder="Details, notes, next steps…"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Date &amp; Time</label>
-              <input
-                type="datetime-local"
-                value={form.occurred_at}
-                onChange={set("occurred_at")}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-              >
-                {saving ? "Saving…" : isEdit ? "Save Changes" : "Log Event"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Career Timeline form modal ───────────────────────────────────────────────
-
-function CareerTimelineFormModal({
-  initial,
-  onClose,
-  onSave,
-}: {
-  initial?: CareerTimelineEntry;
-  onClose: () => void;
-  onSave: (data: CreateCareerTimelineRequest) => Promise<void>;
-}) {
-  const isEdit = !!initial;
-  const [form, setForm] = useState({
-    title: initial?.title ?? "",
-    description: initial?.description ?? "",
-    start_date: initial?.start_date ?? "",
-    end_date: initial?.end_date ?? "",
-  });
-  const [saving, setSaving] = useState(false);
-
-  const set =
-    (key: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setForm((prev) => ({ ...prev, [key]: e.target.value }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title.trim()) return errorToast("Title is required");
-    if (!form.start_date) return errorToast("Start date is required");
-    if (form.end_date && form.end_date < form.start_date) {
-      return errorToast("End date cannot be before start date");
-    }
-    setSaving(true);
-    try {
-      await onSave({
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        start_date: form.start_date,
-        end_date: form.end_date || undefined,
-      });
-    } catch (error: any) {
-      errorToast(error.message || "Failed to save entry");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="fixed inset-0 bg-black/70" onClick={onClose} />
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative w-full max-w-md bg-gray-800 border border-gray-700 rounded-xl shadow-2xl">
-          <div className="flex items-center justify-between p-5 border-b border-gray-700">
-            <h2 className="text-lg font-semibold text-white">
-              {isEdit ? "Edit Career Entry" : "Add Career Entry"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Title <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                value={form.title}
-                onChange={set("title")}
-                required
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                placeholder="e.g. Software Engineer at Acme Corp"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
-              <textarea
-                value={form.description}
-                onChange={set("description")}
-                rows={3}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
-                placeholder="Responsibilities, achievements, notes…"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Start Date <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={form.start_date}
-                  onChange={set("start_date")}
-                  required
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={form.end_date}
-                  onChange={set("end_date")}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-              >
-                {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Entry"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Link company modal ────────────────────────────────────────────────────────
-
-function LinkCompanyModal({
-  existingCompanyIds,
-  onClose,
-  onLink,
-}: {
-  existingCompanyIds: Set<number>;
-  onClose: () => void;
-  onLink: (companyId: number, title: string) => Promise<void>;
-}) {
-  const [allCompanies, setAllCompanies] = useState<Company[]>([]);
-  const [loadingCompanies, setLoadingCompanies] = useState(true);
-  const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [title, setTitle] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    companiesService
-      .listCompaniesPage({ limit: 500 })
-      .then((page) => setAllCompanies(page.companies))
-      .catch((e) => errorToast(e.message || "Failed to load companies"))
-      .finally(() => setLoadingCompanies(false));
-  }, []);
-
-  const available = allCompanies.filter((c) => !existingCompanyIds.has(c.id));
-  const filtered = search.trim()
-    ? available.filter((c) => {
-        const term = search.toLowerCase();
-        return (
-          c.name.toLowerCase().includes(term) ||
-          (c.domain || "").toLowerCase().includes(term) ||
-          (c.industry || "").toLowerCase().includes(term)
-        );
-      })
-    : available;
-
-  const handleLink = async () => {
-    if (selectedId == null) return;
-    setSaving(true);
-    try {
-      await onLink(selectedId, title.trim());
-    } catch (error: any) {
-      errorToast(error.message || "Failed to link company");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="fixed inset-0 bg-black/70" onClick={onClose} />
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative w-full max-w-lg bg-gray-800 border border-gray-700 rounded-xl shadow-2xl flex flex-col max-h-[80vh]">
-          <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <BuildingOffice2Icon className="h-6 w-6 text-blue-400" />
-              <h2 className="text-xl font-semibold text-white">Link Company</h2>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="p-4 border-b border-gray-700 flex-shrink-0">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search companies…"
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-          </div>
-
-          <div className="overflow-y-auto flex-1 min-h-0">
-            {loadingCompanies ? (
-              <div className="flex items-center justify-center py-12 text-gray-400">
-                Loading companies…
-              </div>
-            ) : available.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-400 text-sm gap-2 px-6 text-center">
-                <span>
-                  {allCompanies.length === 0
-                    ? "No companies exist yet. Create one from the Companies page first."
-                    : "This contact is already linked to every company."}
-                </span>
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex items-center justify-center py-12 text-gray-400 text-sm">
-                No companies match your search
-              </div>
-            ) : (
-              <div>
-                {filtered.map((company) => (
-                  <div
-                    key={company.id}
-                    className={`flex items-center gap-3 px-4 py-3 border-b border-gray-700/30 cursor-pointer transition-colors ${
-                      selectedId === company.id ? "bg-blue-600/15" : "hover:bg-gray-700/20"
-                    }`}
-                    onClick={() => setSelectedId(company.id)}
-                  >
-                    <input
-                      type="radio"
-                      checked={selectedId === company.id}
-                      onChange={() => setSelectedId(company.id)}
-                      className="h-4 w-4 border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500/50 cursor-pointer"
-                    />
-                    <div className="h-8 w-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
-                      <BuildingOffice2Icon className="h-4 w-4 text-blue-300" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-white text-sm font-medium truncate">{company.name}</p>
-                      {(company.domain || company.industry) && (
-                        <p className="text-gray-400 text-xs truncate">
-                          {[company.industry, company.domain].filter(Boolean).join(" · ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="p-4 border-t border-gray-700 flex-shrink-0 space-y-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Title at this company (optional)</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. CTO, Head of Sales…"
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              />
-            </div>
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLink}
-                disabled={selectedId == null || saving}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors text-sm"
-              >
-                {saving ? "Linking…" : "Link Company"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

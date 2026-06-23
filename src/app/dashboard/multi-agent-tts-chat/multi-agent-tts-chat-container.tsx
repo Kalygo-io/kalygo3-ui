@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useReducer, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   agentsService,
@@ -37,6 +37,11 @@ import {
 } from "@/services/callSwarmTtsNextTurn";
 import { SessionAgentsConfigPanel } from "@/components/multi-agent-tts/session-agents-config-panel";
 import { StreamingAudioPlayer } from "@/components/tts-chat/streaming-audio-player";
+import {
+  multiAgentChatReducer,
+  initialState,
+  type ElevenLabsPlaybackItem,
+} from "./multi-agent-chat-session-reducer";
 
 const MAX_AGENTS = 10;
 /** How many queued chunks to prefetch while current chunk is playing. */
@@ -47,14 +52,6 @@ type TtsQueueItem = {
   text: string;
   voiceId: string;
   segmentId: string;
-};
-
-type ElevenLabsPlaybackItem = {
-  id: string;
-  agentName: string;
-  text: string;
-  status: "converting" | "ready" | "playing" | "error";
-  audioUrl?: string;
 };
 
 const getAgentColorFromName = (agentName: string): string => {
@@ -90,30 +87,26 @@ function buildSwarm(agents: Agent[]): SwarmPayload {
 
 export function MultiAgentTtsChatContainer() {
   const router = useRouter();
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [selectedAgents, setSelectedAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [inConversation, setInConversation] = useState(false);
-  const [sessionId, setSessionId] = useState<string>("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [stateToken, setStateToken] = useState<string | null>(null);
-  const [completionLoading, setCompletionLoading] = useState(false);
-  const [currentSpeaker, setCurrentSpeaker] = useState<string | null>(null);
-  const [input, setInput] = useState("");
-  const [isAudioStreaming, setIsAudioStreaming] = useState(false);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [elevenLabsQueue, setElevenLabsQueue] = useState<
-    ElevenLabsPlaybackItem[]
-  >([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [isEditSwarmModalOpen, setIsEditSwarmModalOpen] = useState(false);
-  const [draftSwarmAgentIds, setDraftSwarmAgentIds] = useState<string[]>([]);
-  const [ttsProvider, setTtsProvider] = useState<TtsProvider>("browser");
-  /** Progress for current turn: streamed text length vs chars sent to TTS (for progress bar) */
-  const [ttsProgress, setTtsProgress] = useState<{
-    streamed: number;
-    converted: number;
-  }>({ streamed: 0, converted: 0 });
+  const [state, dispatch] = useReducer(multiAgentChatReducer, initialState);
+  const {
+    agents,
+    selectedAgents,
+    loading,
+    inConversation,
+    sessionId,
+    messages,
+    stateToken,
+    completionLoading,
+    currentSpeaker,
+    input,
+    isAudioStreaming,
+    isAudioPlaying,
+    elevenLabsQueue,
+    drawerOpen,
+    isEditSwarmModalOpen,
+    draftSwarmAgentIds,
+    ttsProvider,
+  } = state;
   const abortRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>([]);
   const streamingMessageIdRef = useRef<string | null>(null);
@@ -196,30 +189,28 @@ export function MultiAgentTtsChatContainer() {
   }, []);
 
   useEffect(() => {
-    setTtsProvider(getAppSettings().ttsProvider);
+    dispatch({
+      type: "SET_TTS_PROVIDER",
+      payload: getAppSettings().ttsProvider,
+    });
   }, [inConversation]);
 
   const loadAgents = async () => {
     try {
-      setLoading(true);
+      dispatch({ type: "SET_LOADING", payload: true });
       const data = await agentsService.listAgents();
-      setAgents(data);
+      dispatch({ type: "SET_AGENTS", payload: data });
     } catch (error: unknown) {
       errorToast(
         error instanceof Error ? error.message : "Failed to load agents",
       );
     } finally {
-      setLoading(false);
+      dispatch({ type: "SET_LOADING", payload: false });
     }
   };
 
   const toggleAgent = (agent: Agent) => {
-    setSelectedAgents((prev) => {
-      const already = prev.some((a) => a.id === agent.id);
-      if (already) return prev.filter((a) => a.id !== agent.id);
-      if (prev.length >= MAX_AGENTS) return prev;
-      return [...prev, agent];
-    });
+    dispatch({ type: "TOGGLE_AGENT", payload: { agent, maxAgents: MAX_AGENTS } });
   };
 
   const handleStartConversation = () => {
@@ -227,14 +218,14 @@ export function MultiAgentTtsChatContainer() {
       errorToast("Select 1–3 agents to start.");
       return;
     }
-    setSessionId(uuidv4());
-    setMessages([]);
-    setStateToken(null);
-    setInConversation(true);
+    dispatch({
+      type: "START_CONVERSATION",
+      payload: { sessionId: uuidv4() },
+    });
   };
 
   const handleBackToSelection = () => {
-    setInConversation(false);
+    dispatch({ type: "SET_IN_CONVERSATION", payload: false });
   };
 
   const fetchAndCacheTtsBlob = (item: TtsQueueItem): Promise<Blob | null> => {
@@ -312,7 +303,7 @@ export function MultiAgentTtsChatContainer() {
       window as Window & { __streamingAudioPlayer?: { reset?: () => void } }
     ).__streamingAudioPlayer;
     player?.reset?.();
-    setIsAudioStreaming(true);
+    dispatch({ type: "SET_IS_AUDIO_STREAMING", payload: true });
   }, []);
 
   const endAudioStreaming = useCallback(() => {
@@ -331,7 +322,7 @@ export function MultiAgentTtsChatContainer() {
         if (queuedChunk) player.addAudioChunk(queuedChunk);
       }
     }
-    setIsAudioStreaming(false);
+    dispatch({ type: "SET_IS_AUDIO_STREAMING", payload: false });
     maybeResolveTtsDrain();
   }, [maybeResolveTtsDrain]);
 
@@ -414,9 +405,12 @@ export function MultiAgentTtsChatContainer() {
     ttsBufferRef.current = "";
     if (text) {
       convertedCharsRef.current += text.length;
-      setTtsProgress({
-        streamed: streamedCharsRef.current,
-        converted: convertedCharsRef.current,
+      dispatch({
+        type: "SET_TTS_PROGRESS",
+        payload: {
+          streamed: streamedCharsRef.current,
+          converted: convertedCharsRef.current,
+        },
       });
       const queueItem: TtsQueueItem = {
         id: nanoid(),
@@ -451,7 +445,10 @@ export function MultiAgentTtsChatContainer() {
             activeSegmentIdRef.current = `segment-${segmentCounterRef.current}`;
             streamedCharsRef.current = 0;
             convertedCharsRef.current = 0;
-            setTtsProgress({ streamed: 0, converted: 0 });
+            dispatch({
+              type: "SET_TTS_PROGRESS",
+              payload: { streamed: 0, converted: 0 },
+            });
             const decisionMessage: Message = {
               id: nanoid(),
               content: `Moderator chose ${agentName}`,
@@ -463,7 +460,7 @@ export function MultiAgentTtsChatContainer() {
                 reason: routeReason ?? "",
               },
             };
-            setMessages((prev) => [...prev, decisionMessage]);
+            dispatch({ type: "ADD_MESSAGE", payload: decisionMessage });
             const newMessage: Message = {
               id: nanoid(),
               content: "",
@@ -472,23 +469,22 @@ export function MultiAgentTtsChatContainer() {
               agentName,
             };
             streamingMessageIdRef.current = newMessage.id;
-            setMessages((prev) => [...prev, newMessage]);
-            setCurrentSpeaker(agentName);
-            setCompletionLoading(false);
+            dispatch({ type: "ADD_MESSAGE", payload: newMessage });
+            dispatch({ type: "SET_CURRENT_SPEAKER", payload: agentName });
+            dispatch({ type: "SET_COMPLETION_LOADING", payload: false });
           },
           onStreamChunk: (agentName, chunk) => {
             const id = streamingMessageIdRef.current;
             if (!id) return;
             streamedCharsRef.current += chunk.length;
-            setTtsProgress({
-              streamed: streamedCharsRef.current,
-              converted: convertedCharsRef.current,
+            dispatch({
+              type: "SET_TTS_PROGRESS",
+              payload: {
+                streamed: streamedCharsRef.current,
+                converted: convertedCharsRef.current,
+              },
             });
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === id ? { ...m, content: m.content + chunk } : m,
-              ),
-            );
+            dispatch({ type: "APPEND_CONTENT", payload: { id, chunk } });
           },
           onAgentEnd: () => {},
           onTurnResult: (result) => {
@@ -498,13 +494,12 @@ export function MultiAgentTtsChatContainer() {
             if (id) {
               const trimmed = result.content?.trim() ?? "";
               if (trimmed) {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === id ? { ...m, content: trimmed } : m,
-                  ),
-                );
+                dispatch({
+                  type: "SET_CONTENT",
+                  payload: { id, content: trimmed },
+                });
               } else {
-                setMessages((prev) => prev.filter((m) => m.id !== id));
+                dispatch({ type: "REMOVE_MESSAGE", payload: { id } });
               }
             }
 
@@ -523,17 +518,20 @@ export function MultiAgentTtsChatContainer() {
                   reason: stopReason,
                 },
               };
-              setMessages((prev) => [...prev, turnStopMessage]);
+              dispatch({ type: "ADD_MESSAGE", payload: turnStopMessage });
             }
 
-            setCurrentSpeaker(null);
+            dispatch({ type: "SET_CURRENT_SPEAKER", payload: null });
             if (ttsProvider === "elevenlabs" && result.content?.trim()) {
               const agentName = result.agentName?.trim() || "Agent";
               const voiceId = voiceIdForAgent(agentName);
               convertedCharsRef.current = result.content.length;
-              setTtsProgress({
-                streamed: streamedCharsRef.current,
-                converted: convertedCharsRef.current,
+              dispatch({
+                type: "SET_TTS_PROGRESS",
+                payload: {
+                  streamed: streamedCharsRef.current,
+                  converted: convertedCharsRef.current,
+                },
               });
               void enqueueElevenLabsPlayback(
                 agentName,
@@ -543,15 +541,18 @@ export function MultiAgentTtsChatContainer() {
             } else if (result.content?.trim()) {
               streamedCharsRef.current = result.content.length;
               convertedCharsRef.current = result.content.length;
-              setTtsProgress({
-                streamed: streamedCharsRef.current,
-                converted: convertedCharsRef.current,
+              dispatch({
+                type: "SET_TTS_PROGRESS",
+                payload: {
+                  streamed: streamedCharsRef.current,
+                  converted: convertedCharsRef.current,
+                },
               });
-              setIsAudioPlaying(true);
+              dispatch({ type: "SET_IS_AUDIO_PLAYING", payload: true });
               browserTtsPromiseRef.current = speakWithWebSpeech(
                 result.content,
               ).then(() => {
-                setIsAudioPlaying(false);
+                dispatch({ type: "SET_IS_AUDIO_PLAYING", payload: false });
               });
             } else {
               browserTtsPromiseRef.current = Promise.resolve();
@@ -604,12 +605,7 @@ export function MultiAgentTtsChatContainer() {
   );
 
   const clearElevenLabsQueue = useCallback(() => {
-    setElevenLabsQueue((prev) => {
-      for (const item of prev) {
-        if (item.audioUrl) URL.revokeObjectURL(item.audioUrl);
-      }
-      return [];
-    });
+    dispatch({ type: "ELEVENLABS_CLEAR" });
   }, []);
 
   const enqueueElevenLabsPlayback = useCallback(
@@ -618,59 +614,38 @@ export function MultiAgentTtsChatContainer() {
       if (!trimmed) return;
 
       const id = nanoid();
-      setElevenLabsQueue((prev) => [
-        ...prev,
-        { id, agentName, text: trimmed, status: "converting" },
-      ]);
+      dispatch({
+        type: "ELEVENLABS_ENQUEUE",
+        payload: { id, agentName, text: trimmed, status: "converting" },
+      });
 
       const blob = await fetchTtsBlob(trimmed, voiceId);
       if (!blob) {
-        setElevenLabsQueue((prev) => prev.filter((item) => item.id !== id));
+        dispatch({ type: "ELEVENLABS_REMOVE", payload: { id } });
         return;
       }
 
       const audioUrl = URL.createObjectURL(blob);
-      setElevenLabsQueue((prev) => {
-        const exists = prev.some((item) => item.id === id);
-        if (!exists) {
-          URL.revokeObjectURL(audioUrl);
-          return prev;
-        }
-        return prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                audioUrl,
-                status: item.status === "playing" ? "playing" : "ready",
-              }
-            : item,
-        );
+      // The reducer handles the "item was removed mid-flight" case by revoking
+      // the URL and leaving the queue untouched.
+      dispatch({
+        type: "ELEVENLABS_SET_AUDIO_URL",
+        payload: { id, audioUrl },
       });
     },
     [fetchTtsBlob],
   );
 
   const handleElevenLabsItemEnded = useCallback((itemId: string) => {
-    setElevenLabsQueue((prev) => {
-      const first = prev[0];
-      if (first?.id !== itemId) return prev;
-      if (first.audioUrl) URL.revokeObjectURL(first.audioUrl);
-      return prev.slice(1);
-    });
-    setIsAudioPlaying(false);
+    dispatch({ type: "ELEVENLABS_HEAD_ENDED", payload: { id: itemId } });
+    dispatch({ type: "SET_IS_AUDIO_PLAYING", payload: false });
   }, []);
 
   useEffect(() => {
     const first = elevenLabsQueue[0];
     if (!first) return;
     if (first.status === "ready") {
-      setElevenLabsQueue((prev) =>
-        prev.map((item, index) =>
-          index === 0 && item.status === "ready"
-            ? { ...item, status: "playing" }
-            : item,
-        ),
-      );
+      dispatch({ type: "ELEVENLABS_PROMOTE_HEAD" });
     }
   }, [elevenLabsQueue]);
 
@@ -692,15 +667,15 @@ export function MultiAgentTtsChatContainer() {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || completionLoading || selectedAgents.length === 0) return;
-    setInput("");
+    dispatch({ type: "SET_INPUT", payload: "" });
     const userMessage: Message = {
       id: nanoid(),
       content: trimmed,
       role: "human",
       error: null,
     };
-    setMessages((prev) => [...prev, userMessage]);
-    setCompletionLoading(true);
+    dispatch({ type: "ADD_MESSAGE", payload: userMessage });
+    dispatch({ type: "SET_COMPLETION_LOADING", payload: true });
     activeElevenLabsAudioRef.current?.pause();
     activeElevenLabsAudioRef.current = null;
     clearElevenLabsQueue();
@@ -714,8 +689,8 @@ export function MultiAgentTtsChatContainer() {
     ttsPrefetchedBlobsRef.current.clear();
     ttsPrefetchPromisesRef.current.clear();
     audioChunkQueueRef.current = [];
-    setIsAudioStreaming(false);
-    setIsAudioPlaying(false);
+    dispatch({ type: "SET_IS_AUDIO_STREAMING", payload: false });
+    dispatch({ type: "SET_IS_AUDIO_PLAYING", payload: false });
     try {
       let token: string | null = null;
       let done = false;
@@ -734,26 +709,29 @@ export function MultiAgentTtsChatContainer() {
             await (browserTtsPromiseRef.current ?? Promise.resolve());
             browserTtsPromiseRef.current = null;
           }
-          setStateToken(token);
-          setCompletionLoading(true);
+          dispatch({ type: "SET_STATE_TOKEN", payload: token });
+          dispatch({ type: "SET_COMPLETION_LOADING", payload: true });
         } else {
           if (ttsProvider !== "elevenlabs") {
             await (browserTtsPromiseRef.current ?? Promise.resolve());
             browserTtsPromiseRef.current = null;
           }
-          setStateToken(null);
+          dispatch({ type: "SET_STATE_TOKEN", payload: null });
         }
       } while (!done && token);
     } catch (err) {
       errorToast(err instanceof Error ? err.message : "Request failed");
       streamingMessageIdRef.current = null;
     } finally {
-      setCompletionLoading(false);
+      dispatch({ type: "SET_COMPLETION_LOADING", payload: false });
       if (ttsProvider !== "elevenlabs") {
-        setIsAudioPlaying(false);
+        dispatch({ type: "SET_IS_AUDIO_PLAYING", payload: false });
       }
-      setCurrentSpeaker(null);
-      setTtsProgress({ streamed: 0, converted: 0 });
+      dispatch({ type: "SET_CURRENT_SPEAKER", payload: null });
+      dispatch({
+        type: "SET_TTS_PROGRESS",
+        payload: { streamed: 0, converted: 0 },
+      });
     }
   };
 
@@ -779,26 +757,29 @@ export function MultiAgentTtsChatContainer() {
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
-    setIsAudioPlaying(false);
-    setIsAudioStreaming(false);
-    setCurrentSpeaker(null);
+    dispatch({ type: "SET_IS_AUDIO_PLAYING", payload: false });
+    dispatch({ type: "SET_IS_AUDIO_STREAMING", payload: false });
+    dispatch({ type: "SET_CURRENT_SPEAKER", payload: null });
     maybeResolveTtsDrain();
   };
 
   const handleBack = () => router.push("/dashboard/tts-chat");
-  const toggleDrawer = () => setDrawerOpen((prev) => !prev);
-  const handleDrawerClose = () => setDrawerOpen(false);
+  const toggleDrawer = () => dispatch({ type: "TOGGLE_DRAWER" });
+  const handleDrawerClose = () =>
+    dispatch({ type: "SET_DRAWER_OPEN", payload: false });
   const openEditSwarmModal = () => {
-    setDraftSwarmAgentIds(selectedAgents.map((agent) => agent.id));
-    setIsEditSwarmModalOpen(true);
+    dispatch({
+      type: "SET_DRAFT_SWARM_AGENT_IDS",
+      payload: selectedAgents.map((agent) => agent.id),
+    });
+    dispatch({ type: "SET_EDIT_SWARM_MODAL_OPEN", payload: true });
   };
-  const closeEditSwarmModal = () => setIsEditSwarmModalOpen(false);
+  const closeEditSwarmModal = () =>
+    dispatch({ type: "SET_EDIT_SWARM_MODAL_OPEN", payload: false });
   const toggleDraftSwarmAgent = (agent: Agent) => {
-    setDraftSwarmAgentIds((prev) => {
-      const isSelected = prev.includes(agent.id);
-      if (isSelected) return prev.filter((id) => id !== agent.id);
-      if (prev.length >= MAX_AGENTS) return prev;
-      return [...prev, agent.id];
+    dispatch({
+      type: "TOGGLE_DRAFT_SWARM_AGENT",
+      payload: { agentId: agent.id, maxAgents: MAX_AGENTS },
     });
   };
   const saveSwarmConfig = () => {
@@ -814,8 +795,8 @@ export function MultiAgentTtsChatContainer() {
       errorToast("No valid agents selected.");
       return;
     }
-    setSelectedAgents(nextSelectedAgents);
-    setIsEditSwarmModalOpen(false);
+    dispatch({ type: "SET_SELECTED_AGENTS", payload: nextSelectedAgents });
+    dispatch({ type: "SET_EDIT_SWARM_MODAL_OPEN", payload: false });
   };
 
   const handleTtsProviderChange = (value: TtsProvider) => {
@@ -824,7 +805,7 @@ export function MultiAgentTtsChatContainer() {
       activeElevenLabsAudioRef.current = null;
       clearElevenLabsQueue();
     }
-    setTtsProvider(value);
+    dispatch({ type: "SET_TTS_PROVIDER", payload: value });
     setAppSettings({ ttsProvider: value });
   };
 
@@ -1197,8 +1178,18 @@ export function MultiAgentTtsChatContainer() {
                                 preload="auto"
                                 className="w-full h-10 mt-2"
                                 src={item.audioUrl}
-                                onPlay={() => setIsAudioPlaying(true)}
-                                onPause={() => setIsAudioPlaying(false)}
+                                onPlay={() =>
+                                  dispatch({
+                                    type: "SET_IS_AUDIO_PLAYING",
+                                    payload: true,
+                                  })
+                                }
+                                onPause={() =>
+                                  dispatch({
+                                    type: "SET_IS_AUDIO_PLAYING",
+                                    payload: false,
+                                  })
+                                }
                                 onEnded={() =>
                                   handleElevenLabsItemEnded(item.id)
                                 }
@@ -1217,7 +1208,10 @@ export function MultiAgentTtsChatContainer() {
                       isStreaming={false}
                       isPlaying={isAudioPlaying}
                       onPlayingChange={(playing) => {
-                        setIsAudioPlaying(playing);
+                        dispatch({
+                          type: "SET_IS_AUDIO_PLAYING",
+                          payload: playing,
+                        });
                         if (!playing) maybeResolveTtsDrain();
                       }}
                       onStop={handleTtsStop}
@@ -1244,7 +1238,9 @@ export function MultiAgentTtsChatContainer() {
                 name="message"
                 rows={3}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) =>
+                  dispatch({ type: "SET_INPUT", payload: e.target.value })
+                }
                 minHeight={80}
                 maxHeight={240}
               />

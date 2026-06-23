@@ -11,6 +11,7 @@ import {
   CogIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
+import { scoreColorClass3 } from "@/components/shared/search-demo";
 
 interface SearchResult {
   id: string;
@@ -223,11 +224,7 @@ export function HybridSearchContainer() {
     : [];
 
   // Function to get color based on score percentage
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-400";
-    if (score >= 60) return "text-yellow-400";
-    return "text-red-400";
-  };
+  const getScoreColor = scoreColorClass3;
 
   return (
     <div className="w-full max-w-6xl mx-auto p-6">
