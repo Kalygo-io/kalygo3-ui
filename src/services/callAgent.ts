@@ -1,5 +1,6 @@
 import { Action } from "@/app/dashboard/agent-chat/chat-session-reducer";
 import { nanoid } from "@/shared/utils";
+import { createParser, type EventSourceMessage } from "eventsource-parser";
 import React from "react";
 
 // Chat attachment options. A file attached to a chat turn, already uploaded to
@@ -64,65 +65,6 @@ function extractTextContent(data: unknown): string {
       .join("");
   }
   return "";
-}
-
-/**
- * Scans `buffer` for the next complete, top-level JSON object ({...}).
- * Returns the parsed value and the remaining unprocessed string, or null if
- * no complete object is available yet (caller should wait for more data).
- *
- * This handles the case where a single JSON object spans multiple TCP reads,
- * which would otherwise silently drop large payloads (e.g. on_chain_end with
- * full vector-search results).
- */
-function extractNextJsonObject(
-  buffer: string,
-): { parsed: any; remaining: string } | null {
-  // Find the first opening brace
-  const start = buffer.indexOf("{");
-  if (start === -1) return null;
-
-  let depth = 0;
-  let inStr = false;
-  let esc = false;
-
-  for (let i = start; i < buffer.length; i++) {
-    const c = buffer[i];
-    if (esc) {
-      esc = false;
-      continue;
-    }
-    if (c === "\\" && inStr) {
-      esc = true;
-      continue;
-    }
-    if (c === '"') {
-      inStr = !inStr;
-      continue;
-    }
-    if (inStr) continue;
-
-    if (c === "{") {
-      depth++;
-    } else if (c === "}") {
-      if (--depth === 0) {
-        const jsonStr = buffer.slice(start, i + 1);
-        try {
-          return {
-            parsed: JSON.parse(jsonStr),
-            remaining: buffer.slice(i + 1),
-          };
-        } catch {
-          // Malformed JSON at this position – skip past this brace and keep scanning
-          return null;
-        }
-      }
-    }
-  }
-
-  // Incomplete JSON: keep the buffer from `start` so the prefix before the
-  // opening brace (e.g. whitespace) is discarded but the partial object is kept.
-  return null;
 }
 
 async function buildRequestBody(
@@ -200,9 +142,33 @@ async function streamAgentResponse(
   const pendingToolCalls: Record<string, any> = {}; // run_id -> pending entry
   let accumulatedToolCalls: any[] = [];
 
-  // Persistent parse buffer – survives across reader.read() calls so large
-  // JSON objects (e.g. on_chain_end with full results) are never dropped.
-  let parseBuffer = "";
+  // Standard SSE parser. The server emits `data: <json>\n\n` frames; the parser
+  // reassembles frames split across reader.read() chunks (so large payloads
+  // like on_chain_end with full results are never dropped) and hands each
+  // complete frame's `data` to onEvent. The event type lives INSIDE the JSON
+  // (the `event` field), not on an SSE `event:` line, so we just JSON.parse.
+  const parser = createParser({
+    onEvent: (e: EventSourceMessage) => {
+      let parsed: Record<string, any>;
+      try {
+        parsed = JSON.parse(e.data);
+      } catch (err) {
+        console.error("[callAgent] Failed to parse SSE frame:", err, e.data);
+        return;
+      }
+      const result = handleEvent(
+        parsed,
+        dispatch,
+        aiMessageId,
+        accMessage,
+        pendingToolCalls,
+        accumulatedToolCalls,
+      );
+      if (result !== undefined) {
+        accumulatedToolCalls = result;
+      }
+    },
+  });
 
   dispatch({
     type: "ADD_MESSAGE",
@@ -221,24 +187,8 @@ async function streamAgentResponse(
       const { done, value } = await reader.read();
       if (done) break;
 
-      parseBuffer += decoder.decode(value, { stream: true });
-
-      // Drain all complete JSON objects from the buffer
-      let extracted: ReturnType<typeof extractNextJsonObject>;
-      while ((extracted = extractNextJsonObject(parseBuffer)) !== null) {
-        parseBuffer = extracted.remaining;
-        const result = handleEvent(
-          extracted.parsed,
-          dispatch,
-          aiMessageId,
-          accMessage,
-          pendingToolCalls,
-          accumulatedToolCalls,
-        );
-        if (result !== undefined) {
-          accumulatedToolCalls = result;
-        }
-      }
+      // Feeding the parser dispatches any complete SSE frames via onEvent.
+      parser.feed(decoder.decode(value, { stream: true }));
     }
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
