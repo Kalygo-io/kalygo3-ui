@@ -40,7 +40,9 @@ async function fileToText(file: File): Promise<string> {
 }
 
 function isImageFile(file: File): boolean {
-  return (file.type || "").startsWith("image/") || /\.(png|jpe?g)$/i.test(file.name);
+  return (
+    (file.type || "").startsWith("image/") || /\.(png|jpe?g)$/i.test(file.name)
+  );
 }
 
 function isPdfFile(file: File): boolean {
@@ -74,7 +76,7 @@ function extractTextContent(data: unknown): string {
  * full vector-search results).
  */
 function extractNextJsonObject(
-  buffer: string
+  buffer: string,
 ): { parsed: any; remaining: string } | null {
   // Find the first opening brace
   const start = buffer.indexOf("{");
@@ -86,9 +88,18 @@ function extractNextJsonObject(
 
   for (let i = start; i < buffer.length; i++) {
     const c = buffer[i];
-    if (esc) { esc = false; continue; }
-    if (c === "\\" && inStr) { esc = true; continue; }
-    if (c === '"') { inStr = !inStr; continue; }
+    if (esc) {
+      esc = false;
+      continue;
+    }
+    if (c === "\\" && inStr) {
+      esc = true;
+      continue;
+    }
+    if (c === '"') {
+      inStr = !inStr;
+      continue;
+    }
     if (inStr) continue;
 
     if (c === "{") {
@@ -97,7 +108,10 @@ function extractNextJsonObject(
       if (--depth === 0) {
         const jsonStr = buffer.slice(start, i + 1);
         try {
-          return { parsed: JSON.parse(jsonStr), remaining: buffer.slice(i + 1) };
+          return {
+            parsed: JSON.parse(jsonStr),
+            remaining: buffer.slice(i + 1),
+          };
         } catch {
           // Malformed JSON at this position – skip past this brace and keep scanning
           return null;
@@ -258,7 +272,7 @@ export async function callAgent(
   );
   const requestBody = await buildRequestBody(sessionId, prompt, attachment);
   await streamAgentResponse(
-    `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/agents/${encodeURIComponent(agentId)}/stream`,
+    `${process.env.NEXT_PUBLIC_AGENT_API_URL}/api/agents/${encodeURIComponent(agentId)}/stream`,
     requestBody,
     dispatch,
     abortController,
@@ -280,7 +294,7 @@ export async function callContactAgent(
   console.log(`[callContactAgent] sessionId=${sessionId}`);
   const requestBody = await buildRequestBody(sessionId, prompt, attachment);
   await streamAgentResponse(
-    `${process.env.NEXT_PUBLIC_COMPLETION_API_URL}/api/contact-chat/${encodeURIComponent(sessionId)}/stream`,
+    `${process.env.NEXT_PUBLIC_AGENT_API_URL}/api/contact-chat/${encodeURIComponent(sessionId)}/stream`,
     requestBody,
     dispatch,
     abortController,
@@ -311,7 +325,6 @@ function handleEvent(
         type: "EDIT_MESSAGE",
         payload: { id: aiMessageId, content: accMessage.content },
       });
-
     } else if (eventType === "on_chain_end") {
       // Update final content
       const finalContent = extractTextContent(data) || accMessage.content;
@@ -331,7 +344,6 @@ function handleEvent(
         });
         return serverToolCalls;
       }
-
     } else if (eventType === "on_tool_start") {
       // Show this tool as "pending" in the drawer immediately so the user
       // can see the tool name and its input parameters before results arrive.
@@ -355,7 +367,6 @@ function handleEvent(
         payload: { id: aiMessageId, toolCalls: updated },
       });
       return updated;
-
     } else if (eventType === "on_tool_end") {
       dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
 
@@ -399,7 +410,6 @@ function handleEvent(
         });
       }
       return updated;
-
     } else if (eventType === "error") {
       const errorData = event.data || {};
       console.error("[callAgent] Agent error:", errorData);
@@ -413,11 +423,12 @@ function handleEvent(
             timestamp: Date.now(),
             stack: errorData.stack,
           },
-          content: accMessage.content || "Error occurred while processing your request.",
+          content:
+            accMessage.content ||
+            "Error occurred while processing your request.",
         },
       });
       dispatch({ type: "SET_CURRENT_TOOL", payload: "" });
-
     } else if (eventType === "tool_approval_required") {
       const { approval_id, tool_type, preview } = event.data || {};
       dispatch({
