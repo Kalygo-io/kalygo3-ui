@@ -6,6 +6,7 @@ import {
   accessGroupsService,
   AccessGroup,
   AccessGroupMember,
+  GroupAgent,
 } from "@/services/accessGroupsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
@@ -21,6 +22,7 @@ import {
   EnvelopeIcon,
   XMarkIcon,
   CheckIcon,
+  CpuChipIcon,
 } from "@heroicons/react/24/outline";
 
 export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
@@ -28,6 +30,7 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
   const confirmDelete = useConfirmDelete();
   const [group, setGroup] = useState<AccessGroup | null>(null);
   const [members, setMembers] = useState<AccessGroupMember[]>([]);
+  const [agents, setAgents] = useState<GroupAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
@@ -36,10 +39,16 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
 
-  // Add member state
+  // Add member(s) state — accepts a paste of many emails at once
   const [showAddMember, setShowAddMember] = useState(false);
-  const [memberEmail, setMemberEmail] = useState("");
-  const [addingMember, setAddingMember] = useState(false);
+  const [memberEmails, setMemberEmails] = useState("");
+  const [addingMembers, setAddingMembers] = useState(false);
+  const [addResults, setAddResults] = useState<{
+    added: string[];
+    already: string[];
+    notFound: string[];
+    failed: string[];
+  } | null>(null);
 
   const numericGroupId = groupId ? parseInt(groupId, 10) : undefined;
 
@@ -59,12 +68,14 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
 
     try {
       setLoading(true);
-      const [groupData, membersData] = await Promise.all([
+      const [groupData, membersData, agentsData] = await Promise.all([
         accessGroupsService.getGroup(numericGroupId),
         accessGroupsService.listMembers(numericGroupId),
+        accessGroupsService.listGroupAgents(numericGroupId),
       ]);
       setGroup(groupData);
       setMembers(membersData);
+      setAgents(agentsData);
       setNameInput(groupData.name);
     } catch (error: any) {
       errorToast(error.message || "Failed to load group");
@@ -111,23 +122,74 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
     }
   };
 
-  const handleAddMember = async (e: React.FormEvent) => {
+  const handleAddMembers = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!numericGroupId || !memberEmail.trim()) return;
+    if (!numericGroupId) return;
 
-    try {
-      setAddingMember(true);
-      const member = await accessGroupsService.addMember(numericGroupId, {
-        email: memberEmail.trim(),
-      });
-      setMembers((prev) => [...prev, member]);
-      setMemberEmail("");
+    // Accept any reasonable separator: commas, semicolons, or new lines.
+    const emails = Array.from(
+      new Set(
+        memberEmails
+          .split(/[\s,;]+/)
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+    if (emails.length === 0) return;
+
+    setAddingMembers(true);
+    setAddResults(null);
+    const results = {
+      added: [] as string[],
+      already: [] as string[],
+      notFound: [] as string[],
+      failed: [] as string[],
+    };
+    const newMembers: AccessGroupMember[] = [];
+
+    // Sequential loop over the existing single-add endpoint — small N (a few
+    // dozen at most) and it keeps per-email error classification simple.
+    for (const email of emails) {
+      try {
+        const member = await accessGroupsService.addMember(numericGroupId, {
+          email,
+        });
+        results.added.push(email);
+        newMembers.push(member);
+      } catch (error: any) {
+        const msg = (error?.message || "").toLowerCase();
+        if (msg.includes("already a member")) results.already.push(email);
+        else if (msg.includes("not found")) results.notFound.push(email);
+        else results.failed.push(email);
+      }
+    }
+
+    if (newMembers.length) {
+      setMembers((prev) => [...prev, ...newMembers]);
+    }
+    setAddResults(results);
+    setAddingMembers(false);
+
+    const parts: string[] = [];
+    if (results.added.length) parts.push(`${results.added.length} added`);
+    if (results.already.length)
+      parts.push(`${results.already.length} already members`);
+    if (results.notFound.length)
+      parts.push(`${results.notFound.length} no account`);
+    if (results.failed.length) parts.push(`${results.failed.length} failed`);
+    const summary = parts.join(", ");
+
+    if (results.added.length) {
+      successToast(`Members updated — ${summary}`);
+    } else {
+      errorToast(summary || "No members added");
+    }
+
+    // Clean run (everything added / already there) → close the form. If some
+    // emails had no account or errored, keep it open so the admin sees which.
+    if (results.notFound.length === 0 && results.failed.length === 0) {
+      setMemberEmails("");
       setShowAddMember(false);
-      successToast("Member added successfully");
-    } catch (error: any) {
-      errorToast(error.message || "Failed to add member");
-    } finally {
-      setAddingMember(false);
     }
   };
 
@@ -264,6 +326,41 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
         </div>
       </div>
 
+      {/* Shared Agents Section (read-only) — what this group grants access to */}
+      <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+        <h2 className="text-xl font-semibold text-white mb-2">
+          Shared Agents ({agents.length})
+        </h2>
+        <p className="text-sm text-gray-400 mb-4">
+          Members of this group can use these agents. Grant or revoke access
+          from an agent&apos;s detail page.
+        </p>
+        {agents.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">
+            No agents are shared with this group yet.
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-700/50 bg-gray-900/50 border border-gray-700/50 rounded-lg overflow-hidden">
+            {agents.map((agent) => (
+              <li
+                key={agent.agent_id}
+                className="flex items-center justify-between px-4 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <CpuChipIcon className="h-5 w-5 text-blue-400" />
+                  <span className="text-sm text-white">{agent.agent_name}</span>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {agent.granted_at
+                    ? `Shared ${new Date(agent.granted_at).toLocaleDateString()}`
+                    : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Members Section */}
       <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
@@ -279,40 +376,38 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
           </button>
         </div>
 
-        {/* Add Member Form */}
+        {/* Add Member(s) Form — paste one or many emails at once */}
         {showAddMember && (
           <form
-            onSubmit={handleAddMember}
+            onSubmit={handleAddMembers}
             className="mb-6 bg-gray-900/50 border border-gray-700/50 rounded-lg p-4"
           >
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Add member by email
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+              <EnvelopeIcon className="h-5 w-5 text-gray-500" />
+              Add members by email
             </label>
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
-                <input
-                  type="email"
-                  value={memberEmail}
-                  onChange={(e) => setMemberEmail(e.target.value)}
-                  placeholder="user@example.com"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  autoFocus
-                />
-              </div>
+            <textarea
+              value={memberEmails}
+              onChange={(e) => setMemberEmails(e.target.value)}
+              placeholder={"alice@acme.com, bob@acme.com\ncarol@acme.com"}
+              rows={4}
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              autoFocus
+            />
+            <div className="flex gap-3 mt-3">
               <button
                 type="submit"
-                disabled={addingMember}
+                disabled={addingMembers}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors duration-200"
               >
-                {addingMember ? "Adding..." : "Add"}
+                {addingMembers ? "Adding..." : "Add Members"}
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setShowAddMember(false);
-                  setMemberEmail("");
+                  setMemberEmails("");
+                  setAddResults(null);
                 }}
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
               >
@@ -320,8 +415,36 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
               </button>
             </div>
             <p className="text-gray-500 text-xs mt-2">
-              The account must already exist on Kalygo.
+              Separate emails with commas or new lines. Each account must
+              already exist on Kalygo.
             </p>
+
+            {/* Per-email results so the admin can see who needs follow-up */}
+            {addResults && (
+              <div className="mt-4 space-y-1.5 text-xs">
+                {addResults.added.length > 0 && (
+                  <p className="text-green-400">
+                    ✓ Added: {addResults.added.join(", ")}
+                  </p>
+                )}
+                {addResults.already.length > 0 && (
+                  <p className="text-gray-400">
+                    • Already members: {addResults.already.join(", ")}
+                  </p>
+                )}
+                {addResults.notFound.length > 0 && (
+                  <p className="text-amber-400">
+                    ⚠ No Kalygo account (ask them to sign up first):{" "}
+                    {addResults.notFound.join(", ")}
+                  </p>
+                )}
+                {addResults.failed.length > 0 && (
+                  <p className="text-red-400">
+                    ✕ Failed: {addResults.failed.join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
           </form>
         )}
 

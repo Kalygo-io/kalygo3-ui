@@ -45,6 +45,12 @@ export interface CreateAgentAccessGrantRequest {
   accessGroupId: number;
 }
 
+export interface GroupAgent {
+  agent_id: number;
+  agent_name: string;
+  granted_at: string;
+}
+
 // ============================================================================
 // Service
 // ============================================================================
@@ -101,6 +107,11 @@ class AccessGroupsService {
     return apiDelete<void>(
       `/api/access-groups/${groupId}/members/${accountId}`,
     );
+  }
+
+  /** Agents granted to this group (visible to the owner or any member). */
+  async listGroupAgents(groupId: number): Promise<GroupAgent[]> {
+    return apiGet<GroupAgent[]>(`/api/access-groups/${groupId}/agents`);
   }
 
   // ------------------------------------------------------------------
