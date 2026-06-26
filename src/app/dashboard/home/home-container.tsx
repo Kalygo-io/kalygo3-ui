@@ -99,20 +99,20 @@ function QuickAction({
   return (
     <button
       onClick={() => router.push(href)}
-      className="group flex items-center gap-4 bg-gray-800/30 border border-gray-700/40 rounded-xl p-4 text-left hover:bg-gray-800/60 hover:border-gray-600/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+      className="group flex w-full items-center gap-3 sm:gap-4 bg-gray-800/30 border border-gray-700/40 rounded-xl p-3 sm:p-4 text-left hover:bg-gray-800/60 hover:border-gray-600/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
     >
       <div
         className={`h-10 w-10 rounded-lg ${accent} flex items-center justify-center flex-shrink-0`}
       >
         <Icon className="h-5 w-5 text-white" />
       </div>
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-white group-hover:text-gray-100">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white group-hover:text-gray-100 truncate">
           {label}
         </p>
         <p className="text-xs text-gray-500 truncate">{description}</p>
       </div>
-      <ChevronRightIcon className="h-4 w-4 text-gray-600 group-hover:text-gray-400 ml-auto flex-shrink-0 group-hover:translate-x-0.5 transition-all duration-200" />
+      <ChevronRightIcon className="h-4 w-4 text-gray-600 group-hover:text-gray-400 flex-shrink-0 group-hover:translate-x-0.5 transition-all duration-200" />
     </button>
   );
 }
