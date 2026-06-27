@@ -16,13 +16,9 @@ import {
   PlusIcon,
   ArrowLeftIcon,
   TrashIcon,
-  DocumentTextIcon,
-  DocumentArrowUpIcon,
   ClipboardDocumentListIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
-import { ChooseTextFile } from "@/components/vector-stores/choose-text-file";
-import { ChooseCsvFile } from "@/components/vector-stores/choose-csv-file";
 import { IngestionLogs } from "@/components/vector-stores/ingestion-logs";
 
 export function IndexDetailsContainer({ indexName }: { indexName: string }) {
@@ -34,11 +30,6 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
   const [loadingNamespaces, setLoadingNamespaces] = useState(true);
   const [showCreateNamespaceForm, setShowCreateNamespaceForm] = useState(false);
   const [activeTopLevelTab, setActiveTopLevelTab] = useState("overview");
-  const [activeIngestionTab, setActiveIngestionTab] = useState("ingest-text");
-  const [selectedNamespace, setSelectedNamespace] = useState<string>("");
-  const [textFiles, setTextFiles] = useState<File[] | null>(null);
-  const [csvFiles, setCsvFiles] = useState<File[] | null>(null);
-  const [logsRefreshTrigger, setLogsRefreshTrigger] = useState(0);
 
   useEffect(() => {
     loadIndexDetails();
@@ -68,22 +59,11 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
       setLoadingNamespaces(true);
       const data = await vectorStoresService.listNamespaces(indexName);
       setNamespaces(data);
-      // Set default namespace if available and none selected
-      if (data.length > 0 && !selectedNamespace) {
-        setSelectedNamespace(data[0].namespace || "");
-      }
     } catch (error: any) {
       errorToast(error.message || `Failed to load namespaces for ${indexName}`);
     } finally {
       setLoadingNamespaces(false);
     }
-  };
-
-  const handleUploadSuccess = async () => {
-    // Reload namespaces to get updated vector counts
-    await loadNamespaces();
-    // Trigger logs refresh
-    setLogsRefreshTrigger((prev) => prev + 1);
   };
 
   const handleCreateNamespace = async (data: CreateNamespaceRequest) => {
@@ -291,155 +271,12 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
                   </div>
                 )}
               </div>
-
-              {/* Data Ingestion Section */}
-              <div>
-                <h2 className="text-2xl font-semibold text-white mb-6">
-                  Data Ingestion
-                </h2>
-
-                {/* Namespace Selector */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Select Namespace *
-                  </label>
-                  <select
-                    value={selectedNamespace}
-                    onChange={(e) => setSelectedNamespace(e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={loadingNamespaces || namespaces.length === 0}
-                  >
-                    {loadingNamespaces ? (
-                      <option>Loading namespaces...</option>
-                    ) : namespaces.length === 0 ? (
-                      <option>No namespaces available</option>
-                    ) : (
-                      <>
-                        <option value="">Select a namespace</option>
-                        {namespaces.map((ns) => (
-                          <option key={ns.namespace} value={ns.namespace || ""}>
-                            {ns.namespace || "(default)"}
-                            {ns.vector_count !== undefined
-                              ? ` (${ns.vector_count.toLocaleString()} vectors)`
-                              : ""}
-                          </option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                  {namespaces.length === 0 && (
-                    <p className="text-gray-400 text-xs mt-2">
-                      Create a namespace first to upload data.
-                    </p>
-                  )}
-                </div>
-
-                {/* Tabs */}
-                <div className="border-b border-gray-700 mb-6">
-                  <div className="flex space-x-1">
-                    <button
-                      onClick={() => setActiveIngestionTab("ingest-text")}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
-                        activeIngestionTab === "ingest-text"
-                          ? "text-blue-400 border-b-2 border-blue-400"
-                          : "text-gray-400 hover:text-gray-300"
-                      }`}
-                      disabled={!selectedNamespace}
-                    >
-                      <DocumentArrowUpIcon className="w-4 h-4" />
-                      Ingest Text
-                    </button>
-                    <button
-                      onClick={() => setActiveIngestionTab("ingest-csv")}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
-                        activeIngestionTab === "ingest-csv"
-                          ? "text-blue-400 border-b-2 border-blue-400"
-                          : "text-gray-400 hover:text-gray-300"
-                      }`}
-                      disabled={!selectedNamespace}
-                    >
-                      <DocumentTextIcon className="w-4 h-4" />
-                      Ingest CSV
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tab Content */}
-                {activeIngestionTab === "ingest-text" && (
-                  <div className="space-y-4">
-                    {!selectedNamespace ? (
-                      <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-4">
-                        <p className="text-yellow-300 text-sm">
-                          Please select a namespace above to upload text files.
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-4">
-                          <h3 className="text-lg font-semibold text-white mb-2">
-                            Ingest Text
-                          </h3>
-                          <p className="text-white text-sm leading-relaxed">
-                            Upload .txt and .md files. These files will be
-                            processed and added to the knowledge base in
-                            namespace &quot;
-                            {selectedNamespace || "(default)"}&quot;.
-                          </p>
-                        </div>
-                        <ChooseTextFile
-                          indexName={indexName}
-                          namespace={selectedNamespace}
-                          files={textFiles}
-                          setFiles={setTextFiles}
-                          onUploadSuccess={handleUploadSuccess}
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {activeIngestionTab === "ingest-csv" && (
-                  <div className="space-y-4">
-                    {!selectedNamespace ? (
-                      <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-4">
-                        <p className="text-yellow-300 text-sm">
-                          Please select a namespace above to upload CSV files.
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-4">
-                          <h3 className="text-lg font-semibold text-white mb-2">
-                            Ingest CSV
-                          </h3>
-                          <p className="text-white text-sm leading-relaxed">
-                            Upload .csv files with Q&A format (q,a columns).
-                            These files will be processed and added to the
-                            knowledge base in namespace &quot;
-                            {selectedNamespace || "(default)"}&quot;.
-                          </p>
-                        </div>
-                        <ChooseCsvFile
-                          indexName={indexName}
-                          namespace={selectedNamespace}
-                          files={csvFiles}
-                          setFiles={setCsvFiles}
-                          onUploadSuccess={handleUploadSuccess}
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
           {activeTopLevelTab === "ingestion-logs" && (
             <div>
-              <IngestionLogs
-                indexName={indexName}
-                refreshTrigger={logsRefreshTrigger}
-              />
+              <IngestionLogs indexName={indexName} />
             </div>
           )}
         </div>

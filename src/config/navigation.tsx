@@ -48,8 +48,24 @@ export const navigation: NavigationItem[] = [
   },
   {
     name: "Knowledge Bases",
-    href: "/dashboard/vector-stores",
     enabled: true,
+    children: [
+      {
+        name: "Show All",
+        href: "/dashboard/vector-stores",
+        enabled: true,
+      },
+      {
+        name: "Data Ingestion",
+        href: "/dashboard/vector-stores/data-ingestion",
+        enabled: true,
+      },
+      {
+        name: "PDF to FAQ",
+        href: "/dashboard/vector-stores/pdf-to-faq",
+        enabled: true,
+      },
+    ],
   },
   {
     name: "Access Groups",
