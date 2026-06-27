@@ -11,6 +11,8 @@ export interface AccessGroup {
   created_at: string;
   updated_at: string;
   member_count?: number;
+  /** The viewer's relationship to this group: 'owner' | 'admin' | 'member'. */
+  my_role?: "owner" | "admin" | "member";
 }
 
 export interface AccessGroupMember {
@@ -18,6 +20,7 @@ export interface AccessGroupMember {
   access_group_id: number;
   account_id: number;
   email?: string;
+  role?: "admin" | "member";
   created_at: string;
 }
 
@@ -106,6 +109,18 @@ class AccessGroupsService {
   async removeMember(groupId: number, accountId: number): Promise<void> {
     return apiDelete<void>(
       `/api/access-groups/${groupId}/members/${accountId}`,
+    );
+  }
+
+  /** Promote/demote a member. Owner only (enforced server-side). */
+  async updateMemberRole(
+    groupId: number,
+    accountId: number,
+    role: "admin" | "member",
+  ): Promise<AccessGroupMember> {
+    return apiPatch<AccessGroupMember>(
+      `/api/access-groups/${groupId}/members/${accountId}/role`,
+      { role },
     );
   }
 

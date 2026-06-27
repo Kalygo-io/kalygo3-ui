@@ -23,6 +23,8 @@ import {
   XMarkIcon,
   CheckIcon,
   CpuChipIcon,
+  ArrowUpCircleIcon,
+  ArrowDownCircleIcon,
 } from "@heroicons/react/24/outline";
 
 export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
@@ -208,6 +210,44 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
     );
   };
 
+  const handleSetRole = async (
+    member: AccessGroupMember,
+    role: "admin" | "member",
+  ) => {
+    if (!numericGroupId) return;
+    try {
+      const updated = await accessGroupsService.updateMemberRole(
+        numericGroupId,
+        member.account_id,
+        role,
+      );
+      setMembers((prev) =>
+        prev.map((m) => (m.id === member.id ? { ...m, role: updated.role } : m)),
+      );
+      successToast(role === "admin" ? "Promoted to admin" : "Changed to member");
+    } catch (error: any) {
+      errorToast(error.message || "Failed to update role");
+    }
+  };
+
+  const handleRevokeAgent = async (agent: GroupAgent) => {
+    if (!numericGroupId) return;
+    await confirmDelete(
+      `Stop sharing "${agent.agent_name}" with this group?`,
+      () =>
+        accessGroupsService.revokeAgentAccess(
+          String(agent.agent_id),
+          numericGroupId,
+        ),
+      {
+        successMessage: "Agent access revoked",
+        errorMessage: "Failed to revoke agent access",
+        onSuccess: () =>
+          setAgents((prev) => prev.filter((a) => a.agent_id !== agent.agent_id)),
+      },
+    );
+  };
+
   if (loading) {
     return <PageLoading label="Loading group details..." />;
   }
@@ -215,6 +255,11 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
   if (!group) {
     return <PageLoading label="Group not found" />;
   }
+
+  // The backend tells us the viewer's relationship to this group so we can gate
+  // controls without needing the viewer's account id on the client.
+  const isOwner = group.my_role === "owner";
+  const canManage = isOwner || group.my_role === "admin";
 
   return (
     <div className="space-y-6">
@@ -267,28 +312,32 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
                 <h1 className="text-4xl font-semibold text-white">
                   {group.name}
                 </h1>
-                <button
-                  onClick={() => setEditingName(true)}
-                  className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors"
-                  title="Edit name"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                </button>
+                {canManage && (
+                  <button
+                    onClick={() => setEditingName(true)}
+                    className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors"
+                    title="Edit name"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Delete group"
-        >
-          <TrashIcon className="h-5 w-5" />
-          <span className="text-sm font-medium">
-            {deleting ? "Deleting..." : "Delete Group"}
-          </span>
-        </button>
+        {isOwner && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-400 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Delete group"
+          >
+            <TrashIcon className="h-5 w-5" />
+            <span className="text-sm font-medium">
+              {deleting ? "Deleting..." : "Delete Group"}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Group Info */}
@@ -332,8 +381,8 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
           Shared Agents ({agents.length})
         </h2>
         <p className="text-sm text-gray-400 mb-4">
-          Members of this group can use these agents. Grant or revoke access
-          from an agent&apos;s detail page.
+          Members of this group can use these agents. Add a new share from an
+          agent&apos;s detail page{canManage ? "; revoke below" : ""}.
         </p>
         {agents.length === 0 ? (
           <p className="text-sm text-gray-500 italic">
@@ -350,11 +399,22 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
                   <CpuChipIcon className="h-5 w-5 text-blue-400" />
                   <span className="text-sm text-white">{agent.agent_name}</span>
                 </div>
-                <span className="text-xs text-gray-400">
-                  {agent.granted_at
-                    ? `Shared ${new Date(agent.granted_at).toLocaleDateString()}`
-                    : ""}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400">
+                    {agent.granted_at
+                      ? `Shared ${new Date(agent.granted_at).toLocaleDateString()}`
+                      : ""}
+                  </span>
+                  {canManage && (
+                    <button
+                      onClick={() => handleRevokeAgent(agent)}
+                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                      title="Stop sharing with this group"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -367,13 +427,15 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
           <h2 className="text-xl font-semibold text-white">
             Members ({members.length})
           </h2>
-          <button
-            onClick={() => setShowAddMember(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add Member
-          </button>
+          {canManage && (
+            <button
+              onClick={() => setShowAddMember(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add Member
+            </button>
+          )}
         </div>
 
         {/* Add Member(s) Form — paste one or many emails at once */}
@@ -455,7 +517,7 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
             icon={UserGroupIcon}
             title="No members yet. Add members to share agents with them."
             action={
-              !showAddMember && (
+              canManage && !showAddMember && (
                 <button
                   onClick={() => setShowAddMember(true)}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
@@ -477,6 +539,9 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Account ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Role
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Added
@@ -507,6 +572,17 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
+                        {member.role === "admin" ? (
+                          <span className="text-xs font-medium bg-blue-600/20 text-blue-300 px-2 py-1 rounded">
+                            Admin
+                          </span>
+                        ) : (
+                          <span className="text-xs font-medium bg-gray-700/50 text-gray-300 px-2 py-1 rounded">
+                            Member
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-sm text-gray-400">
                           {member.created_at
                             ? new Date(member.created_at).toLocaleDateString()
@@ -514,13 +590,35 @@ export function GroupDetailsContainer({ groupId }: { groupId?: string }) {
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <button
-                          onClick={() => handleRemoveMember(member)}
-                          className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                          title="Remove member"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          {isOwner && member.role !== "admin" && (
+                            <button
+                              onClick={() => handleSetRole(member, "admin")}
+                              className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-blue-600/20 rounded-lg transition-colors duration-200"
+                              title="Promote to admin"
+                            >
+                              <ArrowUpCircleIcon className="h-4 w-4" />
+                            </button>
+                          )}
+                          {isOwner && member.role === "admin" && (
+                            <button
+                              onClick={() => handleSetRole(member, "member")}
+                              className="p-1.5 text-gray-400 hover:text-amber-400 hover:bg-amber-600/20 rounded-lg transition-colors duration-200"
+                              title="Demote to member"
+                            >
+                              <ArrowDownCircleIcon className="h-4 w-4" />
+                            </button>
+                          )}
+                          {canManage && (member.role !== "admin" || isOwner) && (
+                            <button
+                              onClick={() => handleRemoveMember(member)}
+                              className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                              title="Remove member"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

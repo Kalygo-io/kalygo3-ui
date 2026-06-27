@@ -85,9 +85,11 @@ export function AgentSharingPanel({ agentId }: AgentSharingPanelProps) {
     );
   };
 
-  // Groups that don't already have a grant
+  // Groups the caller can manage (owner or admin) that don't already have a grant.
+  // The backend enforces this too; filtering keeps the dropdown honest.
   const availableGroups = myGroups.filter(
     (group) =>
+      (group.my_role === "owner" || group.my_role === "admin") &&
       !grants.some((grant) => grant.access_group_id === group.id),
   );
 
