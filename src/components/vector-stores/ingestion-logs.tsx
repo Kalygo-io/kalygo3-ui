@@ -15,11 +15,13 @@ import {
 
 interface IngestionLogsProps {
   indexName: string;
+  namespace?: string;
   refreshTrigger?: number;
 }
 
 export function IngestionLogs({
   indexName,
+  namespace,
   refreshTrigger,
 }: IngestionLogsProps) {
   const [logs, setLogs] = useState<IngestionLog[]>([]);
@@ -45,6 +47,7 @@ export function IngestionLogs({
             : 0;
 
         const response = await vectorStoresService.getIngestionLogs(indexName, {
+          namespace: namespace || undefined,
           limit: pageSize,
           offset: numOffset,
         });
@@ -78,7 +81,7 @@ export function IngestionLogs({
         setLoading(false);
       }
     },
-    [indexName, pageSize]
+    [indexName, namespace, pageSize]
   );
 
   useEffect(() => {
@@ -92,6 +95,7 @@ export function IngestionLogs({
     setError(null);
     try {
       const response = await vectorStoresService.getIngestionLogs(indexName, {
+        namespace: namespace || undefined,
         limit: newPageSize,
         offset: 0,
       });

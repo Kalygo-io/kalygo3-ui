@@ -15,6 +15,21 @@ export interface Namespace {
   vector_count?: number;
 }
 
+export interface NamespaceFile {
+  filename: string;
+  vector_count: number;
+}
+
+export interface NamespaceFilesResponse {
+  index_name: string;
+  namespace: string;
+  total_vectors: number;
+  scanned_vectors: number;
+  truncated: boolean;
+  source: "pinecone" | "ingestion_log";
+  files: NamespaceFile[];
+}
+
 export interface CreateIndexRequest {
   name: string;
   dimension: number;
@@ -90,6 +105,18 @@ class VectorStoresService {
   async listNamespaces(indexName: string): Promise<Namespace[]> {
     return apiGet<Namespace[]>(
       `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`
+    );
+  }
+
+  /** Per-file vector counts for a namespace (live Pinecone scan). */
+  async listNamespaceFiles(
+    indexName: string,
+    namespace: string,
+  ): Promise<NamespaceFilesResponse> {
+    return apiGet<NamespaceFilesResponse>(
+      `/api/vector-stores/indexes/${encodeURIComponent(
+        indexName,
+      )}/namespaces/${encodeURIComponent(namespace)}/files`,
     );
   }
 

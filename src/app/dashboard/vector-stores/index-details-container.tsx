@@ -18,6 +18,7 @@ import {
   TrashIcon,
   ClipboardDocumentListIcon,
   InformationCircleIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { IngestionLogs } from "@/components/vector-stores/ingestion-logs";
 
@@ -245,7 +246,26 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
                     {namespaces.map((namespace) => (
                       <div
                         key={namespace.namespace}
-                        className="bg-gray-900/50 border border-gray-700/30 rounded-lg p-4"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/vector-stores?indexName=${encodeURIComponent(
+                              indexName,
+                            )}&namespace=${encodeURIComponent(namespace.namespace)}`,
+                          )
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            router.push(
+                              `/dashboard/vector-stores?indexName=${encodeURIComponent(
+                                indexName,
+                              )}&namespace=${encodeURIComponent(namespace.namespace)}`,
+                            );
+                          }
+                        }}
+                        className="group cursor-pointer bg-gray-900/50 border border-gray-700/30 rounded-lg p-4 hover:border-blue-500/40 hover:bg-gray-900/80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                       >
                         <div className="flex items-start justify-between">
                           <div>
@@ -259,12 +279,19 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
                             )}
                           </div>
                           <button
-                            onClick={() => handleDeleteNamespace(namespace.namespace)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteNamespace(namespace.namespace);
+                            }}
                             className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
                             title="Delete namespace vectors"
                           >
                             <TrashIcon className="h-4 w-4" />
                           </button>
+                        </div>
+                        <div className="mt-3 flex items-center gap-1 text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          View detail
+                          <ChevronRightIcon className="h-3.5 w-3.5" />
                         </div>
                       </div>
                     ))}
