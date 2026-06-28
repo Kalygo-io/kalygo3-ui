@@ -423,6 +423,34 @@ function PreviewStep({
         </p>
       </div>
 
+      {/* Selected source file */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Source file
+        </label>
+        {file ? (
+          <div className="flex items-center gap-3 bg-gray-900/60 border border-gray-700/50 rounded-lg px-4 py-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+              <DocumentTextIcon className="h-5 w-5 text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white truncate" title={file.name}>
+                {file.name}
+              </p>
+              <p className="text-xs text-gray-500">
+                {(file.size / 1024).toFixed(1)} KB · PDF
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg px-4 py-3">
+            <p className="text-yellow-300 text-sm">
+              No file selected. Go back to choose a PDF.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Destination selectors */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
