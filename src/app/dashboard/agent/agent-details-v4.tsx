@@ -46,6 +46,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AddToolModal } from "./add-tool-modal";
 import { AgentSharingPanel } from "@/components/agent-sharing/agent-sharing-panel";
+import { AgentAccessAudit } from "@/components/agent-sharing/agent-access-audit";
 import { TemplateVariableHint } from "@/components/shared/template-variable-hint";
 import { ELEVENLABS_VOICES } from "@/shared/app-settings";
 
@@ -805,9 +806,12 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
         )}
       </form>
 
-      {/* Sharing Panel (owners only) */}
+      {/* Sharing + access audit (owners only) */}
       {isOwner && agentId && (
-        <AgentSharingPanel agentId={agentId} />
+        <>
+          <AgentSharingPanel agentId={agentId} />
+          <AgentAccessAudit agentId={agentId} />
+        </>
       )}
 
       {/* Add/Edit Tool Modal */}
