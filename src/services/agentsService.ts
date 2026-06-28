@@ -93,6 +93,12 @@ export interface AgentConfigData {
   model?: ModelConfig;
   /** Optional ElevenLabs voice ID for TTS. */
   elevenlabsVoiceId?: string;
+  /**
+   * When true, members who access this agent via an access group run its LLM
+   * turn completions on the OWNER's stored provider credential instead of their
+   * own. No effect for the owner. Defaults to false (each member uses their own).
+   */
+  shareOwnerCredentials?: boolean;
   tools?: AgentTool[];
 }
 

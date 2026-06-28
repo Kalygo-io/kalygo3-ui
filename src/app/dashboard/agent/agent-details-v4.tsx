@@ -26,6 +26,7 @@ import {
   LinkIcon,
   CpuChipIcon,
   SpeakerWaveIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 import { AddToolModal } from "./add-tool-modal";
 import { AgentSharingPanel } from "@/components/agent-sharing/agent-sharing-panel";
@@ -45,6 +46,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [modelConfig, setModelConfig] = useState<ModelConfig>(DEFAULT_MODEL);
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState("");
+  const [shareOwnerCredentials, setShareOwnerCredentials] = useState(false);
   const [tools, setTools] = useState<AgentTool[]>([]);
   const [showAddToolModal, setShowAddToolModal] = useState(false);
   const [editingToolIndex, setEditingToolIndex] = useState<number | null>(null);
@@ -75,6 +77,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
         setSystemPrompt(v4Config.data.systemPrompt || "");
         setModelConfig(v4Config.data.model || DEFAULT_MODEL);
         setElevenlabsVoiceId(v4Config.data.elevenlabsVoiceId || "");
+        setShareOwnerCredentials(v4Config.data.shareOwnerCredentials ?? false);
         setTools(v4Config.data.tools || []);
       } else {
         errorToast("Agent is not using V4 schema");
@@ -116,6 +119,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
         model: modelConfig,
         tools: tools.length > 0 ? tools : undefined,
         ...(elevenlabsVoiceId.trim() ? { elevenlabsVoiceId: elevenlabsVoiceId.trim() } : {}),
+        ...(shareOwnerCredentials ? { shareOwnerCredentials: true } : {}),
       };
 
       const updateData = {
@@ -137,6 +141,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
         setSystemPrompt(saved.data.systemPrompt || "");
         setModelConfig(saved.data.model || DEFAULT_MODEL);
         setElevenlabsVoiceId(saved.data.elevenlabsVoiceId || "");
+        setShareOwnerCredentials(saved.data.shareOwnerCredentials ?? false);
         const savedTools = saved.data.tools || [];
         setTools(savedTools);
 
@@ -486,6 +491,32 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                 Used when this agent speaks in TTS Chat or Multi-Agent TTS Chat. Leave as default to use the voice from App Settings.
               </p>
             </div>
+
+            {/* Shared credentials (owners only) */}
+            {isOwner && (
+              <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={shareOwnerCredentials}
+                    onChange={(e) => setShareOwnerCredentials(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span>
+                    <span className="flex items-center gap-2 text-sm font-medium text-gray-200">
+                      <KeyIcon className="h-5 w-5 text-amber-400" />
+                      Run shared sessions on my credentials
+                    </span>
+                    <span className="mt-1 block text-xs text-gray-400">
+                      When people you share this agent with (via an access group) chat with
+                      it, use your stored LLM provider key so they don&apos;t have to add
+                      their own. Off by default — each member uses their own key. Tools always
+                      run on your credentials regardless of this setting.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
 
             {/* Tools */}
             <div>

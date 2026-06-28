@@ -40,6 +40,11 @@
           "minLength": 1,
           "description": "Optional ElevenLabs voice ID used to anthropomorphize the agent through voice when using the ElevenLabs API for text-to-speech (e.g. in TTS Chat or Multi-Agent TTS Chat). If omitted, a default voice or browser TTS may be used."
         },
+        "shareOwnerCredentials": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, members who access this agent via an access group run it on the OWNER's stored credentials (for both LLM turn completions and tools) instead of their own. When false or omitted, each member uses their own credentials. Has no effect for the owner, who always uses their own credentials."
+        },
         "tools": {
           "type": "array",
           "minItems": 0,
@@ -99,13 +104,19 @@
           "$ref": "#/$defs/dbTableWriteTool"
         },
         {
+          "$ref": "#/$defs/contactReadTool"
+        },
+        {
+          "$ref": "#/$defs/contactEventsReadTool"
+        },
+        {
+          "$ref": "#/$defs/contactEventWriteTool"
+        },
+        {
           "$ref": "#/$defs/sendTxtEmailWithSesTool"
         },
         {
           "$ref": "#/$defs/sendHtmlEmailWithSesTool"
-        },
-        {
-          "$ref": "#/$defs/sendTemplateEmailWithSesTool"
         },
         {
           "$ref": "#/$defs/sendTxtEmailWithGoogleOAuthTool"
@@ -126,34 +137,12 @@
         "namespace"
       ],
       "properties": {
-        "type": {
-          "type": "string",
-          "const": "vectorSearch"
-        },
-        "provider": {
-          "type": "string",
-          "enum": [
-            "pinecone"
-          ]
-        },
-        "index": {
-          "type": "string",
-          "minLength": 1
-        },
-        "namespace": {
-          "type": "string",
-          "minLength": 1
-        },
-        "description": {
-          "type": "string",
-          "minLength": 1
-        },
-        "topK": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100,
-          "default": 10
-        }
+        "type": { "type": "string", "const": "vectorSearch" },
+        "provider": { "type": "string", "enum": ["pinecone"] },
+        "index": { "type": "string", "minLength": 1 },
+        "namespace": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "topK": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 }
       }
     },
     "vectorSearchWithRerankingTool": {
@@ -167,40 +156,13 @@
         "namespace"
       ],
       "properties": {
-        "type": {
-          "type": "string",
-          "const": "vectorSearchWithReranking"
-        },
-        "provider": {
-          "type": "string",
-          "enum": [
-            "pinecone"
-          ]
-        },
-        "index": {
-          "type": "string",
-          "minLength": 1
-        },
-        "namespace": {
-          "type": "string",
-          "minLength": 1
-        },
-        "description": {
-          "type": "string",
-          "minLength": 1
-        },
-        "topK": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100,
-          "default": 20
-        },
-        "topN": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 50,
-          "default": 5
-        }
+        "type": { "type": "string", "const": "vectorSearchWithReranking" },
+        "provider": { "type": "string", "enum": ["pinecone"] },
+        "index": { "type": "string", "minLength": 1 },
+        "namespace": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "topK": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "topN": { "type": "integer", "minimum": 1, "maximum": 50, "default": 5 }
       }
     },
     "dbTableReadTool": {
@@ -213,36 +175,16 @@
         "table"
       ],
       "properties": {
-        "type": {
-          "type": "string",
-          "const": "dbTableRead"
-        },
-        "credentialId": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "table": {
-          "type": "string",
-          "minLength": 1
-        },
-        "description": {
-          "type": "string",
-          "minLength": 1
-        },
+        "type": { "type": "string", "const": "dbTableRead" },
+        "credentialId": { "type": "integer", "minimum": 1 },
+        "table": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
         "columns": {
           "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
+          "items": { "type": "string", "minLength": 1 },
           "minItems": 1
         },
-        "maxLimit": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1000,
-          "default": 100
-        }
+        "maxLimit": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 100 }
       }
     },
     "dbTableWriteTool": {
@@ -256,46 +198,58 @@
         "columns"
       ],
       "properties": {
-        "type": {
-          "type": "string",
-          "const": "dbTableWrite"
-        },
-        "credentialId": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "table": {
-          "type": "string",
-          "minLength": 1
-        },
-        "description": {
-          "type": "string",
-          "minLength": 1
-        },
+        "type": { "type": "string", "const": "dbTableWrite" },
+        "credentialId": { "type": "integer", "minimum": 1 },
+        "table": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
         "columns": {
           "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
+          "items": { "type": "string", "minLength": 1 },
           "minItems": 1
         },
         "requiredColumns": {
           "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
+          "items": { "type": "string", "minLength": 1 },
           "default": []
         },
-        "injectAccountId": {
-          "type": "boolean",
-          "default": false
-        },
-        "injectChatSessionId": {
-          "type": "boolean",
-          "default": false
-        }
+        "injectAccountId": { "type": "boolean", "default": false },
+        "injectChatSessionId": { "type": "boolean", "default": false }
+      }
+    },
+    "contactReadTool": {
+      "type": "object",
+      "description": "Read the single contact this chat session is bound to. Server-scoped; takes no contact id.",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": { "type": "string", "const": "contactRead" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "contactEventsReadTool": {
+      "type": "object",
+      "description": "List logged activity events for the bound contact. Server-scoped; takes no contact id.",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": { "type": "string", "const": "contactEventsRead" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "contactEventWriteTool": {
+      "type": "object",
+      "description": "Log a new activity event for the bound contact. Server-scoped; contact_id and account_id are forced, not model-supplied.",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": { "type": "string", "const": "contactEventWrite" },
+        "description": { "type": "string", "minLength": 1 }
       }
     },
     "sendTxtEmailWithSesTool": {
@@ -307,10 +261,7 @@
         "credentialId"
       ],
       "properties": {
-        "type": {
-          "type": "string",
-          "const": "sendTxtEmailWithSes"
-        },
+        "type": { "type": "string", "const": "sendTxtEmailWithSes" },
         "credentialId": {
           "type": "integer",
           "minimum": 1,
@@ -325,17 +276,14 @@
     },
     "sendHtmlEmailWithSesTool": {
       "type": "object",
-      "description": "HTML email sending tool via AWS SES. The agent writes a plain-text body; each non-empty line is wrapped in a <p> tag at send time.",
+      "description": "Templated HTML email sending tool via AWS SES. The agent selects a saved template by ID and supplies variable values (preferred mode), or provides a raw HTML document as a fallback. Open-tracking and human approval are always required before sending.",
       "additionalProperties": false,
       "required": [
         "type",
         "credentialId"
       ],
       "properties": {
-        "type": {
-          "type": "string",
-          "const": "sendHtmlEmailWithSes"
-        },
+        "type": { "type": "string", "const": "sendHtmlEmailWithSes" },
         "credentialId": {
           "type": "integer",
           "minimum": 1,
@@ -348,35 +296,16 @@
         }
       }
     },
-    "sendTemplateEmailWithSesTool": {
-      "type": "object",
-      "description": "Sends a pre-designed HTML template email via AWS SES. The agent provides recipient and variable values; the template HTML is fixed at configuration time by templateId. Open-tracking is injected automatically. Requires human approval before sending.",
-      "additionalProperties": false,
-      "required": ["type", "credentialId", "templateId"],
-      "properties": {
-        "type": { "type": "string", "const": "sendTemplateEmailWithSes" },
-        "credentialId": { "type": "integer", "minimum": 1, "description": "ID of stored AWS SES credential." },
-        "templateId": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "ID of the email template from the Email Templates library. Fixes the HTML structure at configuration time so the agent cannot compose arbitrary markup."
-        },
-        "description": { "type": "string", "minLength": 1 }
-      }
-    },
     "sendTxtEmailWithGoogleOAuthTool": {
       "type": "object",
-      "description": "Plain-text email sending tool via Google Gmail API using OAuth.",
+      "description": "Plain-text email sending tool via Google Gmail API using OAuth. Sends emails using a Google OAuth credential stored in the caller's credentials database.",
       "additionalProperties": false,
       "required": [
         "type",
         "credentialId"
       ],
       "properties": {
-        "type": {
-          "type": "string",
-          "const": "sendTxtEmailWithGoogleOAuth"
-        },
+        "type": { "type": "string", "const": "sendTxtEmailWithGoogleOAuth" },
         "credentialId": {
           "type": "integer",
           "minimum": 1,
@@ -391,17 +320,14 @@
     },
     "sendTxtEmailWithGoogleSmtpTool": {
       "type": "object",
-      "description": "Plain-text email sending tool via Gmail SMTP using an App Password.",
+      "description": "Plain-text email sending tool via Gmail SMTP using an App Password. Sends emails using a Gmail SMTP credential stored in the caller's credentials database.",
       "additionalProperties": false,
       "required": [
         "type",
         "credentialId"
       ],
       "properties": {
-        "type": {
-          "type": "string",
-          "const": "sendTxtEmailWithGoogleSmtp"
-        },
+        "type": { "type": "string", "const": "sendTxtEmailWithGoogleSmtp" },
         "credentialId": {
           "type": "integer",
           "minimum": 1,
