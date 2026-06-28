@@ -179,6 +179,13 @@ export function VectorStoresContainer() {
                   `/dashboard/vector-stores?indexName=${encodeURIComponent(index.name)}`
                 )
               }
+              onViewNamespace={(namespace) =>
+                router.push(
+                  `/dashboard/vector-stores?indexName=${encodeURIComponent(
+                    index.name
+                  )}&namespace=${encodeURIComponent(namespace)}`
+                )
+              }
             />
           ))}
         </div>
@@ -195,6 +202,7 @@ function IndexCard({
   onToggleExpansion,
   onCreateNamespace,
   onViewDetails,
+  onViewNamespace,
 }: {
   index: Index;
   isExpanded: boolean;
@@ -203,6 +211,7 @@ function IndexCard({
   onToggleExpansion: () => void;
   onCreateNamespace: () => void;
   onViewDetails: () => void;
+  onViewNamespace: (namespace: string) => void;
 }) {
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
@@ -257,7 +266,7 @@ function IndexCard({
               {namespaces.map((namespace) => (
                 <div
                   key={namespace.namespace}
-                  className="bg-gray-900/50 border border-gray-700/30 rounded-lg p-4 flex items-center justify-between"
+                  className="group bg-gray-900/50 border border-gray-700/30 rounded-lg p-4 flex items-center justify-between"
                 >
                   <div>
                     <div className="text-white font-medium">
@@ -269,6 +278,13 @@ function IndexCard({
                       </div>
                     )}
                   </div>
+                  <button
+                    onClick={() => onViewNamespace(namespace.namespace)}
+                    className="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1 transition-colors"
+                  >
+                    View Details
+                    <ArrowRightIcon className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
             </div>
