@@ -114,21 +114,21 @@ export function LandingPage() {
           <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full mb-8">
             <SparklesIcon className="w-4 h-4 text-blue-400" />
             <span className="text-blue-400 text-sm font-medium">
-              Introducing the Agentic CRM
+              Introducing the Agentic Community CRM
             </span>
           </div>
 
           <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-[1.3] overflow-visible">
             Kalygo,
             <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent pb-3 relative">
-              the world&apos;s leading Agentic CRM
+              the world&apos;s leading Community Relationship Management platform
             </span>
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Your contacts, your AI agents, your knowledge — unified in one
-            platform. Kalygo brings intelligent automation to every customer
-            relationship.
+            Your members, your AI agents, your knowledge — unified in one
+            platform. Kalygo brings intelligent automation to every community
+            relationship, built for the enterprise.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-16">
@@ -157,9 +157,9 @@ export function LandingPage() {
               How It Works
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              From first contact to closed deal — Kalygo gives you and your team
-              fully open source AI agents that help deliver immaculate customer
-              service.
+              From first touch to lasting loyalty — Kalygo gives you and your
+              team fully open source AI agents that help deliver immaculate
+              community engagement at enterprise scale.
             </p>
           </div>
 
@@ -175,8 +175,8 @@ export function LandingPage() {
                 1. Connect
               </h3>
               <p className="text-gray-400">
-                Import your contacts, log activity, and build a full picture of
-                every lead, prospect, and customer in your CRM.
+                Import your members, log activity, and build a full picture of
+                every person and organization across your community.
               </p>
             </div>
 
@@ -207,7 +207,7 @@ export function LandingPage() {
                 3. Engage
               </h3>
               <p className="text-gray-400">
-                Let agents handle conversations, qualify leads, surface
+                Let agents handle conversations, nurture members, surface
                 insights, and take action — so your team focuses on what
                 matters.
               </p>
@@ -221,11 +221,11 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Everything your CRM should be
+              Everything your community CRM should be
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Purpose-built features that make Kalygo the only CRM your team
-              will ever need
+              Purpose-built features that make Kalygo the only community
+              relationship platform your enterprise will ever need
             </p>
           </div>
 
@@ -244,8 +244,8 @@ export function LandingPage() {
                   </h3>
                   <p className="text-gray-400">
                     Deploy customizable LLM-powered agents that can answer
-                    questions, qualify leads, and take action — all within the
-                    context of your CRM data.
+                    questions, engage members, and take action — all within the
+                    context of your community data.
                   </p>
                 </div>
               </div>
@@ -261,10 +261,10 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    Contact CRM with Activity Timelines
+                    Member CRM with Activity Timelines
                   </h3>
                   <p className="text-gray-400">
-                    Track every lead, prospect, and customer with a full
+                    Track every member, partner, and organization with a full
                     activity timeline — calls, emails, meetings, and notes — all
                     in one place.
                   </p>
@@ -324,7 +324,7 @@ export function LandingPage() {
             Stay in the Loop
           </h2>
           <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-            Follow us for product updates, AI workflows, and Agentic CRM tips
+            Follow us for product updates, AI workflows, and community CRM tips
             from the Kalygo team
           </p>
 
@@ -385,8 +385,8 @@ export function LandingPage() {
               Ready to transform how you do business?
             </h2>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Start building intelligent customer relationships today. It&apos;s
-              free to get started.
+              Start building intelligent community relationships today.
+              It&apos;s free to get started.
             </p>
             <Link
               href="/signup"
@@ -411,7 +411,7 @@ export function LandingPage() {
                 <span className="text-2xl font-bold text-white">Kalygo</span>
               </div>
               <p className="text-gray-400 text-sm">
-                Intelligent customer relationships powered by AI agents.
+                Intelligent community relationships powered by AI agents.
               </p>
             </div>
 
