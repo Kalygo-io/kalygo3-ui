@@ -367,7 +367,9 @@ function PreviewStep({
       try {
         setLoadingIndexes(true);
         const [indexes, shared] = await Promise.all([
-          vectorStoresService.listIndexes(),
+          // A member with no Pinecone credential of their own can still have
+          // write access to shared KBs — don't let an own-index failure hide them.
+          vectorStoresService.listIndexes().catch(() => []),
           vectorStoresService.listSharedVectorStores().catch(() => []),
         ]);
         const all: IngestTarget[] = [

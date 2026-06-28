@@ -44,19 +44,23 @@ export function VectorStoresContainer() {
   }, []);
 
   const loadIndexes = async () => {
-    try {
-      setLoading(true);
-      const [data, shared] = await Promise.all([
-        vectorStoresService.listIndexes(),
-        vectorStoresService.listSharedVectorStores().catch(() => []),
-      ]);
-      setIndexes(data);
-      setSharedStores(shared);
-    } catch (error: any) {
-      errorToast(error.message || "Failed to load indexes");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    // Own indexes and shared knowledge bases load independently: a member with no
+    // Pinecone credential of their own still has shared KBs to see, so a failure
+    // to list own indexes must NOT discard the shared section (and vice versa).
+    const [data, shared] = await Promise.all([
+      vectorStoresService.listIndexes().catch((error: any) => {
+        console.error("Failed to load own indexes:", error);
+        return [] as Index[];
+      }),
+      vectorStoresService.listSharedVectorStores().catch((error: any) => {
+        console.error("Failed to load shared knowledge bases:", error);
+        return [] as SharedVectorStore[];
+      }),
+    ]);
+    setIndexes(data);
+    setSharedStores(shared);
+    setLoading(false);
   };
 
   const toggleIndexExpansion = async (indexName: string) => {
@@ -156,7 +160,7 @@ export function VectorStoresContainer() {
       )}
 
       {/* Indexes List */}
-      {indexes.length === 0 ? (
+      {indexes.length === 0 && sharedStores.length === 0 ? (
         <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-12 text-center">
           <p className="text-gray-400 text-lg mb-4">No indexes found</p>
           <p className="text-gray-500 text-sm mb-6">
@@ -169,7 +173,7 @@ export function VectorStoresContainer() {
             Create Index
           </button>
         </div>
-      ) : (
+      ) : indexes.length === 0 ? null : (
         <div className="space-y-4">
           {indexes.map((index) => (
             <IndexCard
