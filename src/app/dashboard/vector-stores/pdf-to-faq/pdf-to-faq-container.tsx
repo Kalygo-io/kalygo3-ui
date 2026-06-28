@@ -19,7 +19,6 @@ import {
 } from "@/services/agentsService";
 import {
   vectorStoresService,
-  Index,
   Namespace,
 } from "@/services/vectorStoresService";
 import {
@@ -327,6 +326,21 @@ function FileSelectorStep({
 
 // ── Step 2: Preview + ingest ──────────────────────────────────────────────────
 
+/** A pickable ingest target — either an own index or a writable shared KB. */
+interface IngestTarget {
+  indexName: string;
+  /** Owner of a shared KB; undefined for the caller's own index. */
+  ownerAccountId?: number;
+  shared: boolean;
+}
+
+/** Stable <option> value that encodes the owner (or "own"). */
+function targetKey(t: IngestTarget): string {
+  return t.ownerAccountId != null
+    ? `shared:${t.ownerAccountId}:${t.indexName}`
+    : `own:${t.indexName}`;
+}
+
 function PreviewStep({
   file,
   faqs,
@@ -336,8 +350,8 @@ function PreviewStep({
   faqs: FaqPair[];
   onUploaded: () => void;
 }) {
-  const [indexes, setIndexes] = useState<Index[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState<string>("");
+  const [targets, setTargets] = useState<IngestTarget[]>([]);
+  const [selectedKey, setSelectedKey] = useState<string>("");
   const [loadingIndexes, setLoadingIndexes] = useState(true);
 
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
@@ -346,13 +360,28 @@ function PreviewStep({
 
   const [uploading, setUploading] = useState(false);
 
+  const selectedTarget = targets.find((t) => targetKey(t) === selectedKey);
+
   useEffect(() => {
     (async () => {
       try {
         setLoadingIndexes(true);
-        const data = await vectorStoresService.listIndexes();
-        setIndexes(data);
-        if (data.length > 0) setSelectedIndex(data[0].name);
+        const [indexes, shared] = await Promise.all([
+          vectorStoresService.listIndexes(),
+          vectorStoresService.listSharedVectorStores().catch(() => []),
+        ]);
+        const all: IngestTarget[] = [
+          ...indexes.map((idx) => ({ indexName: idx.name, shared: false })),
+          ...shared
+            .filter((s) => s.can_write)
+            .map((s) => ({
+              indexName: s.index_name,
+              ownerAccountId: s.owner_account_id,
+              shared: true,
+            })),
+        ];
+        setTargets(all);
+        if (all.length > 0) setSelectedKey(targetKey(all[0]));
       } catch (error: any) {
         errorToast(error.message || "Failed to load knowledge bases");
       } finally {
@@ -362,39 +391,47 @@ function PreviewStep({
   }, []);
 
   useEffect(() => {
-    if (!selectedIndex) {
+    if (!selectedTarget) {
       setNamespaces([]);
       setSelectedNamespace("");
       return;
     }
+    const { indexName, ownerAccountId } = selectedTarget;
     (async () => {
       try {
         setLoadingNamespaces(true);
         setSelectedNamespace("");
-        const data = await vectorStoresService.listNamespaces(selectedIndex);
+        const data = await vectorStoresService.listNamespaces(
+          indexName,
+          ownerAccountId,
+        );
         setNamespaces(data);
         if (data.length > 0) setSelectedNamespace(data[0].namespace || "");
       } catch (error: any) {
         errorToast(
-          error.message || `Failed to load namespaces for ${selectedIndex}`,
+          error.message || `Failed to load namespaces for ${indexName}`,
         );
       } finally {
         setLoadingNamespaces(false);
       }
     })();
-  }, [selectedIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
 
   const handleUpload = async () => {
-    if (!file || !faqs.length || !selectedIndex || !selectedNamespace) return;
+    if (!file || !faqs.length || !selectedTarget || !selectedNamespace) return;
     try {
       setUploading(true);
       // Upload the ORIGINAL PDF as the stored source; the reviewed Q&A pairs
       // ride along and are ingested with metadata pointing back at the PDF.
       await vectorStoresService.uploadPdfFaq(
-        selectedIndex,
+        selectedTarget.indexName,
         selectedNamespace,
         file,
         faqs,
+        undefined,
+        undefined,
+        selectedTarget.ownerAccountId,
       );
       successToast(
         "FAQ pairs queued for ingestion. Vectors will appear shortly.",
@@ -410,7 +447,7 @@ function PreviewStep({
   const canUpload =
     !!file &&
     faqs.length > 0 &&
-    !!selectedIndex &&
+    !!selectedTarget &&
     !!selectedNamespace &&
     !uploading;
 
@@ -458,21 +495,25 @@ function PreviewStep({
             Knowledge Base *
           </label>
           <select
-            value={selectedIndex}
-            onChange={(e) => setSelectedIndex(e.target.value)}
-            disabled={loadingIndexes || indexes.length === 0}
+            value={selectedKey}
+            onChange={(e) => setSelectedKey(e.target.value)}
+            disabled={loadingIndexes || targets.length === 0}
             className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {loadingIndexes ? (
               <option>Loading knowledge bases…</option>
-            ) : indexes.length === 0 ? (
+            ) : targets.length === 0 ? (
               <option>No knowledge bases available</option>
             ) : (
-              indexes.map((idx) => (
-                <option key={idx.name} value={idx.name}>
-                  {idx.name}
-                </option>
-              ))
+              targets.map((t) => {
+                const key = targetKey(t);
+                return (
+                  <option key={key} value={key}>
+                    {t.indexName}
+                    {t.shared ? " (shared)" : ""}
+                  </option>
+                );
+              })
             )}
           </select>
         </div>

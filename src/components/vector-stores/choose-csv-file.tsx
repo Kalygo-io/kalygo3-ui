@@ -5,6 +5,7 @@ import { FileUpload, UploadResult } from "@/components/shared/forms/file-upload"
 interface Props {
   indexName: string;
   namespace: string;
+  ownerAccountId?: number;
   files: File[] | null;
   setFiles: Dispatch<SetStateAction<File[] | null>>;
   onUploadSuccess?: () => void;
@@ -20,7 +21,10 @@ export function ChooseCsvFile(props: Props) {
         vectorStoresService.uploadCsvFile(
           props.indexName,
           props.namespace,
-          file
+          file,
+          undefined,
+          undefined,
+          props.ownerAccountId
         ) as Promise<UploadResult>
       }
       accept=".csv"

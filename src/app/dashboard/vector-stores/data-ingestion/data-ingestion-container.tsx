@@ -1,29 +1,57 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { vectorStoresService, Index } from "@/services/vectorStoresService";
+import { vectorStoresService } from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
 import { PageLoading } from "@/components/shared/common/page-loading";
 import { CircleStackIcon } from "@heroicons/react/24/outline";
 import { DataIngestion } from "@/components/vector-stores/data-ingestion";
 
+/** A pickable ingest target — either an own index or a writable shared KB. */
+interface IngestTarget {
+  indexName: string;
+  /** Owner of a shared KB; undefined for the caller's own index. */
+  ownerAccountId?: number;
+  shared: boolean;
+}
+
+/** Stable <option> value that encodes the owner (or "own"). */
+function targetKey(t: IngestTarget): string {
+  return t.ownerAccountId != null ? `shared:${t.ownerAccountId}:${t.indexName}` : `own:${t.indexName}`;
+}
+
 export function DataIngestionContainer() {
-  const [indexes, setIndexes] = useState<Index[]>([]);
+  const [targets, setTargets] = useState<IngestTarget[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedIndex, setSelectedIndex] = useState<string>("");
+  const [selectedKey, setSelectedKey] = useState<string>("");
 
   useEffect(() => {
-    loadIndexes();
+    loadTargets();
   }, []);
 
-  const loadIndexes = async () => {
+  const loadTargets = async () => {
     try {
       setLoading(true);
-      const data = await vectorStoresService.listIndexes();
-      setIndexes(data);
-      if (data.length > 0) {
-        setSelectedIndex(data[0].name);
+      const [indexes, shared] = await Promise.all([
+        vectorStoresService.listIndexes(),
+        vectorStoresService.listSharedVectorStores().catch(() => []),
+      ]);
+      const ownTargets: IngestTarget[] = indexes.map((idx) => ({
+        indexName: idx.name,
+        shared: false,
+      }));
+      const sharedTargets: IngestTarget[] = shared
+        .filter((s) => s.can_write)
+        .map((s) => ({
+          indexName: s.index_name,
+          ownerAccountId: s.owner_account_id,
+          shared: true,
+        }));
+      const all = [...ownTargets, ...sharedTargets];
+      setTargets(all);
+      if (all.length > 0) {
+        setSelectedKey(targetKey(all[0]));
       }
     } catch (error: any) {
       errorToast(error.message || "Failed to load knowledge bases");
@@ -36,6 +64,8 @@ export function DataIngestionContainer() {
     return <PageLoading label="Loading knowledge bases..." />;
   }
 
+  const selectedTarget = targets.find((t) => targetKey(t) === selectedKey);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -47,7 +77,7 @@ export function DataIngestionContainer() {
       </div>
 
       <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-        {indexes.length === 0 ? (
+        {targets.length === 0 ? (
           <div className="text-center py-12">
             <CircleStackIcon className="h-12 w-12 text-gray-600 mx-auto mb-4" />
             <p className="text-gray-400 text-sm">
@@ -63,23 +93,28 @@ export function DataIngestionContainer() {
                 Select Knowledge Base *
               </label>
               <select
-                value={selectedIndex}
-                onChange={(e) => setSelectedIndex(e.target.value)}
+                value={selectedKey}
+                onChange={(e) => setSelectedKey(e.target.value)}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {indexes.map((idx) => (
-                  <option key={idx.name} value={idx.name}>
-                    {idx.name}
-                  </option>
-                ))}
+                {targets.map((t) => {
+                  const key = targetKey(t);
+                  return (
+                    <option key={key} value={key}>
+                      {t.indexName}
+                      {t.shared ? " (shared)" : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
             {/* Namespace selector + ingest tabs for the chosen index */}
-            {selectedIndex && (
+            {selectedTarget && (
               <DataIngestion
-                key={selectedIndex}
-                indexName={selectedIndex}
+                key={selectedKey}
+                indexName={selectedTarget.indexName}
+                ownerAccountId={selectedTarget.ownerAccountId}
                 onUploadSuccess={() => successToast("Upload complete")}
               />
             )}

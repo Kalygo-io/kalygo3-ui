@@ -8,6 +8,7 @@ import {
   Namespace,
   CreateIndexRequest,
   CreateNamespaceRequest,
+  SharedVectorStore,
 } from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { PageLoading } from "@/components/shared/common/page-loading";
@@ -22,6 +23,7 @@ import {
 export function VectorStoresContainer() {
   const router = useRouter();
   const [indexes, setIndexes] = useState<Index[]>([]);
+  const [sharedStores, setSharedStores] = useState<SharedVectorStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIndexes, setExpandedIndexes] = useState<Set<string>>(
     new Set()
@@ -44,8 +46,12 @@ export function VectorStoresContainer() {
   const loadIndexes = async () => {
     try {
       setLoading(true);
-      const data = await vectorStoresService.listIndexes();
+      const [data, shared] = await Promise.all([
+        vectorStoresService.listIndexes(),
+        vectorStoresService.listSharedVectorStores().catch(() => []),
+      ]);
       setIndexes(data);
+      setSharedStores(shared);
     } catch (error: any) {
       errorToast(error.message || "Failed to load indexes");
     } finally {
@@ -188,6 +194,65 @@ export function VectorStoresContainer() {
               }
             />
           ))}
+        </div>
+      )}
+
+      {/* Shared with me */}
+      {sharedStores.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-semibold text-white mt-4">
+            Shared with me
+          </h2>
+          <div className="space-y-3">
+            {sharedStores.map((store) => (
+              <div
+                key={`${store.owner_account_id}:${store.index_name}`}
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  router.push(
+                    `/dashboard/vector-stores?indexName=${encodeURIComponent(
+                      store.index_name,
+                    )}&ownerAccountId=${store.owner_account_id}&canWrite=${
+                      store.can_write ? 1 : 0
+                    }`,
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(
+                      `/dashboard/vector-stores?indexName=${encodeURIComponent(
+                        store.index_name,
+                      )}&ownerAccountId=${store.owner_account_id}&canWrite=${
+                        store.can_write ? 1 : 0
+                      }`,
+                    );
+                  }
+                }}
+                className="group cursor-pointer bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 flex items-center justify-between hover:border-blue-500/40 hover:bg-gray-800/70 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              >
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-semibold text-white">
+                    {store.index_name}
+                  </h3>
+                  <span
+                    className={`text-xs font-medium px-2 py-1 rounded-full border ${
+                      store.can_write
+                        ? "text-green-300 border-green-500/40 bg-green-600/10"
+                        : "text-gray-300 border-gray-500/40 bg-gray-600/10"
+                    }`}
+                  >
+                    {store.can_write ? "Can edit" : "View only"}
+                  </span>
+                </div>
+                <span className="text-blue-400 group-hover:text-blue-300 text-sm font-medium flex items-center gap-1 transition-colors">
+                  View Details
+                  <ArrowRightIcon className="h-4 w-4" />
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

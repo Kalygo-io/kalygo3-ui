@@ -10,14 +10,32 @@ import { NamespaceDetailsContainer } from "./namespace-details-container";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ indexName?: string; namespace?: string }>;
+  searchParams: Promise<{
+    indexName?: string;
+    namespace?: string;
+    ownerAccountId?: string;
+    canWrite?: string;
+  }>;
 }) {
   await protectedPageGuard();
-  const { indexName: rawIndexName, namespace: rawNamespace } =
-    await searchParams;
+  const {
+    indexName: rawIndexName,
+    namespace: rawNamespace,
+    ownerAccountId: rawOwnerAccountId,
+    canWrite: rawCanWrite,
+  } = await searchParams;
   const indexName = rawIndexName ? decodeURIComponent(rawIndexName) : null;
   const namespace =
     rawNamespace !== undefined ? decodeURIComponent(rawNamespace) : null;
+
+  // ownerAccountId is present only for a SHARED knowledge base (owned by
+  // someone else). Absent means it's the caller's own knowledge base.
+  const parsedOwner =
+    rawOwnerAccountId !== undefined && rawOwnerAccountId !== ""
+      ? Number(rawOwnerAccountId)
+      : NaN;
+  const ownerAccountId = Number.isFinite(parsedOwner) ? parsedOwner : undefined;
+  const canWrite = rawCanWrite === "1";
 
   return (
     <DashboardLayout>
@@ -27,9 +45,15 @@ export default async function Page({
             <NamespaceDetailsContainer
               indexName={indexName}
               namespace={namespace}
+              ownerAccountId={ownerAccountId}
+              canWrite={canWrite}
             />
           ) : indexName ? (
-            <IndexDetailsContainer indexName={indexName} />
+            <IndexDetailsContainer
+              indexName={indexName}
+              ownerAccountId={ownerAccountId}
+              canWrite={canWrite}
+            />
           ) : (
             <VectorStoresContainer />
           )}

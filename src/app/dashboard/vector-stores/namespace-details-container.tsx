@@ -25,12 +25,21 @@ import {
 export function NamespaceDetailsContainer({
   indexName,
   namespace,
+  ownerAccountId,
+  canWrite: canWriteProp,
 }: {
   indexName: string;
   namespace: string;
+  ownerAccountId?: number;
+  canWrite?: boolean;
 }) {
   const router = useRouter();
   const confirmDelete = useConfirmDelete();
+  const isOwnKb = ownerAccountId == null;
+  const canWrite = isOwnKb ? true : !!canWriteProp;
+  const sharedQuery = isOwnKb
+    ? ""
+    : `&ownerAccountId=${ownerAccountId}&canWrite=${canWrite ? 1 : 0}`;
   const [index, setIndex] = useState<Index | null>(null);
   const [namespaceData, setNamespaceData] = useState<Namespace | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +52,7 @@ export function NamespaceDetailsContainer({
   const displayName = namespace || "(default)";
   const indexHref = `/dashboard/vector-stores?indexName=${encodeURIComponent(
     indexName,
-  )}`;
+  )}${sharedQuery}`;
 
   useEffect(() => {
     loadDetails();
@@ -58,6 +67,7 @@ export function NamespaceDetailsContainer({
       const data = await vectorStoresService.listNamespaceFiles(
         indexName,
         namespace,
+        ownerAccountId,
       );
       setFilesData(data);
     } catch (error: any) {
@@ -70,15 +80,23 @@ export function NamespaceDetailsContainer({
   const loadDetails = async (showPageLoading = true) => {
     try {
       if (showPageLoading) setLoading(true);
-      const [indexes, namespaces] = await Promise.all([
-        vectorStoresService.listIndexes(),
-        vectorStoresService.listNamespaces(indexName),
-      ]);
-      const foundIndex = indexes.find((idx) => idx.name === indexName);
-      if (!foundIndex) {
-        errorToast("Index not found");
-        router.push("/dashboard/vector-stores");
-        return;
+      // listIndexes only returns the caller's own indexes; for a shared KB we
+      // use the name we already have and skip the ownership lookup.
+      const namespaces = await vectorStoresService.listNamespaces(
+        indexName,
+        ownerAccountId,
+      );
+      let foundIndex: Index | undefined;
+      if (isOwnKb) {
+        const indexes = await vectorStoresService.listIndexes();
+        foundIndex = indexes.find((idx) => idx.name === indexName);
+        if (!foundIndex) {
+          errorToast("Index not found");
+          router.push("/dashboard/vector-stores");
+          return;
+        }
+      } else {
+        foundIndex = { name: indexName };
       }
       const foundNamespace = namespaces.find(
         (ns) => (ns.namespace || "") === namespace,
@@ -111,7 +129,12 @@ export function NamespaceDetailsContainer({
   const handleDeleteNamespace = async () => {
     await confirmDelete(
       `Are you sure you want to delete all vectors in namespace "${displayName}"? This action cannot be undone.`,
-      () => vectorStoresService.deleteNamespaceVectors(indexName, namespace),
+      () =>
+        vectorStoresService.deleteNamespaceVectors(
+          indexName,
+          namespace,
+          ownerAccountId,
+        ),
       {
         successMessage: `Namespace "${displayName}" vectors deleted successfully`,
         errorMessage: "Failed to delete namespace vectors",
@@ -128,6 +151,7 @@ export function NamespaceDetailsContainer({
           indexName,
           namespace,
           file.filename,
+          ownerAccountId,
         ),
       {
         successMessage: `Deleted vectors for "${file.filename}"`,
@@ -143,7 +167,10 @@ export function NamespaceDetailsContainer({
   // Per-file delete needs a full live scan to find the matching vector ids, so
   // it's only available when the breakdown came from a complete Pinecone scan.
   const perFileDeletable =
-    !!filesData && filesData.source === "pinecone" && !filesData.truncated;
+    canWrite &&
+    !!filesData &&
+    filesData.source === "pinecone" &&
+    !filesData.truncated;
 
   if (loading) {
     return <PageLoading label="Loading namespace details..." />;
@@ -196,13 +223,15 @@ export function NamespaceDetailsContainer({
             <DocumentArrowUpIcon className="h-5 w-5" />
             Ingest Data
           </button>
-          <button
-            onClick={handleDeleteNamespace}
-            className="bg-red-600/90 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2"
-          >
-            <TrashIcon className="h-5 w-5" />
-            Delete Vectors
-          </button>
+          {canWrite && (
+            <button
+              onClick={handleDeleteNamespace}
+              className="bg-red-600/90 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2"
+            >
+              <TrashIcon className="h-5 w-5" />
+              Delete Vectors
+            </button>
+          )}
         </div>
       </div>
 
@@ -324,18 +353,20 @@ export function NamespaceDetailsContainer({
                       {f.vector_count.toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDeleteFile(f)}
-                        disabled={!perFileDeletable}
-                        title={
-                          perFileDeletable
-                            ? `Delete vectors for "${f.filename}"`
-                            : "Namespace too large to delete by file"
-                        }
-                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-500 disabled:hover:bg-transparent"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
+                      {canWrite && (
+                        <button
+                          onClick={() => handleDeleteFile(f)}
+                          disabled={!perFileDeletable}
+                          title={
+                            perFileDeletable
+                              ? `Delete vectors for "${f.filename}"`
+                              : "Namespace too large to delete by file"
+                          }
+                          className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-500 disabled:hover:bg-transparent"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

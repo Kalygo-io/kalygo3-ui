@@ -99,16 +99,53 @@ export interface IngestionLogsFilterOptions {
   end_date?: string;
   limit?: number;
   offset?: number;
+  /** Owner of a shared knowledge base whose logs to read. */
+  ownerAccountId?: number;
 }
 
+/** A knowledge base shared with the caller via access-group membership. */
+export interface SharedVectorStore {
+  owner_account_id: number;
+  index_name: string;
+  can_write: boolean;
+}
+
+/** An access group a knowledge base is shared with. */
+export interface VectorStoreAccessGrant {
+  id: number;
+  owner_account_id: number;
+  index_name: string;
+  access_group_id: number;
+  access_group_name: string;
+  created_at: string;
+}
+
+/**
+ * `ownerAccountId` is supplied only when operating on a SHARED knowledge base
+ * (one owned by another account and granted to one of your access groups). Omit
+ * it for your own knowledge bases. The backend resolves which account's Pinecone
+ * key / storage / logs to use and enforces the member(read)/admin(write) rule.
+ */
 class VectorStoresService {
+  private ownerQuery(
+    ownerAccountId?: number,
+  ): Record<string, string | number | boolean | undefined | null> {
+    return ownerAccountId != null ? { owner_account_id: ownerAccountId } : {};
+  }
+
   async listIndexes(): Promise<Index[]> {
     return apiGet<Index[]>(`/api/vector-stores/indexes`);
   }
 
-  async listNamespaces(indexName: string): Promise<Namespace[]> {
+  /** Knowledge bases shared with the caller, with the caller's write capability. */
+  async listSharedVectorStores(): Promise<SharedVectorStore[]> {
+    return apiGet<SharedVectorStore[]>(`/api/vector-stores/shared`);
+  }
+
+  async listNamespaces(indexName: string, ownerAccountId?: number): Promise<Namespace[]> {
     return apiGet<Namespace[]>(
-      `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`
+      `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`,
+      { query: this.ownerQuery(ownerAccountId) },
     );
   }
 
@@ -116,11 +153,13 @@ class VectorStoresService {
   async listNamespaceFiles(
     indexName: string,
     namespace: string,
+    ownerAccountId?: number,
   ): Promise<NamespaceFilesResponse> {
     return apiGet<NamespaceFilesResponse>(
       `/api/vector-stores/indexes/${encodeURIComponent(
         indexName,
       )}/namespaces/${encodeURIComponent(namespace)}/files`,
+      { query: this.ownerQuery(ownerAccountId) },
     );
   }
 
@@ -128,10 +167,15 @@ class VectorStoresService {
     return apiPost<Index>(`/api/vector-stores/indexes`, data);
   }
 
-  async createNamespace(indexName: string, data: CreateNamespaceRequest): Promise<Namespace> {
+  async createNamespace(
+    indexName: string,
+    data: CreateNamespaceRequest,
+    ownerAccountId?: number,
+  ): Promise<Namespace> {
     return apiPost<Namespace>(
       `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces`,
-      data
+      data,
+      { query: this.ownerQuery(ownerAccountId) },
     );
   }
 
@@ -140,7 +184,8 @@ class VectorStoresService {
     namespace: string,
     file: File,
     comment?: string,
-    batchNumber?: string
+    batchNumber?: string,
+    ownerAccountId?: number,
   ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
@@ -148,6 +193,7 @@ class VectorStoresService {
     formData.append("namespace", namespace);
     if (comment) formData.append("comment", comment);
     if (batchNumber) formData.append("batch_number", batchNumber);
+    if (ownerAccountId != null) formData.append("owner_account_id", String(ownerAccountId));
 
     return apiPost<UploadResponse>(`/api/vector-stores/upload-text`, formData);
   }
@@ -157,7 +203,8 @@ class VectorStoresService {
     namespace: string,
     file: File,
     comment?: string,
-    batchNumber?: string
+    batchNumber?: string,
+    ownerAccountId?: number,
   ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
@@ -165,6 +212,7 @@ class VectorStoresService {
     formData.append("namespace", namespace);
     if (comment) formData.append("comment", comment);
     if (batchNumber) formData.append("batch_number", batchNumber);
+    if (ownerAccountId != null) formData.append("owner_account_id", String(ownerAccountId));
 
     return apiPost<UploadResponse>(`/api/vector-stores/upload-csv`, formData);
   }
@@ -180,7 +228,8 @@ class VectorStoresService {
     pdfFile: File,
     pairs: { question: string; answer: string }[],
     comment?: string,
-    batchNumber?: string
+    batchNumber?: string,
+    ownerAccountId?: number,
   ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("file", pdfFile);
@@ -192,13 +241,20 @@ class VectorStoresService {
     );
     if (comment) formData.append("comment", comment);
     if (batchNumber) formData.append("batch_number", batchNumber);
+    if (ownerAccountId != null) formData.append("owner_account_id", String(ownerAccountId));
 
     return apiPost<UploadResponse>(`/api/vector-stores/upload-pdf-faq`, formData);
   }
 
-  async deleteNamespaceVectors(indexName: string, namespace: string): Promise<void> {
+  async deleteNamespaceVectors(
+    indexName: string,
+    namespace: string,
+    ownerAccountId?: number,
+  ): Promise<void> {
     return apiDelete<void>(
-      `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces/${encodeURIComponent(namespace)}/vectors`
+      `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces/${encodeURIComponent(namespace)}/vectors`,
+      undefined,
+      { query: this.ownerQuery(ownerAccountId) },
     );
   }
 
@@ -207,11 +263,12 @@ class VectorStoresService {
     indexName: string,
     namespace: string,
     filename: string,
+    ownerAccountId?: number,
   ): Promise<void> {
     return apiDelete<void>(
       `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces/${encodeURIComponent(namespace)}/file-vectors`,
       undefined,
-      { query: { filename } },
+      { query: { filename, ...this.ownerQuery(ownerAccountId) } },
     );
   }
 
@@ -242,6 +299,7 @@ class VectorStoresService {
           end_date: options.end_date || undefined,
           limit,
           offset,
+          ...this.ownerQuery(options.ownerAccountId),
         },
       }
     );
@@ -251,6 +309,31 @@ class VectorStoresService {
     }
 
     return data;
+  }
+
+  // --- Sharing (knowledge base access grants) -------------------------------
+
+  /** List the access groups a knowledge base is shared with. Index owner only. */
+  async listVectorStoreGrants(indexName: string): Promise<VectorStoreAccessGrant[]> {
+    return apiGet<VectorStoreAccessGrant[]>(`/api/vector-stores/grants`, {
+      query: { index_name: indexName },
+    });
+  }
+
+  /** Share one of your knowledge bases with an access group. */
+  async grantVectorStoreAccess(
+    indexName: string,
+    accessGroupId: number,
+  ): Promise<VectorStoreAccessGrant> {
+    return apiPost<VectorStoreAccessGrant>(`/api/vector-stores/grants`, {
+      index_name: indexName,
+      accessGroupId,
+    });
+  }
+
+  /** Revoke a knowledge-base grant by its id. */
+  async revokeVectorStoreAccess(grantId: number): Promise<void> {
+    return apiDelete<void>(`/api/vector-stores/grants/${grantId}`);
   }
 }
 

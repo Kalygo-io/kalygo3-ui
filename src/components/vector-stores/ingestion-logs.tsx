@@ -17,12 +17,15 @@ interface IngestionLogsProps {
   indexName: string;
   namespace?: string;
   refreshTrigger?: number;
+  /** Owner of a shared knowledge base whose logs to read. */
+  ownerAccountId?: number;
 }
 
 export function IngestionLogs({
   indexName,
   namespace,
   refreshTrigger,
+  ownerAccountId,
 }: IngestionLogsProps) {
   const [logs, setLogs] = useState<IngestionLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +53,7 @@ export function IngestionLogs({
           namespace: namespace || undefined,
           limit: pageSize,
           offset: numOffset,
+          ownerAccountId,
         });
 
         console.log("Ingestion logs response:", response);
@@ -81,7 +85,7 @@ export function IngestionLogs({
         setLoading(false);
       }
     },
-    [indexName, namespace, pageSize]
+    [indexName, namespace, pageSize, ownerAccountId]
   );
 
   useEffect(() => {
@@ -98,6 +102,7 @@ export function IngestionLogs({
         namespace: namespace || undefined,
         limit: newPageSize,
         offset: 0,
+        ownerAccountId,
       });
 
       if (response && Array.isArray(response.logs)) {

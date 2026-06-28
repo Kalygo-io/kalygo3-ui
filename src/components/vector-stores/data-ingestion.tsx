@@ -16,13 +16,19 @@ import { ChooseCsvFile } from "@/components/vector-stores/choose-csv-file";
 interface Props {
   indexName: string;
   onUploadSuccess?: () => void;
+  /** Owner of a shared knowledge base being ingested into (omit for own). */
+  ownerAccountId?: number;
 }
 
 /**
  * Namespace selector + Ingest Text / Ingest CSV tabs for a given index.
  * Used by the standalone Data Ingestion page (under an index picker).
  */
-export function DataIngestion({ indexName, onUploadSuccess }: Props) {
+export function DataIngestion({
+  indexName,
+  onUploadSuccess,
+  ownerAccountId,
+}: Props) {
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [loadingNamespaces, setLoadingNamespaces] = useState(true);
   const [selectedNamespace, setSelectedNamespace] = useState<string>("");
@@ -40,7 +46,10 @@ export function DataIngestion({ indexName, onUploadSuccess }: Props) {
   const loadNamespaces = async () => {
     try {
       setLoadingNamespaces(true);
-      const data = await vectorStoresService.listNamespaces(indexName);
+      const data = await vectorStoresService.listNamespaces(
+        indexName,
+        ownerAccountId,
+      );
       setNamespaces(data);
       if (data.length > 0) {
         setSelectedNamespace(data[0].namespace || "");
@@ -149,6 +158,7 @@ export function DataIngestion({ indexName, onUploadSuccess }: Props) {
               <ChooseTextFile
                 indexName={indexName}
                 namespace={selectedNamespace}
+                ownerAccountId={ownerAccountId}
                 files={textFiles}
                 setFiles={setTextFiles}
                 onUploadSuccess={handleUploadSuccess}
@@ -182,6 +192,7 @@ export function DataIngestion({ indexName, onUploadSuccess }: Props) {
               <ChooseCsvFile
                 indexName={indexName}
                 namespace={selectedNamespace}
+                ownerAccountId={ownerAccountId}
                 files={csvFiles}
                 setFiles={setCsvFiles}
                 onUploadSuccess={handleUploadSuccess}

@@ -21,10 +21,26 @@ import {
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { IngestionLogs } from "@/components/vector-stores/ingestion-logs";
+import { KbSharingPanel } from "@/components/kb-sharing/kb-sharing-panel";
 
-export function IndexDetailsContainer({ indexName }: { indexName: string }) {
+export function IndexDetailsContainer({
+  indexName,
+  ownerAccountId,
+  canWrite: canWriteProp,
+}: {
+  indexName: string;
+  ownerAccountId?: number;
+  canWrite?: boolean;
+}) {
   const router = useRouter();
   const confirmDelete = useConfirmDelete();
+  // A shared KB is one owned by another account; otherwise it's our own.
+  const isOwnKb = ownerAccountId == null;
+  const canWrite = isOwnKb ? true : !!canWriteProp;
+  // Carried into namespace links so the shared context follows navigation.
+  const sharedQuery = isOwnKb
+    ? ""
+    : `&ownerAccountId=${ownerAccountId}&canWrite=${canWrite ? 1 : 0}`;
   const [index, setIndex] = useState<Index | null>(null);
   const [namespaces, setNamespaces] = useState<Namespace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +56,12 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
   const loadIndexDetails = async () => {
     try {
       setLoading(true);
+      // listIndexes only returns the caller's own indexes, so for a shared KB
+      // we just use the name we already know.
+      if (!isOwnKb) {
+        setIndex({ name: indexName });
+        return;
+      }
       const indexes = await vectorStoresService.listIndexes();
       const foundIndex = indexes.find((idx) => idx.name === indexName);
       if (foundIndex) {
@@ -58,7 +80,10 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
   const loadNamespaces = async () => {
     try {
       setLoadingNamespaces(true);
-      const data = await vectorStoresService.listNamespaces(indexName);
+      const data = await vectorStoresService.listNamespaces(
+        indexName,
+        ownerAccountId,
+      );
       setNamespaces(data);
     } catch (error: any) {
       errorToast(error.message || `Failed to load namespaces for ${indexName}`);
@@ -69,7 +94,7 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
 
   const handleCreateNamespace = async (data: CreateNamespaceRequest) => {
     try {
-      await vectorStoresService.createNamespace(indexName, data);
+      await vectorStoresService.createNamespace(indexName, data, ownerAccountId);
       successToast("Namespace created successfully");
       setShowCreateNamespaceForm(false);
       await loadNamespaces();
@@ -83,7 +108,12 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
     const displayName = namespaceName || "(default)";
     await confirmDelete(
       `Are you sure you want to delete all vectors in namespace "${displayName}"? This action cannot be undone.`,
-      () => vectorStoresService.deleteNamespaceVectors(indexName, namespaceName),
+      () =>
+        vectorStoresService.deleteNamespaceVectors(
+          indexName,
+          namespaceName,
+          ownerAccountId,
+        ),
       {
         successMessage: `Namespace "${displayName}" vectors deleted successfully`,
         errorMessage: "Failed to delete namespace vectors",
@@ -112,14 +142,27 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
             <ArrowLeftIcon className="h-6 w-6" />
           </button>
           <h1 className="text-4xl font-semibold text-white">{index.name}</h1>
+          {!isOwnKb && (
+            <span
+              className={`text-xs font-medium px-2 py-1 rounded-full border ${
+                canWrite
+                  ? "text-green-300 border-green-500/40 bg-green-600/10"
+                  : "text-gray-300 border-gray-500/40 bg-gray-600/10"
+              }`}
+            >
+              {canWrite ? "Can edit" : "View only"}
+            </span>
+          )}
         </div>
-        <button
-          onClick={() => setShowCreateNamespaceForm(true)}
-          className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Create Namespace
-        </button>
+        {canWrite && (
+          <button
+            onClick={() => setShowCreateNamespaceForm(true)}
+            className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Create Namespace
+          </button>
+        )}
       </div>
 
       {/* Create Namespace Form Modal */}
@@ -252,7 +295,7 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
                           router.push(
                             `/dashboard/vector-stores?indexName=${encodeURIComponent(
                               indexName,
-                            )}&namespace=${encodeURIComponent(namespace.namespace)}`,
+                            )}&namespace=${encodeURIComponent(namespace.namespace)}${sharedQuery}`,
                           )
                         }
                         onKeyDown={(e) => {
@@ -261,7 +304,7 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
                             router.push(
                               `/dashboard/vector-stores?indexName=${encodeURIComponent(
                                 indexName,
-                              )}&namespace=${encodeURIComponent(namespace.namespace)}`,
+                              )}&namespace=${encodeURIComponent(namespace.namespace)}${sharedQuery}`,
                             );
                           }
                         }}
@@ -278,16 +321,18 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteNamespace(namespace.namespace);
-                            }}
-                            className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
-                            title="Delete namespace vectors"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
+                          {canWrite && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteNamespace(namespace.namespace);
+                              }}
+                              className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors duration-200"
+                              title="Delete namespace vectors"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                         <div className="mt-3 flex items-center gap-1 text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           View detail
@@ -303,11 +348,17 @@ export function IndexDetailsContainer({ indexName }: { indexName: string }) {
 
           {activeTopLevelTab === "ingestion-logs" && (
             <div>
-              <IngestionLogs indexName={indexName} />
+              <IngestionLogs
+                indexName={indexName}
+                ownerAccountId={ownerAccountId}
+              />
             </div>
           )}
         </div>
       </div>
+
+      {/* Sharing — owner only */}
+      {isOwnKb && <KbSharingPanel indexName={indexName} />}
     </div>
   );
 }
