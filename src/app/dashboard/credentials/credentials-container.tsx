@@ -5,6 +5,7 @@ import {
   credentialService,
   Credential,
   CredentialDetail,
+  CredentialGrant,
   ServiceName,
   AuthType,
   CredentialMetadata,
@@ -14,6 +15,7 @@ import {
   getCredentialTypeColor,
   getCredentialValue,
 } from "@/services/credentialService";
+import { accessGroupsService, AccessGroup } from "@/services/accessGroupsService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
 import { PageLoading } from "@/components/shared/common/page-loading";
@@ -34,7 +36,11 @@ import {
   ShieldCheckIcon,
   DocumentTextIcon,
   CircleStackIcon,
+  StarIcon,
+  ShareIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
+import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 
 function getCredentialTypeIcon(authType: AuthType | string) {
   const icons: Record<string, React.ReactNode> = {
@@ -57,6 +63,7 @@ export function CredentialsContainer() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingCredential, setEditingCredential] = useState<CredentialDetail | null>(null);
   const [showSecretValue, setShowSecretValue] = useState<Record<number, boolean>>({});
+  const [sharingCredential, setSharingCredential] = useState<Credential | null>(null);
 
   useEffect(() => {
     loadCredentials();
@@ -145,9 +152,27 @@ export function CredentialsContainer() {
     setShowSecretValue((prev) => ({ ...prev, [credentialId]: !prev[credentialId] }));
   };
 
+  const handleToggleDefault = async (credential: Credential) => {
+    try {
+      if (credential.is_default) {
+        await credentialService.unsetDefault(credential.id);
+        successToast(`Removed default for ${formatServiceName(credential.credential_type)}`);
+      } else {
+        await credentialService.setDefault(credential.id);
+        successToast(`Set as default for ${formatServiceName(credential.credential_type)}`);
+      }
+      loadCredentials();
+    } catch (error: any) {
+      errorToast(error.message || "Failed to update default");
+    }
+  };
+
   if (loading) {
     return <PageLoading label="Loading credentials..." />;
   }
+
+  const ownedCredentials = credentials.filter((c) => c.is_owner);
+  const sharedCredentials = credentials.filter((c) => !c.is_owner);
 
   return (
     <div className="space-y-6">
@@ -182,6 +207,13 @@ export function CredentialsContainer() {
         />
       )}
 
+      {sharingCredential && (
+        <ShareCredentialModal
+          credential={sharingCredential}
+          onClose={() => setSharingCredential(null)}
+        />
+      )}
+
       {credentials.length === 0 ? (
         <EmptyState
           icon={KeyIcon}
@@ -197,15 +229,49 @@ export function CredentialsContainer() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {credentials.map((credential) => (
-            <CredentialCard
-              key={credential.id}
-              credential={credential}
-              onView={() => handleViewCredential(credential.id)}
-              onDelete={() => handleDelete(credential.id)}
-            />
-          ))}
+        <div className="space-y-8">
+          {/* My Credentials */}
+          <section>
+            <h2 className="text-lg font-semibold text-gray-200 mb-3">
+              My Credentials
+              <span className="ml-2 text-sm font-normal text-gray-500">({ownedCredentials.length})</span>
+            </h2>
+            {ownedCredentials.length === 0 ? (
+              <p className="text-sm text-gray-500">You haven&apos;t added any credentials yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {ownedCredentials.map((credential) => (
+                  <CredentialCard
+                    key={credential.id}
+                    credential={credential}
+                    onView={() => handleViewCredential(credential.id)}
+                    onDelete={() => handleDelete(credential.id)}
+                    onShare={() => setSharingCredential(credential)}
+                    onToggleDefault={() => handleToggleDefault(credential)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Shared with me */}
+          {sharedCredentials.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-gray-200 mb-3">
+                Shared with me
+                <span className="ml-2 text-sm font-normal text-gray-500">({sharedCredentials.length})</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sharedCredentials.map((credential) => (
+                  <CredentialCard
+                    key={credential.id}
+                    credential={credential}
+                    onToggleDefault={() => handleToggleDefault(credential)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>
@@ -220,10 +286,14 @@ function CredentialCard({
   credential,
   onView,
   onDelete,
+  onShare,
+  onToggleDefault,
 }: {
   credential: Credential;
-  onView: () => void;
-  onDelete: () => void;
+  onView?: () => void;
+  onDelete?: () => void;
+  onShare?: () => void;
+  onToggleDefault?: () => void;
 }) {
   const typeColor = getCredentialTypeColor(credential.auth_type);
   const typeIcon = getCredentialTypeIcon(credential.auth_type);
@@ -235,13 +305,29 @@ function CredentialCard({
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           {/* Primary: credential_name (or service display name if none set) */}
-          <h3 className="text-xl font-semibold text-white mb-0.5">
+          <h3 className="text-xl font-semibold text-white mb-0.5 flex items-center gap-2">
             {credential.credential_name || formatServiceName(credential.credential_type)}
+            {credential.is_default && (
+              <span
+                title={`Default for ${formatServiceName(credential.credential_type)}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300 border border-amber-500/40"
+              >
+                <StarIconSolid className="h-3.5 w-3.5" />
+                Default
+              </span>
+            )}
           </h3>
           {/* Secondary: service label always visible */}
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-gray-500 mb-1">
             {formatServiceName(credential.credential_type)}
           </p>
+          {/* For shared credentials: how it reached the viewer */}
+          {!credential.is_owner && credential.shared_label && (
+            <p className="text-xs text-indigo-300/80 mb-3 flex items-center gap-1">
+              <UsersIcon className="h-3.5 w-3.5" />
+              {credential.shared_label}
+            </p>
+          )}
 
           <div className="flex flex-wrap gap-2 mb-3">
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${typeColor}`}>
@@ -282,20 +368,54 @@ function CredentialCard({
       </div>
 
       <div className="flex gap-2 mt-4">
+        {/* Default toggle — available on both owned and shared credentials */}
         <button
-          onClick={onView}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+          onClick={onToggleDefault}
+          className={`font-medium py-2 px-3 rounded-lg transition-colors duration-200 flex items-center justify-center gap-1.5 ${
+            credential.is_default
+              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
+              : "bg-gray-700 hover:bg-gray-600 text-gray-200"
+          }`}
+          title={
+            credential.is_default
+              ? "Remove as default for this type"
+              : "Set as default for this type (pre-selected when configuring agents & features)"
+          }
         >
-          <PencilIcon className="h-4 w-4" />
-          View/Edit
+          {credential.is_default ? (
+            <StarIconSolid className="h-4 w-4" />
+          ) : (
+            <StarIcon className="h-4 w-4" />
+          )}
+          {credential.is_default ? "Default" : "Set default"}
         </button>
-        <button
-          onClick={onDelete}
-          className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 p-2"
-          title="Delete"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </button>
+
+        {/* Owner-only actions */}
+        {credential.is_owner && (
+          <>
+            <button
+              onClick={onView}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <PencilIcon className="h-4 w-4" />
+              View/Edit
+            </button>
+            <button
+              onClick={onShare}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-3 rounded-lg transition-colors duration-200"
+              title="Share"
+            >
+              <ShareIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 p-2"
+              title="Delete"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -632,6 +752,216 @@ function EditCredentialModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Share modal (owner only)
+// ---------------------------------------------------------------------------
+
+function ShareCredentialModal({
+  credential,
+  onClose,
+}: {
+  credential: Credential;
+  onClose: () => void;
+}) {
+  const [grants, setGrants] = useState<CredentialGrant[]>([]);
+  const [groups, setGroups] = useState<AccessGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const [grantData, groupData] = await Promise.all([
+        credentialService.listGrants(credential.id),
+        accessGroupsService.listGroups(),
+      ]);
+      setGrants(grantData);
+      setGroups(groupData);
+    } catch (error: any) {
+      errorToast(error.message || "Failed to load sharing settings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [credential.id]);
+
+  // Groups already shared with, so we can hide them from the dropdown.
+  const sharedGroupIds = new Set(
+    grants.filter((g) => g.target_type === "group").map((g) => g.access_group_id),
+  );
+  const shareableGroups = groups.filter((g) => !sharedGroupIds.has(g.id));
+
+  const handleShareGroup = async () => {
+    if (!selectedGroupId) return;
+    try {
+      setSubmitting(true);
+      await credentialService.shareWithGroup(credential.id, Number(selectedGroupId));
+      successToast("Shared with group");
+      setSelectedGroupId("");
+      load();
+    } catch (error: any) {
+      errorToast(error.message || "Failed to share with group");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleShareEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    try {
+      setSubmitting(true);
+      await credentialService.shareWithEmail(credential.id, email.trim());
+      successToast(`Shared with ${email.trim()}`);
+      setEmail("");
+      load();
+    } catch (error: any) {
+      errorToast(error.message || "Failed to share with individual");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRevoke = async (grant: CredentialGrant) => {
+    try {
+      await credentialService.revokeGrant(credential.id, grant.id);
+      successToast(`Removed access for ${grant.label}`);
+      load();
+    } catch (error: any) {
+      errorToast(error.message || "Failed to remove access");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="mb-5">
+          <h2 className="text-2xl font-semibold text-white">Share credential</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {credential.credential_name || formatServiceName(credential.credential_type)} ·{" "}
+            {formatServiceName(credential.credential_type)}
+          </p>
+          <p className="text-xs text-gray-400 mt-2">
+            People you share with can <span className="text-gray-200">use</span> this credential but
+            never see its secret value.
+          </p>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : (
+          <div className="space-y-6">
+            {/* Existing shares */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-300 mb-2">Shared with</h3>
+              {grants.length === 0 ? (
+                <p className="text-sm text-gray-500">Not shared with anyone yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {grants.map((grant) => (
+                    <li
+                      key={grant.id}
+                      className="flex items-center justify-between bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2"
+                    >
+                      <span className="flex items-center gap-2 text-sm text-gray-200">
+                        {grant.target_type === "group" ? (
+                          <UsersIcon className="h-4 w-4 text-indigo-300" />
+                        ) : (
+                          <KeyIcon className="h-4 w-4 text-blue-300" />
+                        )}
+                        {grant.label}
+                        <span className="text-xs text-gray-500">
+                          ({grant.target_type === "group" ? "group" : "individual"})
+                        </span>
+                      </span>
+                      <button
+                        onClick={() => handleRevoke(grant)}
+                        className="text-red-400 hover:text-red-300 p-1"
+                        title="Remove access"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Share with a group */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Share with an access group
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={selectedGroupId}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">
+                    {shareableGroups.length === 0 ? "No groups available" : "Select a group…"}
+                  </option>
+                  {shareableGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleShareGroup}
+                  disabled={!selectedGroupId || submitting}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Share
+                </button>
+              </div>
+            </div>
+
+            {/* Share with an individual */}
+            <form onSubmit={handleShareEmail}>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Share with an individual (by email)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="person@example.com"
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!email.trim() || submitting}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Share
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="flex pt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );

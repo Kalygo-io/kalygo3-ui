@@ -10,6 +10,11 @@ import {
   CreateNamespaceRequest,
   SharedVectorStore,
 } from "@/services/vectorStoresService";
+import {
+  credentialService,
+  Credential,
+  ServiceName,
+} from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { PageLoading } from "@/components/shared/common/page-loading";
 import { successToast } from "@/shared/toasts/successToast";
@@ -378,6 +383,29 @@ function CreateIndexForm({
   const [replicas, setReplicas] = useState<number>(1);
   const [podType, setPodType] = useState<string>("s1.x1");
   const [submitting, setSubmitting] = useState(false);
+  // Credential bindings for the new knowledge base (pre-filled with the account
+  // default; the chosen ids are frozen onto the index server-side).
+  const [myCredentials, setMyCredentials] = useState<Credential[]>([]);
+  const [pineconeCredentialId, setPineconeCredentialId] = useState<string>("");
+  const [gcsCredentialId, setGcsCredentialId] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const creds = await credentialService.listCredentials();
+        setMyCredentials(creds.filter((c) => c.is_owner));
+      } catch {
+        // Non-fatal: pickers just show "Account default" with no options.
+      }
+    })();
+  }, []);
+
+  const pineconeOptions = myCredentials.filter(
+    (c) => c.credential_type === ServiceName.PINECONE_API_KEY,
+  );
+  const gcsOptions = myCredentials.filter(
+    (c) => c.credential_type === ServiceName.GOOGLE_CLOUD_STORAGE,
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,6 +428,8 @@ function CreateIndexForm({
         pods,
         replicas,
         pod_type: podType,
+        ...(pineconeCredentialId ? { pinecone_credential_id: Number(pineconeCredentialId) } : {}),
+        ...(gcsCredentialId ? { gcs_credential_id: Number(gcsCredentialId) } : {}),
       });
       setName("");
       setDimension(1536);
@@ -407,6 +437,8 @@ function CreateIndexForm({
       setPods(1);
       setReplicas(1);
       setPodType("s1.x1");
+      setPineconeCredentialId("");
+      setGcsCredentialId("");
     } catch (error) {
       // Error already handled in parent
     } finally {
@@ -432,6 +464,57 @@ function CreateIndexForm({
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
+          </div>
+
+          {/* Credential bindings — pre-selected from the account default, frozen
+              onto the knowledge base so they don't drift if defaults change. */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Pinecone credential
+              </label>
+              <select
+                value={pineconeCredentialId}
+                onChange={(e) => setPineconeCredentialId(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">
+                  Account default
+                  {pineconeOptions.some((c) => c.is_default)
+                    ? ` (${pineconeOptions.find((c) => c.is_default)?.credential_name || "default"})`
+                    : ""}
+                </option>
+                {pineconeOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.credential_name || `Credential #${c.id}`}
+                    {c.is_default ? " — default" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Source storage (GCS) credential
+              </label>
+              <select
+                value={gcsCredentialId}
+                onChange={(e) => setGcsCredentialId(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">
+                  Account default
+                  {gcsOptions.some((c) => c.is_default)
+                    ? ` (${gcsOptions.find((c) => c.is_default)?.credential_name || "default"})`
+                    : ""}
+                </option>
+                {gcsOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.credential_name || `Credential #${c.id}`}
+                    {c.is_default ? " — default" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

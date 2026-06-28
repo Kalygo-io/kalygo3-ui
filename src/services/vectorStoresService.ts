@@ -41,6 +41,10 @@ export interface CreateIndexRequest {
   pods?: number;
   replicas?: number;
   pod_type?: string;
+  /** Explicit Pinecone credential to bind to this knowledge base (else account default). */
+  pinecone_credential_id?: number;
+  /** Explicit GCS credential to bind for this KB's source files (else account default). */
+  gcs_credential_id?: number;
 }
 
 export interface CreateNamespaceRequest {

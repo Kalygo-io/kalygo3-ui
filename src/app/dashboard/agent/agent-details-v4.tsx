@@ -14,10 +14,26 @@ import {
   DEFAULT_MODEL,
   TOOL_TYPE_METADATA,
 } from "@/services/agentsService";
+import {
+  credentialService,
+  Credential,
+  ServiceName,
+} from "@/services/credentialService";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { successToast } from "@/shared/toasts/successToast";
 import { PageLoading } from "@/components/shared/common/page-loading";
 import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
+
+/**
+ * The credential type (ServiceName) each LLM provider needs for turn completions.
+ * Ollama runs locally and needs no stored credential.
+ */
+const PROVIDER_CREDENTIAL_TYPE: Record<ModelProvider, ServiceName | null> = {
+  openai: ServiceName.OPENAI_API_KEY,
+  anthropic: ServiceName.ANTHROPIC_API_KEY,
+  google: ServiceName.GOOGLE_GEMINI_API_KEY,
+  ollama: null,
+};
 import {
   ArrowLeftIcon,
   TrashIcon,
@@ -45,6 +61,8 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [modelConfig, setModelConfig] = useState<ModelConfig>(DEFAULT_MODEL);
+  // Credentials the viewer owns, used to populate the LLM credential picker.
+  const [myCredentials, setMyCredentials] = useState<Credential[]>([]);
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState("");
   const [shareOwnerCredentials, setShareOwnerCredentials] = useState(false);
   const [tools, setTools] = useState<AgentTool[]>([]);
@@ -61,6 +79,20 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
     loadAgent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentId]);
+
+  // Load the viewer's own credentials so the LLM credential picker can show them
+  // (and pre-select the account default). Owned-only: a credential pinned on an
+  // agent must be one the owner controls.
+  useEffect(() => {
+    (async () => {
+      try {
+        const creds = await credentialService.listCredentials();
+        setMyCredentials(creds.filter((c) => c.is_owner));
+      } catch {
+        // Non-fatal: the picker just shows "account default" with no options.
+      }
+    })();
+  }, []);
 
   const loadAgent = async () => {
     if (!agentId) return;
@@ -92,7 +124,8 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
   };
 
   const handleProviderChange = (provider: ModelProvider) => {
-    // When provider changes, reset to first model of that provider
+    // When provider changes, reset to first model of that provider and drop any
+    // pinned credentialId (it belonged to the old provider's type).
     const firstModel = AVAILABLE_MODELS[provider][0]?.value || "";
     setModelConfig({ provider, model: firstModel });
   };
@@ -456,6 +489,55 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                   </select>
                 </div>
               </div>
+
+              {/* LLM credential — explicit binding, pre-filled from the account
+                  default. Hidden for Ollama (no credential needed). */}
+              {PROVIDER_CREDENTIAL_TYPE[modelConfig.provider] && (
+                <div className="mt-4">
+                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                    Credential
+                  </label>
+                  {(() => {
+                    const credType = PROVIDER_CREDENTIAL_TYPE[modelConfig.provider];
+                    const options = myCredentials.filter(
+                      (c) => c.credential_type === credType,
+                    );
+                    return (
+                      <select
+                        value={modelConfig.credentialId ?? ""}
+                        onChange={(e) =>
+                          setModelConfig({
+                            ...modelConfig,
+                            credentialId: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={!isOwner}
+                      >
+                        <option value="">
+                          Account default
+                          {options.some((c) => c.is_default)
+                            ? ` (${options.find((c) => c.is_default)?.credential_name || "default"})`
+                            : ""}
+                        </option>
+                        {options.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.credential_name || `Credential #${c.id}`}
+                            {c.is_default ? " — default" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
+                  <p className="text-gray-500 text-xs mt-1">
+                    Pins the exact key this agent uses. Leave on “Account default”
+                    to follow your default for this provider.
+                  </p>
+                </div>
+              )}
+
               <p className="text-gray-400 text-xs mt-2">
                 Select the LLM provider and model that powers this agent.
                 {modelConfig.provider === "ollama" && (

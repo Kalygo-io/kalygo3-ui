@@ -1,9 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { WrenchScrewdriverIcon } from "@heroicons/react/24/outline";
 import { DrawerCloseButton } from "@/components/shared/drawer-close-button";
 import { RetrievalCall } from "@/ts/types/Message";
 import { getOriginalDocumentUrl } from "@/services/uploadChatFile";
+import { ChatContext } from "@/app/dashboard/agent-chat/chat-session-context";
 import { errorToast } from "@/shared/toasts/errorToast";
 import { ChatAccent } from "@/components/shared/chat/accent";
 import {
@@ -397,6 +398,11 @@ function VectorResult({
 }) {
   const [open, setOpen] = useState(defaultExpandAll);
   const [loadingDoc, setLoadingDoc] = useState(false);
+  // The agent this chat is bound to (if any). When set, source-document URLs are
+  // signed against the agent OWNER's GCS credential so members of a shared agent
+  // can open sources without holding the credential. Undefined (e.g. contact
+  // agents / tts) falls back to the account-scoped endpoint.
+  const { agentId } = useContext(ChatContext);
   const meta = result.metadata ?? ({} as VectorSearchResult["metadata"]);
   const score =
     typeof result.score === "number" ? formatScore(result.score) : null;
@@ -415,7 +421,7 @@ function VectorResult({
     if (!storagePath || loadingDoc) return;
     setLoadingDoc(true);
     try {
-      const url = await getOriginalDocumentUrl(storagePath);
+      const url = await getOriginalDocumentUrl(storagePath, agentId);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (e: any) {
       errorToast(e?.message || "Could not open the original document");

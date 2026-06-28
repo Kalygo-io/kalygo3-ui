@@ -58,14 +58,31 @@ export async function uploadChatFile(file: File, sessionId?: string): Promise<Ch
 }
 
 /**
- * Fetch a short-lived signed URL for an original document stored in the
- * account's GCS bucket (e.g. the source file a vector-search result points back
- * to via storage_path). The bucket is resolved server-side from the account's
- * credential; only the object path is passed.
+ * Fetch a short-lived signed URL for an original source document a vector-search
+ * result points back to (via storage_path).
+ *
+ * When an `agentId` is supplied (chatting with an agent — including a SHARED
+ * agent whose knowledge base belongs to someone else), the request is routed to
+ * the agent-scoped endpoint: the server resolves the OWNER's GCS credential,
+ * verifies the caller can access the agent, validates the path against the
+ * owner's ingestion log, and signs against the bucket recorded at ingest. The
+ * caller never needs a GCS credential of their own.
+ *
+ * Without an agentId it falls back to the account-scoped endpoint (owner viewing
+ * their own bucket, e.g. uploads outside an agent context).
  */
-export async function getOriginalDocumentUrl(path: string): Promise<string> {
-  const url = new URL(`${API_BASE_URL}/api/files/signed-url`);
+export async function getOriginalDocumentUrl(
+  path: string,
+  agentId?: number | string | null,
+): Promise<string> {
+  const url =
+    agentId != null
+      ? new URL(`${API_BASE_URL}/api/files/source-url`)
+      : new URL(`${API_BASE_URL}/api/files/signed-url`);
   url.searchParams.set("path", path);
+  if (agentId != null) {
+    url.searchParams.set("agent_id", String(agentId));
+  }
 
   const response = await fetch(url.toString(), {
     method: "GET",

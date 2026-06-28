@@ -86,6 +86,13 @@ export type ModelProvider = "openai" | "anthropic" | "google" | "ollama";
 export interface ModelConfig {
   provider: ModelProvider;
   model: string;
+  /**
+   * Explicit id of the stored credential funding turn completions. When set,
+   * this exact credential is used (no drift if account defaults change). When
+   * omitted, the funding account's default for the provider type is resolved at
+   * runtime. The picker pre-selects the account default but persists the choice.
+   */
+  credentialId?: number;
 }
 
 export interface AgentConfigData {

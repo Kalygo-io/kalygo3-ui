@@ -63,6 +63,25 @@ export interface Credential {
   created_at: string;
   updated_at: string;
   credential_metadata?: CredentialMetadata | null;
+  /** True if the requesting account owns this credential (vs. shared with them) */
+  is_owner: boolean;
+  /** True if this is the requesting account's default for its credential_type */
+  is_default: boolean;
+  /** For shared credentials: how it reached the caller (e.g. "Shared by alice@x.com"). Null when owned. */
+  shared_label?: string | null;
+}
+
+// A single share on a credential (owner-facing)
+export interface CredentialGrant {
+  id: number;
+  credential_id: number;
+  access_group_id?: number | null;
+  grantee_account_id?: number | null;
+  /** Display label: group name or grantee email */
+  label: string;
+  /** 'group' | 'individual' */
+  target_type: "group" | "individual";
+  created_at: string;
 }
 
 // Full credential detail (includes decrypted data)
@@ -117,6 +136,44 @@ class CredentialService {
 
   async deleteCredential(credentialId: number): Promise<void> {
     return apiDelete<void>(`/api/credentials/${credentialId}`);
+  }
+
+  // ── Sharing (owner only) ───────────────────────────────────────────────────
+
+  async listGrants(credentialId: number): Promise<CredentialGrant[]> {
+    return apiGet<CredentialGrant[]>(`/api/credentials/${credentialId}/access-grants`);
+  }
+
+  async shareWithGroup(
+    credentialId: number,
+    accessGroupId: number,
+  ): Promise<CredentialGrant> {
+    return apiPost<CredentialGrant>(`/api/credentials/${credentialId}/access-grants`, {
+      accessGroupId,
+    });
+  }
+
+  async shareWithEmail(
+    credentialId: number,
+    granteeEmail: string,
+  ): Promise<CredentialGrant> {
+    return apiPost<CredentialGrant>(`/api/credentials/${credentialId}/access-grants`, {
+      granteeEmail,
+    });
+  }
+
+  async revokeGrant(credentialId: number, grantId: number): Promise<void> {
+    return apiDelete<void>(`/api/credentials/${credentialId}/access-grants/${grantId}`);
+  }
+
+  // ── Default selection (per credential type, for the current user) ───────────
+
+  async setDefault(credentialId: number): Promise<void> {
+    return apiPut<void>(`/api/credentials/${credentialId}/default`, {});
+  }
+
+  async unsetDefault(credentialId: number): Promise<void> {
+    return apiDelete<void>(`/api/credentials/${credentialId}/default`);
   }
 }
 
