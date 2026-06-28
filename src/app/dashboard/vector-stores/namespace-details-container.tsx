@@ -6,6 +6,7 @@ import {
   vectorStoresService,
   Index,
   Namespace,
+  NamespaceFile,
   NamespaceFilesResponse,
 } from "@/services/vectorStoresService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -119,6 +120,31 @@ export function NamespaceDetailsContainer({
     );
   };
 
+  const handleDeleteFile = async (file: NamespaceFile) => {
+    await confirmDelete(
+      `Delete all ${file.vector_count.toLocaleString()} vectors for "${file.filename}"? This action cannot be undone.`,
+      () =>
+        vectorStoresService.deleteFileVectors(
+          indexName,
+          namespace,
+          file.filename,
+        ),
+      {
+        successMessage: `Deleted vectors for "${file.filename}"`,
+        errorMessage: "Failed to delete file vectors",
+        // Refresh both the per-file table and the namespace stat cards in place.
+        onSuccess: async () => {
+          await Promise.all([loadFiles(), loadDetails(false)]);
+        },
+      },
+    );
+  };
+
+  // Per-file delete needs a full live scan to find the matching vector ids, so
+  // it's only available when the breakdown came from a complete Pinecone scan.
+  const perFileDeletable =
+    !!filesData && filesData.source === "pinecone" && !filesData.truncated;
+
   if (loading) {
     return <PageLoading label="Loading namespace details..." />;
   }
@@ -227,14 +253,19 @@ export function NamespaceDetailsContainer({
             <thead className="bg-gray-900/60 text-gray-400">
               <tr>
                 <th className="px-4 py-3 font-medium">File</th>
+                <th className="px-4 py-3 font-medium">Uploaded At</th>
+                <th className="px-4 py-3 font-medium">Uploaded By</th>
                 <th className="px-4 py-3 font-medium text-right">Vectors</th>
+                <th className="px-4 py-3 font-medium text-right">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700/50">
               {filesLoading ? (
                 <tr>
                   <td
-                    colSpan={2}
+                    colSpan={5}
                     className="px-4 py-12 text-center text-sm text-gray-400"
                   >
                     Loading files…
@@ -243,7 +274,7 @@ export function NamespaceDetailsContainer({
               ) : filesError ? (
                 <tr>
                   <td
-                    colSpan={2}
+                    colSpan={5}
                     className="px-4 py-12 text-center text-sm text-red-400"
                   >
                     {filesError}
@@ -251,7 +282,7 @@ export function NamespaceDetailsContainer({
                 </tr>
               ) : !filesData || filesData.files.length === 0 ? (
                 <tr>
-                  <td colSpan={2} className="px-4 py-12">
+                  <td colSpan={5} className="px-4 py-12">
                     <div className="text-center">
                       <DocumentTextIcon className="h-10 w-10 text-gray-600 mx-auto mb-3" />
                       <p className="text-gray-300 text-sm font-medium">
@@ -281,8 +312,30 @@ export function NamespaceDetailsContainer({
                         </span>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
+                      {formatUploadedAt(f.uploaded_at)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-300">
+                      <span className="truncate block max-w-[16rem]" title={f.uploaded_by || undefined}>
+                        {f.uploaded_by || "—"}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-right text-gray-300 tabular-nums">
                       {f.vector_count.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleDeleteFile(f)}
+                        disabled={!perFileDeletable}
+                        title={
+                          perFileDeletable
+                            ? `Delete vectors for "${f.filename}"`
+                            : "Namespace too large to delete by file"
+                        }
+                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-600/20 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-gray-500 disabled:hover:bg-transparent"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -293,6 +346,16 @@ export function NamespaceDetailsContainer({
       </div>
     </div>
   );
+}
+
+/** Format an epoch-ms string (as stored in vector metadata) as a local date. */
+function formatUploadedAt(value?: string | null): string {
+  if (!value) return "—";
+  const ms = Number(value);
+  if (!Number.isFinite(ms) || ms <= 0) return "—";
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString();
 }
 
 function StatCard({

@@ -18,6 +18,10 @@ export interface Namespace {
 export interface NamespaceFile {
   filename: string;
   vector_count: number;
+  /** Epoch-ms string of the most recent vector for this file, or null. */
+  uploaded_at?: string | null;
+  /** Uploader (email, falling back to user id), or null. */
+  uploaded_by?: string | null;
 }
 
 export interface NamespaceFilesResponse {
@@ -195,6 +199,19 @@ class VectorStoresService {
   async deleteNamespaceVectors(indexName: string, namespace: string): Promise<void> {
     return apiDelete<void>(
       `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces/${encodeURIComponent(namespace)}/vectors`
+    );
+  }
+
+  /** Delete all vectors belonging to a single source file within a namespace. */
+  async deleteFileVectors(
+    indexName: string,
+    namespace: string,
+    filename: string,
+  ): Promise<void> {
+    return apiDelete<void>(
+      `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces/${encodeURIComponent(namespace)}/file-vectors`,
+      undefined,
+      { query: { filename } },
     );
   }
 
