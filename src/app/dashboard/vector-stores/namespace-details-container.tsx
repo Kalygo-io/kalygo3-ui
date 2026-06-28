@@ -13,6 +13,7 @@ import { useConfirmDelete } from "@/shared/hooks/use-confirm-delete";
 import { PageLoading } from "@/components/shared/common/page-loading";
 import {
   ArrowLeftIcon,
+  ArrowPathIcon,
   TrashIcon,
   DocumentArrowUpIcon,
   CircleStackIcon,
@@ -32,6 +33,7 @@ export function NamespaceDetailsContainer({
   const [index, setIndex] = useState<Index | null>(null);
   const [namespaceData, setNamespaceData] = useState<Namespace | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   // Per-file breakdown loads independently so the stat cards render immediately.
   const [filesData, setFilesData] = useState<NamespaceFilesResponse | null>(null);
   const [filesLoading, setFilesLoading] = useState(true);
@@ -64,9 +66,9 @@ export function NamespaceDetailsContainer({
     }
   };
 
-  const loadDetails = async () => {
+  const loadDetails = async (showPageLoading = true) => {
     try {
-      setLoading(true);
+      if (showPageLoading) setLoading(true);
       const [indexes, namespaces] = await Promise.all([
         vectorStoresService.listIndexes(),
         vectorStoresService.listNamespaces(indexName),
@@ -90,7 +92,18 @@ export function NamespaceDetailsContainer({
     } catch (error: any) {
       errorToast(error.message || "Failed to load namespace details");
     } finally {
-      setLoading(false);
+      if (showPageLoading) setLoading(false);
+    }
+  };
+
+  // Refresh all stats in place without a full page reload.
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([loadDetails(false), loadFiles()]);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -137,6 +150,17 @@ export function NamespaceDetailsContainer({
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh stats"
+            className="bg-gray-700/60 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2"
+          >
+            <ArrowPathIcon
+              className={`h-5 w-5 ${refreshing ? "animate-spin" : ""}`}
+            />
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
           <button
             onClick={() =>
               router.push("/dashboard/vector-stores/data-ingestion")
