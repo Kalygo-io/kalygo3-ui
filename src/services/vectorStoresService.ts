@@ -165,6 +165,33 @@ class VectorStoresService {
     return apiPost<UploadResponse>(`/api/vector-stores/upload-csv`, formData);
   }
 
+  /**
+   * Store the original PDF as the source document and queue reviewed Q&A pairs
+   * for ingestion. The PDF is what lands in GCS; each resulting vector references
+   * it in metadata so FAQ entries trace back to the source.
+   */
+  async uploadPdfFaq(
+    indexName: string,
+    namespace: string,
+    pdfFile: File,
+    pairs: { question: string; answer: string }[],
+    comment?: string,
+    batchNumber?: string
+  ): Promise<UploadResponse> {
+    const formData = new FormData();
+    formData.append("file", pdfFile);
+    formData.append("index_name", indexName);
+    formData.append("namespace", namespace);
+    formData.append(
+      "qna_pairs",
+      JSON.stringify(pairs.map((p) => ({ q: p.question, a: p.answer })))
+    );
+    if (comment) formData.append("comment", comment);
+    if (batchNumber) formData.append("batch_number", batchNumber);
+
+    return apiPost<UploadResponse>(`/api/vector-stores/upload-pdf-faq`, formData);
+  }
+
   async deleteNamespaceVectors(indexName: string, namespace: string): Promise<void> {
     return apiDelete<void>(
       `/api/vector-stores/indexes/${encodeURIComponent(indexName)}/namespaces/${encodeURIComponent(namespace)}/vectors`
