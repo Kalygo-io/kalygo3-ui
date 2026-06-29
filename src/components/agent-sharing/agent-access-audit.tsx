@@ -61,7 +61,7 @@ export function AgentAccessAudit({ agentId }: { agentId: string }) {
               <UsersIcon className="h-4 w-4" /> People with access ({audit.effective_accounts.length})
             </h4>
             {audit.effective_accounts.length === 0 ? (
-              <p className="text-sm text-gray-500">No one but the owner.</p>
+              <p className="text-sm text-gray-400">No one but the owner.</p>
             ) : (
               <ul className="divide-y divide-gray-700/60 rounded-lg border border-gray-700/60 overflow-hidden">
                 {audit.effective_accounts.map((a: EffectiveAccount) => (
@@ -69,7 +69,7 @@ export function AgentAccessAudit({ agentId }: { agentId: string }) {
                     <span className="text-sm text-gray-200">{a.email || `account #${a.account_id}`}</span>
                     <span className="flex items-center gap-2 text-xs">
                       <span className="px-2 py-0.5 rounded-full bg-gray-700 text-gray-200">{a.role}</span>
-                      <span className="text-gray-500">{a.via}</span>
+                      <span className="text-gray-400">{a.via}</span>
                     </span>
                   </li>
                 ))}
@@ -85,13 +85,27 @@ export function AgentAccessAudit({ agentId }: { agentId: string }) {
               </h4>
               <ul className="space-y-2">
                 {audit.derived_exposure.map((d) => (
-                  <li key={`${d.resource_type}:${d.resource_id}:${d.label}`} className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-                    <div className="text-sm text-amber-200 font-medium">{d.label}</div>
-                    <div className="text-xs text-amber-300/80">{d.note}</div>
+                  <li
+                    key={`${d.resource_type}:${d.resource_id}:${d.label}`}
+                    className="rounded-lg border px-3 py-2"
+                    style={{
+                      backgroundColor: "rgba(245, 158, 11, 0.12)",
+                      borderColor: "rgba(245, 158, 11, 0.45)",
+                    }}
+                  >
+                    <div
+                      className="text-sm font-medium"
+                      style={{ color: "#fde68a" }}
+                    >
+                      {d.label}
+                    </div>
+                    <div className="text-xs" style={{ color: "#fcd34d" }}>
+                      {d.note}
+                    </div>
                   </li>
                 ))}
               </ul>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-400 mt-2">
                 These have no separate grant — access is inherited from the agent. The
                 people listed above can read this content and open its source files.
               </p>
