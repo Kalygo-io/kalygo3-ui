@@ -225,8 +225,8 @@ export const AVAILABLE_MODELS: Record<
 };
 
 export const DEFAULT_MODEL: ModelConfig = {
-  provider: "openai",
-  model: "gpt-4o-mini",
+  provider: "anthropic",
+  model: "claude-opus-4-6",
 };
 
 // ============================================================================

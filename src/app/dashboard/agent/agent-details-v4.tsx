@@ -57,7 +57,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
   // Form state
   const [name, setName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -102,7 +102,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
       setLoading(true);
       const data = await agentsService.getAgent(agentId);
       setAgent(data);
-      
+
       // Extract V4 config data
       if (data.config && data.config.version === 4) {
         const v4Config = data.config as AgentConfig;
@@ -147,12 +147,14 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
 
     try {
       setSaving(true);
-      
+
       const configData: AgentConfigData = {
         systemPrompt: systemPrompt.trim(),
         model: modelConfig,
         tools: tools.length > 0 ? tools : undefined,
-        ...(elevenlabsVoiceId.trim() ? { elevenlabsVoiceId: elevenlabsVoiceId.trim() } : {}),
+        ...(elevenlabsVoiceId.trim()
+          ? { elevenlabsVoiceId: elevenlabsVoiceId.trim() }
+          : {}),
         ...(shareOwnerCredentials ? { shareOwnerCredentials: true } : {}),
       };
 
@@ -184,9 +186,18 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
         const savedCount = savedTools.length;
         if (savedCount < sentCount) {
           const dropped = tools
-            .filter((t) => !savedTools.some((s) => s.type === t.type && (s as any).credentialId === (t as any).credentialId))
+            .filter(
+              (t) =>
+                !savedTools.some(
+                  (s) =>
+                    s.type === t.type &&
+                    (s as any).credentialId === (t as any).credentialId,
+                ),
+            )
             .map((t) => t.type);
-          errorToast(`The backend did not save ${dropped.length} tool(s): ${dropped.join(", ")}. This tool type may not be supported yet.`);
+          errorToast(
+            `The backend did not save ${dropped.length} tool(s): ${dropped.join(", ")}. This tool type may not be supported yet.`,
+          );
           return;
         }
       }
@@ -232,55 +243,58 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
       // Add new tool
       // Check for duplicates based on tool type
       let isDuplicate = false;
-      
+
       if (tool.type === "dbTableRead") {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "dbTableRead" &&
             existing.credentialId === tool.credentialId &&
-            existing.table === tool.table
+            existing.table === tool.table,
         );
       } else if (tool.type === "dbTableWrite") {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "dbTableWrite" &&
             existing.credentialId === tool.credentialId &&
-            existing.table === tool.table
+            existing.table === tool.table,
         );
       } else if (tool.type === "sendTxtEmailWithSes") {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "sendTxtEmailWithSes" &&
-            existing.credentialId === tool.credentialId
+            existing.credentialId === tool.credentialId,
         );
       } else if (tool.type === "sendHtmlEmailWithSes") {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "sendHtmlEmailWithSes" &&
-            existing.credentialId === tool.credentialId
+            existing.credentialId === tool.credentialId,
         );
       } else if (tool.type === "sendTxtEmailWithGoogleOAuth") {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "sendTxtEmailWithGoogleOAuth" &&
-            existing.credentialId === tool.credentialId
+            existing.credentialId === tool.credentialId,
         );
       } else if (tool.type === "sendTxtEmailWithGoogleSmtp") {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "sendTxtEmailWithGoogleSmtp" &&
-            existing.credentialId === tool.credentialId
+            existing.credentialId === tool.credentialId,
         );
       } else {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === tool.type &&
-            "provider" in existing && "provider" in tool &&
+            "provider" in existing &&
+            "provider" in tool &&
             existing.provider === tool.provider &&
-            "index" in existing && "index" in tool &&
+            "index" in existing &&
+            "index" in tool &&
             existing.index === tool.index &&
-            "namespace" in existing && "namespace" in tool &&
-            existing.namespace === tool.namespace
+            "namespace" in existing &&
+            "namespace" in tool &&
+            existing.namespace === tool.namespace,
         );
       }
 
@@ -313,9 +327,8 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
     return <PageLoading label="Agent not found" />;
   }
 
-  const editingTool = editingToolIndex !== null 
-    ? tools[editingToolIndex] 
-    : null;
+  const editingTool =
+    editingToolIndex !== null ? tools[editingToolIndex] : null;
 
   // Ownership: default to true for backwards compat (before backend returns `owned`)
   const isOwner = agent.is_owner !== false;
@@ -333,14 +346,18 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
           </button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-4xl font-semibold text-white">{agent.name}</h1>
+              <h1 className="text-4xl font-semibold text-white">
+                {agent.name}
+              </h1>
               {!isOwner && (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-600/20 text-indigo-300 border border-indigo-500/40">
                   Shared with you
                 </span>
               )}
             </div>
-            <p className="text-sm text-cyan-400 mt-1">Agent Config v4 (TTS voice)</p>
+            <p className="text-sm text-cyan-400 mt-1">
+              Agent Config v4 (TTS voice)
+            </p>
           </div>
         </div>
         {isOwner && (
@@ -441,7 +458,9 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                 disabled={!isOwner}
               />
               <TemplateVariableHint
-                onInsert={(variable) => setSystemPrompt((prev) => prev + variable)}
+                onInsert={(variable) =>
+                  setSystemPrompt((prev) => prev + variable)
+                }
               />
             </div>
 
@@ -461,12 +480,14 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                   </label>
                   <select
                     value={modelConfig.provider}
-                    onChange={(e) => handleProviderChange(e.target.value as ModelProvider)}
+                    onChange={(e) =>
+                      handleProviderChange(e.target.value as ModelProvider)
+                    }
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                     disabled={!isOwner}
                   >
-                    <option value="openai">OpenAI</option>
                     <option value="anthropic">Anthropic</option>
+                    <option value="openai">OpenAI</option>
                     <option value="google">Google Gemini</option>
                     <option value="ollama">Ollama (Self-hosted)</option>
                   </select>
@@ -478,7 +499,9 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                   </label>
                   <select
                     value={modelConfig.model}
-                    onChange={(e) => setModelConfig({ ...modelConfig, model: e.target.value })}
+                    onChange={(e) =>
+                      setModelConfig({ ...modelConfig, model: e.target.value })
+                    }
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                     disabled={!isOwner}
                   >
@@ -499,7 +522,8 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                     Credential
                   </label>
                   {(() => {
-                    const credType = PROVIDER_CREDENTIAL_TYPE[modelConfig.provider];
+                    const credType =
+                      PROVIDER_CREDENTIAL_TYPE[modelConfig.provider];
                     const options = myCredentials.filter(
                       (c) => c.credential_type === credType,
                     );
@@ -533,8 +557,8 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                     );
                   })()}
                   <p className="text-gray-500 text-xs mt-1">
-                    Pins the exact key this agent uses. Leave on “Account default”
-                    to follow your default for this provider.
+                    Pins the exact key this agent uses. Leave on “Account
+                    default” to follow your default for this provider.
                   </p>
                 </div>
               )}
@@ -571,7 +595,8 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                 ))}
               </select>
               <p className="text-gray-400 text-xs mt-2">
-                Used when this agent speaks in TTS Chat or Multi-Agent TTS Chat. Leave as default to use the voice from App Settings.
+                Used when this agent speaks in TTS Chat or Multi-Agent TTS Chat.
+                Leave as default to use the voice from App Settings.
               </p>
             </div>
 
@@ -591,10 +616,11 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                       Run shared sessions on my credentials
                     </span>
                     <span className="mt-1 block text-xs text-gray-400">
-                      When people you share this agent with (via an access group) chat with
-                      it, use your stored LLM provider key so they don&apos;t have to add
-                      their own. Off by default — each member uses their own key. Tools always
-                      run on your credentials regardless of this setting.
+                      When people you share this agent with (via an access
+                      group) chat with it, use your stored LLM provider key so
+                      they don&apos;t have to add their own. Off by default —
+                      each member uses their own key. Tools always run on your
+                      credentials regardless of this setting.
                     </span>
                   </span>
                 </label>
@@ -624,9 +650,7 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
 
               {tools.length === 0 ? (
                 <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-8 text-center">
-                  <p className="text-gray-400 text-sm">
-                    No tools added yet
-                  </p>
+                  <p className="text-gray-400 text-sm">No tools added yet</p>
                   {isOwner && (
                     <button
                       type="button"
@@ -681,7 +705,9 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                             >
                               {/* Type badge */}
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-800/50 ${meta.borderClass} ${meta.iconClass}`}>
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-800/50 ${meta.borderClass} ${meta.iconClass}`}
+                                >
                                   {meta.label}
                                 </span>
                               </td>
@@ -712,27 +738,45 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                               {/* Settings */}
                               <td className="px-4 py-3 whitespace-nowrap">
                                 {tool.type === "vectorSearch" && (
-                                  <div className="text-xs text-gray-500">Top K: {tool.topK || 10}</div>
+                                  <div className="text-xs text-gray-500">
+                                    Top K: {tool.topK || 10}
+                                  </div>
                                 )}
                                 {tool.type === "vectorSearchWithReranking" && (
-                                  <div className="text-xs text-gray-500">K: {tool.topK || 20}, N: {tool.topN || 5}</div>
+                                  <div className="text-xs text-gray-500">
+                                    K: {tool.topK || 20}, N: {tool.topN || 5}
+                                  </div>
                                 )}
                                 {tool.type === "dbTableRead" && (
-                                  <div className="text-xs text-gray-500">Max: {tool.maxLimit || 100} rows</div>
+                                  <div className="text-xs text-gray-500">
+                                    Max: {tool.maxLimit || 100} rows
+                                  </div>
                                 )}
                                 {tool.type === "dbTableWrite" && (
                                   <div className="space-y-1">
-                                    <div className="text-xs text-gray-500">{tool.columns.length} columns</div>
+                                    <div className="text-xs text-gray-500">
+                                      {tool.columns.length} columns
+                                    </div>
                                     {tool.injectAccountId && (
-                                      <div className="text-xs text-orange-400">+ account_id</div>
+                                      <div className="text-xs text-orange-400">
+                                        + account_id
+                                      </div>
                                     )}
                                     {tool.injectChatSessionId && (
-                                      <div className="text-xs text-orange-400">+ chat_session_id</div>
+                                      <div className="text-xs text-orange-400">
+                                        + chat_session_id
+                                      </div>
                                     )}
                                   </div>
                                 )}
-                                {(tool.type === "sendTxtEmailWithSes" || tool.type === "sendHtmlEmailWithSes" || tool.type === "sendTxtEmailWithGoogleOAuth" || tool.type === "sendTxtEmailWithGoogleSmtp") && (
-                                  <div className="text-xs text-gray-500">Plain text</div>
+                                {(tool.type === "sendTxtEmailWithSes" ||
+                                  tool.type === "sendHtmlEmailWithSes" ||
+                                  tool.type === "sendTxtEmailWithGoogleOAuth" ||
+                                  tool.type ===
+                                    "sendTxtEmailWithGoogleSmtp") && (
+                                  <div className="text-xs text-gray-500">
+                                    Plain text
+                                  </div>
                                 )}
                               </td>
 
@@ -740,13 +784,16 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                               {isOwner && (
                                 <td className="px-4 py-3 whitespace-nowrap text-right">
                                   <div className="flex items-center justify-end gap-2">
-                                    {(tool.type === "vectorSearch" || tool.type === "vectorSearchWithReranking") &&
-                                      tool.provider === "pinecone" && tool.index && (
+                                    {(tool.type === "vectorSearch" ||
+                                      tool.type ===
+                                        "vectorSearchWithReranking") &&
+                                      tool.provider === "pinecone" &&
+                                      tool.index && (
                                         <button
                                           type="button"
                                           onClick={() =>
                                             router.push(
-                                              `/dashboard/vector-stores?indexName=${encodeURIComponent(tool.index)}`
+                                              `/dashboard/vector-stores?indexName=${encodeURIComponent(tool.index)}`,
                                             )
                                           }
                                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-blue-200 text-sm font-medium rounded-lg border border-blue-500/40 transition-colors duration-200"
@@ -786,7 +833,9 @@ export function AgentDetailsV4({ agentId }: { agentId?: string }) {
                 </div>
               )}
               <p className="text-gray-400 text-xs mt-2">
-                Tools extend the agent&apos;s capabilities. Add vector search tools for knowledge base retrieval or database query tools for structured data access.
+                Tools extend the agent&apos;s capabilities. Add vector search
+                tools for knowledge base retrieval or database query tools for
+                structured data access.
               </p>
             </div>
           </div>

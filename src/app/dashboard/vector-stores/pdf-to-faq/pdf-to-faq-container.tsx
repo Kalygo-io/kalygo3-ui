@@ -17,10 +17,7 @@ import {
   ModelConfig,
   ModelProvider,
 } from "@/services/agentsService";
-import {
-  vectorStoresService,
-  Namespace,
-} from "@/services/vectorStoresService";
+import { vectorStoresService, Namespace } from "@/services/vectorStoresService";
 import {
   generateFaqs,
   fileToBase64,
@@ -276,9 +273,7 @@ function FileSelectorStep({
 
       {/* Model selector */}
       <div>
-        <h3 className="text-sm font-medium text-gray-300 mb-2">
-          Model
-        </h3>
+        <h3 className="text-sm font-medium text-gray-300 mb-2">Model</h3>
         <p className="text-gray-500 text-xs mb-3">
           The model that reads the PDF and generates the Q&amp;A pairs.
         </p>
@@ -294,8 +289,8 @@ function FileSelectorStep({
               }
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic</option>
+              <option value="openai">OpenAI</option>
               <option value="google">Google Gemini</option>
               <option value="ollama">Ollama (Self-hosted)</option>
             </select>
@@ -473,7 +468,10 @@ function PreviewStep({
               <DocumentTextIcon className="h-5 w-5 text-blue-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate" title={file.name}>
+              <p
+                className="text-sm font-medium text-white truncate"
+                title={file.name}
+              >
                 {file.name}
               </p>
               <p className="text-xs text-gray-500">

@@ -63,7 +63,9 @@ export function CreateAgentV4Container() {
         systemPrompt: systemPrompt.trim(),
         model: modelConfig,
         tools: tools.length > 0 ? tools : undefined,
-        ...(elevenlabsVoiceId.trim() ? { elevenlabsVoiceId: elevenlabsVoiceId.trim() } : {}),
+        ...(elevenlabsVoiceId.trim()
+          ? { elevenlabsVoiceId: elevenlabsVoiceId.trim() }
+          : {}),
       };
 
       const data: CreateAgentRequest = {
@@ -102,14 +104,14 @@ export function CreateAgentV4Container() {
           (existing) =>
             existing.type === "dbTableRead" &&
             existing.credentialId === tool.credentialId &&
-            existing.table === tool.table
+            existing.table === tool.table,
         );
       } else if (tool.type === "dbTableWrite") {
         isDuplicate = tools.some(
           (existing) =>
             existing.type === "dbTableWrite" &&
             existing.credentialId === tool.credentialId &&
-            existing.table === tool.table
+            existing.table === tool.table,
         );
       } else {
         isDuplicate = tools.some(
@@ -123,7 +125,7 @@ export function CreateAgentV4Container() {
             existing.index === tool.index &&
             "namespace" in existing &&
             "namespace" in tool &&
-            existing.namespace === tool.namespace
+            existing.namespace === tool.namespace,
         );
       }
 
@@ -152,7 +154,8 @@ export function CreateAgentV4Container() {
     router.push("/dashboard/agents");
   };
 
-  const editingTool = editingToolIndex !== null ? tools[editingToolIndex] : null;
+  const editingTool =
+    editingToolIndex !== null ? tools[editingToolIndex] : null;
 
   return (
     <div className="space-y-6">
@@ -165,7 +168,9 @@ export function CreateAgentV4Container() {
         </button>
         <div>
           <h1 className="text-4xl font-semibold text-white">Create Agent</h1>
-          <p className="text-sm text-cyan-400 mt-1">Agent Config v4 (TTS voice)</p>
+          <p className="text-sm text-cyan-400 mt-1">
+            Agent Config v4 (TTS voice)
+          </p>
         </div>
       </div>
 
@@ -201,7 +206,9 @@ export function CreateAgentV4Container() {
               className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <TemplateVariableHint
-              onInsert={(variable) => setSystemPrompt((prev) => prev + variable)}
+              onInsert={(variable) =>
+                setSystemPrompt((prev) => prev + variable)
+              }
             />
           </div>
 
@@ -219,11 +226,13 @@ export function CreateAgentV4Container() {
                 </label>
                 <select
                   value={modelConfig.provider}
-                  onChange={(e) => handleProviderChange(e.target.value as ModelProvider)}
+                  onChange={(e) =>
+                    handleProviderChange(e.target.value as ModelProvider)
+                  }
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="openai">OpenAI</option>
                   <option value="anthropic">Anthropic</option>
+                  <option value="openai">OpenAI</option>
                   <option value="google">Google Gemini</option>
                   <option value="ollama">Ollama (Self-hosted)</option>
                 </select>
@@ -234,7 +243,9 @@ export function CreateAgentV4Container() {
                 </label>
                 <select
                   value={modelConfig.model}
-                  onChange={(e) => setModelConfig({ ...modelConfig, model: e.target.value })}
+                  onChange={(e) =>
+                    setModelConfig({ ...modelConfig, model: e.target.value })
+                  }
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {AVAILABLE_MODELS[modelConfig.provider].map((model) => (
@@ -275,7 +286,8 @@ export function CreateAgentV4Container() {
               ))}
             </select>
             <p className="text-gray-400 text-xs mt-2">
-              Used when this agent speaks in TTS Chat or Multi-Agent TTS Chat. Leave as default to use the voice from App Settings.
+              Used when this agent speaks in TTS Chat or Multi-Agent TTS Chat.
+              Leave as default to use the voice from App Settings.
             </p>
           </div>
 
@@ -300,7 +312,8 @@ export function CreateAgentV4Container() {
             {tools.length === 0 ? (
               <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-6 text-center">
                 <p className="text-gray-400 text-sm mb-4">
-                  No tools added yet. Tools extend your agent&apos;s capabilities.
+                  No tools added yet. Tools extend your agent&apos;s
+                  capabilities.
                 </p>
                 <button
                   type="button"
@@ -327,7 +340,9 @@ export function CreateAgentV4Container() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-800/50 ${meta.borderClass} ${meta.iconClass}`}>
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-800/50 ${meta.borderClass} ${meta.iconClass}`}
+                              >
                                 {meta.label}
                               </span>
                             </div>
@@ -337,9 +352,13 @@ export function CreateAgentV4Container() {
                                   {tool.type}
                                 </code>
                               </p>
-                              <p className="text-xs text-gray-500">{meta.summary(tool)}</p>
+                              <p className="text-xs text-gray-500">
+                                {meta.summary(tool)}
+                              </p>
                               {tool.description && (
-                                <p className="text-sm text-gray-400">{tool.description}</p>
+                                <p className="text-sm text-gray-400">
+                                  {tool.description}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -369,7 +388,9 @@ export function CreateAgentV4Container() {
               </div>
             )}
             <p className="text-gray-400 text-xs mt-2">
-              Tools extend the agent&apos;s capabilities. Add vector search tools for knowledge base retrieval or database query tools for structured data access.
+              Tools extend the agent&apos;s capabilities. Add vector search
+              tools for knowledge base retrieval or database query tools for
+              structured data access.
             </p>
           </div>
 
