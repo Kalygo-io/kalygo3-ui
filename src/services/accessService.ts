@@ -33,6 +33,20 @@ export interface ReverseAuditItem {
   via: string;
 }
 
+export interface SharedGrant {
+  grant_id: number;
+  label: string;
+  target_type: "group" | "individual";
+  role: string;
+}
+
+export interface SharedResource {
+  resource_type: ResourceType;
+  resource_id: number;
+  label: string;
+  shared_with: SharedGrant[];
+}
+
 class AccessService {
   /** Who can access a resource (resolved to accounts) + derived exposure. Owner only. */
   async auditResource(resourceType: ResourceType, resourceId: number): Promise<ResourceAudit> {
@@ -44,6 +58,11 @@ class AccessService {
   /** Reverse audit: everything the current user can reach via grants. */
   async myAccessReport(): Promise<ReverseAuditItem[]> {
     return apiGet<ReverseAuditItem[]>(`/api/access/report`);
+  }
+
+  /** Everything the current user OWNS that is shared, and with whom. */
+  async sharedByMe(): Promise<SharedResource[]> {
+    return apiGet<SharedResource[]>(`/api/access/shared-by-me`);
   }
 }
 

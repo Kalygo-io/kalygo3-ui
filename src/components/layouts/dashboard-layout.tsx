@@ -24,6 +24,7 @@ import { navigation } from "@/config/navigation";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { logoutRequest } from "@/services/logoutRequest";
+import { getAccount } from "@/services/accountService";
 import { useChatSessions } from "@/shared/hooks/use-chat-sessions";
 import { ChatSession } from "@/services/chatSessionService";
 import { errorToast } from "@/shared/toasts/errorToast";
@@ -48,9 +49,25 @@ export function DashboardLayout({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(),
   );
+
+  // Load the current user's email for the account dropdown
+  useEffect(() => {
+    let active = true;
+    getAccount()
+      .then((account) => {
+        if (active) setAccountEmail(account.email);
+      })
+      .catch(() => {
+        // Silently ignore — the dropdown just won't show an email
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   // Handle current session deletion
   const currentSessionId = searchParams.get("session");
   const handleCurrentSessionDeleted = useCallback(() => {
@@ -491,8 +508,19 @@ export function DashboardLayout({
                   </MenuButton>
                   <MenuItems
                     transition
-                    className="absolute right-0 z-[100] mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+                    className="absolute right-0 z-[100] mt-2.5 w-64 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
                   >
+                    {/* Current account (read-only) */}
+                    <div className="px-3 py-2">
+                      <p className="text-xs text-gray-500">Signed in as</p>
+                      <p
+                        className="truncate text-sm font-medium text-gray-900"
+                        title={accountEmail ?? undefined}
+                      >
+                        {accountEmail ?? "—"}
+                      </p>
+                    </div>
+                    <div className="my-1 border-t border-gray-200" />
                     {userNavigation.map((item) => (
                       <MenuItem key={item.name}>
                         <span

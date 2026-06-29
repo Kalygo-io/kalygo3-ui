@@ -114,13 +114,21 @@ export interface SharedVectorStore {
   can_write: boolean;
 }
 
-/** An access group a knowledge base is shared with. */
+/** A principal (group or individual) a knowledge base is shared with. */
 export interface VectorStoreAccessGrant {
   id: number;
   owner_account_id: number;
   index_name: string;
-  access_group_id: number;
-  access_group_name: string;
+  /** Set for group grants; null for individual grants. */
+  access_group_id?: number | null;
+  /** Set for individual grants; null for group grants. */
+  grantee_account_id?: number | null;
+  /** Display label: group name or grantee email. */
+  label: string;
+  /** 'group' | 'individual' */
+  target_type: "group" | "individual";
+  /** 'read' (view) | 'write' (ingest/edit) */
+  role: "read" | "write";
   created_at: string;
 }
 
@@ -324,14 +332,20 @@ class VectorStoresService {
     });
   }
 
-  /** Share one of your knowledge bases with an access group. */
+  /**
+   * Share a knowledge base with a group OR an individual (by email), at a role.
+   * Provide exactly one of accessGroupId / granteeEmail. role: 'read' | 'write'.
+   */
   async grantVectorStoreAccess(
     indexName: string,
-    accessGroupId: number,
+    principal: { accessGroupId?: number; granteeEmail?: string },
+    role: "read" | "write" = "read",
   ): Promise<VectorStoreAccessGrant> {
     return apiPost<VectorStoreAccessGrant>(`/api/vector-stores/grants`, {
       index_name: indexName,
-      accessGroupId,
+      role,
+      ...(principal.accessGroupId != null ? { accessGroupId: principal.accessGroupId } : {}),
+      ...(principal.granteeEmail ? { granteeEmail: principal.granteeEmail } : {}),
     });
   }
 

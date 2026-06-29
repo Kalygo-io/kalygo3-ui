@@ -68,9 +68,20 @@ export const navigation: NavigationItem[] = [
     ],
   },
   {
-    name: "Access Groups",
-    href: "/dashboard/groups",
+    name: "Access",
     enabled: true,
+    children: [
+      {
+        name: "Groups",
+        href: "/dashboard/groups",
+        enabled: true,
+      },
+      {
+        name: "Audit",
+        href: "/dashboard/access/audit",
+        enabled: true,
+      },
+    ],
   },
   {
     name: "Credentials",

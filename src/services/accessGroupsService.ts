@@ -27,8 +27,14 @@ export interface AccessGroupMember {
 export interface AgentAccessGrant {
   id: number;
   agent_id: number;
-  access_group_id: number;
-  access_group_name?: string;
+  /** Set for group grants; null for individual grants. */
+  access_group_id?: number | null;
+  /** Set for individual grants; null for group grants. */
+  grantee_account_id?: number | null;
+  /** Display label: group name or grantee email. */
+  label: string;
+  /** 'group' | 'individual' */
+  target_type: "group" | "individual";
   created_at: string;
 }
 
@@ -45,7 +51,9 @@ export interface AddMemberRequest {
 }
 
 export interface CreateAgentAccessGrantRequest {
-  accessGroupId: number;
+  /** Provide exactly one of these. */
+  accessGroupId?: number;
+  granteeEmail?: string;
 }
 
 export interface GroupAgent {
@@ -151,10 +159,10 @@ class AccessGroupsService {
 
   async revokeAgentAccess(
     agentId: string,
-    accessGroupId: number,
+    grantId: number,
   ): Promise<void> {
     return apiDelete<void>(
-      `/api/agents/${encodeURIComponent(agentId)}/access-grants/${accessGroupId}`,
+      `/api/agents/${encodeURIComponent(agentId)}/access-grants/${grantId}`,
     );
   }
 }

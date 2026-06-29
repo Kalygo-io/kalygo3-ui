@@ -16,6 +16,7 @@ import {
   TrashIcon,
   PlusIcon,
   UserGroupIcon,
+  UserIcon,
   ShareIcon,
 } from "@heroicons/react/24/outline";
 
@@ -28,7 +29,10 @@ export function KbSharingPanel({ indexName }: KbSharingPanelProps) {
   const [grants, setGrants] = useState<VectorStoreAccessGrant[]>([]);
   const [myGroups, setMyGroups] = useState<AccessGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [principalType, setPrincipalType] = useState<"group" | "individual">("group");
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
+  const [granteeEmail, setGranteeEmail] = useState<string>("");
+  const [role, setRole] = useState<"read" | "write">("read");
   const [granting, setGranting] = useState(false);
 
   useEffect(() => {
@@ -54,20 +58,27 @@ export function KbSharingPanel({ indexName }: KbSharingPanelProps) {
   };
 
   const handleGrant = async () => {
-    if (!selectedGroupId) return;
-
-    const groupId = parseInt(selectedGroupId, 10);
-    if (isNaN(groupId)) return;
+    let principal: { accessGroupId?: number; granteeEmail?: string };
+    if (principalType === "group") {
+      const groupId = parseInt(selectedGroupId, 10);
+      if (isNaN(groupId)) return;
+      principal = { accessGroupId: groupId };
+    } else {
+      if (!granteeEmail.trim()) return;
+      principal = { granteeEmail: granteeEmail.trim() };
+    }
 
     try {
       setGranting(true);
       const grant = await vectorStoresService.grantVectorStoreAccess(
         indexName,
-        groupId,
+        principal,
+        role,
       );
-      setGrants((prev) => [...prev, grant]);
+      setGrants((prev) => [...prev.filter((g) => g.id !== grant.id), grant]);
       setSelectedGroupId("");
-      successToast("Access granted to group");
+      setGranteeEmail("");
+      successToast("Access granted");
     } catch (error: any) {
       errorToast(error.message || "Failed to grant access");
     } finally {
@@ -76,10 +87,9 @@ export function KbSharingPanel({ indexName }: KbSharingPanelProps) {
   };
 
   const handleRevoke = async (grant: VectorStoreAccessGrant) => {
-    const groupName =
-      grant.access_group_name || `Group #${grant.access_group_id}`;
+    const name = grant.label || `Grant #${grant.id}`;
     await confirmDelete(
-      `Revoke access for "${groupName}"? Members of this group will no longer be able to view this knowledge base.`,
+      `Revoke access for "${name}"? They will no longer be able to access this knowledge base.`,
       () => vectorStoresService.revokeVectorStoreAccess(grant.id),
       {
         successMessage: "Access revoked",
@@ -116,37 +126,85 @@ export function KbSharingPanel({ indexName }: KbSharingPanelProps) {
       </div>
 
       <p className="text-gray-400 text-sm mb-6">
-        Members can view this knowledge base; group admins can edit and ingest.
+        Grant a group or individual access. &ldquo;View only&rdquo; can read; &ldquo;Can edit&rdquo;
+        can ingest and edit. Migrated group-admin editors appear as individual
+        &ldquo;Can edit&rdquo; grants.
       </p>
 
       {/* Grant Form */}
-      {availableGroups.length > 0 && (
-        <div className="flex gap-3 mb-6">
-          <select
-            value={selectedGroupId}
-            onChange={(e) => setSelectedGroupId(e.target.value)}
-            className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select a group...</option>
-            {availableGroups.map((group) => (
-              <option key={group.id} value={group.id.toString()}>
-                {group.name}
-                {group.member_count !== undefined
-                  ? ` (${group.member_count} member${group.member_count !== 1 ? "s" : ""})`
-                  : ""}
+      <div className="mb-6 space-y-3">
+        {/* Principal type toggle */}
+        <div className="inline-flex rounded-lg border border-gray-700 overflow-hidden">
+          {(["group", "individual"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setPrincipalType(t)}
+              className={`px-3 py-1.5 text-sm font-medium flex items-center gap-1.5 ${
+                principalType === t
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-900 text-gray-300 hover:bg-gray-800"
+              }`}
+            >
+              {t === "group" ? <UserGroupIcon className="h-4 w-4" /> : <UserIcon className="h-4 w-4" />}
+              {t === "group" ? "Group" : "Person"}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          {principalType === "group" ? (
+            <select
+              value={selectedGroupId}
+              onChange={(e) => setSelectedGroupId(e.target.value)}
+              className="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">
+                {availableGroups.length ? "Select a group..." : "No groups you manage"}
               </option>
-            ))}
+              {availableGroups.map((group) => (
+                <option key={group.id} value={group.id.toString()}>
+                  {group.name}
+                  {group.member_count !== undefined
+                    ? ` (${group.member_count} member${group.member_count !== 1 ? "s" : ""})`
+                    : ""}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="email"
+              value={granteeEmail}
+              onChange={(e) => setGranteeEmail(e.target.value)}
+              placeholder="person@example.com"
+              className="flex-1 min-w-[200px] bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          )}
+
+          {/* Role */}
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as "read" | "write")}
+            className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title="Access level"
+          >
+            <option value="read">View only</option>
+            <option value="write">Can edit</option>
           </select>
+
           <button
             onClick={handleGrant}
-            disabled={!selectedGroupId || granting}
+            disabled={
+              granting ||
+              (principalType === "group" ? !selectedGroupId : !granteeEmail.trim())
+            }
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
           >
             <PlusIcon className="h-4 w-4" />
             {granting ? "Granting..." : "Grant Access"}
           </button>
         </div>
-      )}
+      </div>
 
       {availableGroups.length === 0 && myGroups.length === 0 && (
         <div className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-6 text-center mb-6">
@@ -178,7 +236,10 @@ export function KbSharingPanel({ indexName }: KbSharingPanelProps) {
               <thead className="bg-gray-800/50 border-b border-gray-700/50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Group
+                    Shared with
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Access
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Granted
@@ -190,11 +251,13 @@ export function KbSharingPanel({ indexName }: KbSharingPanelProps) {
               </thead>
               <tbody className="divide-y divide-gray-700/50">
                 {grants.map((grant) => {
-                  const groupName =
-                    grant.access_group_name ||
-                    myGroups.find((g) => g.id === grant.access_group_id)
-                      ?.name ||
-                    `Group #${grant.access_group_id}`;
+                  const isGroup = grant.target_type === "group";
+                  const name =
+                    grant.label ||
+                    (isGroup
+                      ? myGroups.find((g) => g.id === grant.access_group_id)?.name ||
+                        `Group #${grant.access_group_id}`
+                      : `Account #${grant.grantee_account_id}`);
 
                   return (
                     <tr
@@ -203,11 +266,29 @@ export function KbSharingPanel({ indexName }: KbSharingPanelProps) {
                     >
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <UserGroupIcon className="h-4 w-4 text-blue-400" />
+                          {isGroup ? (
+                            <UserGroupIcon className="h-4 w-4 text-blue-400" />
+                          ) : (
+                            <UserIcon className="h-4 w-4 text-indigo-300" />
+                          )}
                           <span className="text-sm text-white font-medium">
-                            {groupName}
+                            {name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {isGroup ? "group" : "individual"}
                           </span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium border ${
+                            grant.role === "write"
+                              ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
+                              : "bg-gray-600/20 text-gray-300 border-gray-500/40"
+                          }`}
+                        >
+                          {grant.role === "write" ? "Can edit" : "View only"}
+                        </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-sm text-gray-400">
