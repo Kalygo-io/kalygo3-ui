@@ -47,6 +47,19 @@ export interface SharedResource {
   shared_with: SharedGrant[];
 }
 
+export interface AccessEvent {
+  id: number;
+  event_type: "create" | "revoke" | "role_change";
+  resource_type: ResourceType;
+  resource_id: number;
+  resource_label?: string | null;
+  principal_type: "group" | "account";
+  principal_label?: string | null;
+  role?: string | null;
+  actor_email?: string | null;
+  created_at: string;
+}
+
 class AccessService {
   /** Who can access a resource (resolved to accounts) + derived exposure. Owner only. */
   async auditResource(resourceType: ResourceType, resourceId: number): Promise<ResourceAudit> {
@@ -63,6 +76,11 @@ class AccessService {
   /** Everything the current user OWNS that is shared, and with whom. */
   async sharedByMe(): Promise<SharedResource[]> {
     return apiGet<SharedResource[]>(`/api/access/shared-by-me`);
+  }
+
+  /** Append-only audit log of access changes on resources the user owns. */
+  async activity(): Promise<AccessEvent[]> {
+    return apiGet<AccessEvent[]>(`/api/access/activity`);
   }
 }
 
