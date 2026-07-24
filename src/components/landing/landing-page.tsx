@@ -261,7 +261,7 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    connection CRM with Activity Timelines
+                    CRM with Activity Timelines
                   </h3>
                   <p className="text-gray-400">
                     Track every connection, partner, and organization with a
