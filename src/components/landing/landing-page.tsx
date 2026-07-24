@@ -126,7 +126,7 @@ export function LandingPage() {
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Your members, your AI agents, your knowledge — unified in one
+            Your relationships, your AI agents, your knowledge — unified in one
             platform. Kalygo brings intelligent automation to every
             relationship, built for the enterprise.
           </p>
