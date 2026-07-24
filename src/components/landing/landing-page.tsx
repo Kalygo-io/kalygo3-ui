@@ -207,7 +207,7 @@ export function LandingPage() {
                 3. Engage
               </h3>
               <p className="text-gray-400">
-                Let agents handle conversations, nurture members, surface
+                Let agents handle conversations, nurture connections, surface
                 insights, and take action — so your team focuses on what
                 matters.
               </p>
@@ -244,8 +244,8 @@ export function LandingPage() {
                   </h3>
                   <p className="text-gray-400">
                     Deploy customizable LLM-powered agents that can answer
-                    questions, engage members, and take action — all within the
-                    context of your data.
+                    questions, engage connections, and take action — all within
+                    the context of your data.
                   </p>
                 </div>
               </div>
@@ -261,12 +261,12 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-white mb-2">
-                    Member CRM with Activity Timelines
+                    connection CRM with Activity Timelines
                   </h3>
                   <p className="text-gray-400">
-                    Track every member, partner, and organization with a full
-                    activity timeline — calls, emails, meetings, and notes — all
-                    in one place.
+                    Track every connection, partner, and organization with a
+                    full activity timeline — calls, emails, meetings, and notes
+                    — all in one place.
                   </p>
                 </div>
               </div>
